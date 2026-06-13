@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   FlatList,
   Platform,
   StyleSheet,
@@ -14,7 +16,7 @@ import {
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AuraOrb } from '@/components/AuraOrb';
+import { CompanionAvatar } from '@/components/CompanionAvatar';
 import { GlassCard } from '@/components/GlassCard';
 import { Message, useApp } from '@/context/AppContext';
 
@@ -27,6 +29,134 @@ const AI_REPLIES = [
   "I've added this to your memory timeline. It feels important — the kind of insight that deserves to be remembered.",
   "What you're describing resonates with something you shared earlier. I think you're onto something significant here.",
 ];
+
+function TypingIndicator({ name }: { name: string }) {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+  const fadeIn = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeIn, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+
+    const bounce = (dot: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, {
+            toValue: -6,
+            duration: 320,
+            easing: Easing.out(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 320,
+            easing: Easing.in(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.delay(600),
+        ])
+      );
+
+    bounce(dot1, 0).start();
+    bounce(dot2, 160).start();
+    bounce(dot3, 320).start();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.typingWrapper, { opacity: fadeIn }]}>
+      <GlassCard style={styles.typingBubble} radius={20}>
+        <View style={styles.typingDots}>
+          {[dot1, dot2, dot3].map((d, i) => (
+            <Animated.View
+              key={i}
+              style={[styles.dot, { transform: [{ translateY: d }] }]}
+            />
+          ))}
+        </View>
+        <Text style={styles.typingText}>{name} is thinking…</Text>
+      </GlassCard>
+    </Animated.View>
+  );
+}
+
+function MessageBubble({ item, isUser, companionName, colorFrom, colorTo, seed }: {
+  item: Message;
+  isUser: boolean;
+  companionName: string;
+  colorFrom: string;
+  colorTo: string;
+  seed: string;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 220,
+      friction: 18,
+    }).start();
+  }, []);
+
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <Animated.View
+      style={[
+        isUser ? styles.messageWrapperUser : styles.messageWrapperAI,
+        {
+          opacity: anim,
+          transform: [
+            {
+              translateX: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [isUser ? 20 : -20, 0],
+              }),
+            },
+            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+          ],
+        },
+      ]}
+    >
+      {isUser ? (
+        <View style={styles.userBubble}>
+          <LinearGradient
+            colors={['#917eff', '#5d3fe0']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.userBubbleGradient}
+          >
+            <Text style={styles.userText}>{item.content}</Text>
+          </LinearGradient>
+          <Text style={styles.timestampRight}>{formatTime(item.createdAt)}</Text>
+        </View>
+      ) : (
+        <View style={styles.aiBubble}>
+          <View style={styles.aiRow}>
+            <CompanionAvatar
+              seed={seed}
+              size={30}
+              colorFrom={colorFrom}
+              colorTo={colorTo}
+              pulsate={false}
+            />
+            <View style={styles.aiContent}>
+              <GlassCard style={styles.aiCard} radius={20}>
+                <Text style={styles.aiText}>{item.content}</Text>
+              </GlassCard>
+              <Text style={styles.timestampLeft}>{companionName} · {formatTime(item.createdAt)}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+    </Animated.View>
+  );
+}
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -84,51 +214,25 @@ export default function ChatScreen() {
       setLocalMessages((prev) => [aiMsg, ...prev]);
       addMessage(id ?? '', { role: 'assistant', content: reply, createdAt: new Date().toISOString() });
       setIsTyping(false);
-    }, 1500 + Math.random() * 1000);
-  };
-
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isUser = item.role === 'user';
-    return (
-      <View style={[styles.messageWrapper, isUser && styles.messageWrapperUser]}>
-        {isUser ? (
-          <View style={styles.userBubble}>
-            <LinearGradient
-              colors={['#917eff', '#5d3fe0']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.userBubbleGradient}
-            >
-              <Text style={styles.userText}>{item.content}</Text>
-            </LinearGradient>
-            <Text style={styles.timestampRight}>{formatTime(item.createdAt)}</Text>
-          </View>
-        ) : (
-          <View style={styles.aiBubble}>
-            <GlassCard style={styles.aiCard} radius={20}>
-              <Text style={styles.aiText}>{item.content}</Text>
-            </GlassCard>
-            <Text style={styles.timestampLeft}>{companion?.name} · {formatTime(item.createdAt)}</Text>
-          </View>
-        )}
-      </View>
-    );
+    }, 1600 + Math.random() * 800);
   };
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0e1323', '#121A35', '#0B1020']}
+        colors={['#060a18', '#0e1323', '#121A35']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <View style={styles.ambientTop} pointerEvents="none" />
+      {/* Companion color glow */}
+      <View
+        style={[
+          styles.companionGlow,
+          { backgroundColor: (companion?.colorFrom ?? '#c9bfff') + '0C' },
+        ]}
+        pointerEvents="none"
+      />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topInset }]}>
@@ -136,40 +240,34 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={22} color="#dee1f9" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerCompanion} activeOpacity={0.8}>
-          <View style={styles.headerOrbWrapper}>
-            <AuraOrb
-              size={38}
-              colorFrom={companion?.colorFrom ?? '#c9bfff'}
-              colorTo={companion?.colorTo ?? '#8fd8ff'}
-              pulsate
-              label={companion?.name[0] ?? 'A'}
-            />
-            <View style={styles.onlineIndicator} />
-          </View>
+          <CompanionAvatar
+            seed={companion?.name ?? 'Aurora'}
+            size={40}
+            colorFrom={companion?.colorFrom ?? '#c9bfff'}
+            colorTo={companion?.colorTo ?? '#8fd8ff'}
+            pulsate
+            showOnlineIndicator
+          />
           <View>
             <Text style={styles.headerName}>{companion?.name ?? 'Aurora'}</Text>
-            <Text style={styles.headerStatus}>ONLINE</Text>
+            <View style={styles.headerStatusRow}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.headerStatus}>ONLINE</Text>
+            </View>
           </View>
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => router.push('/voice-call')}
-          >
-            <Ionicons name="call-outline" size={20} color="#c9bfff" />
+          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/voice-call')}>
+            <Ionicons name="call-outline" size={19} color="#c9bfff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerBtn}>
-            <Ionicons name="settings-outline" size={20} color="#dee1f9" />
+            <Ionicons name="ellipsis-vertical" size={19} color="#dee1f9" />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Messages */}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior="padding"
-        keyboardVerticalOffset={0}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={0}>
         <FlatList
           ref={flatListRef}
           data={localMessages}
@@ -180,24 +278,23 @@ export default function ChatScreen() {
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             isTyping ? (
-              <View style={styles.typingWrapper}>
-                <GlassCard style={styles.typingBubble} radius={999}>
-                  <View style={styles.typingDots}>
-                    <View style={[styles.dot, { opacity: 0.4 }]} />
-                    <View style={[styles.dot, { opacity: 0.7 }]} />
-                    <View style={[styles.dot, { opacity: 1 }]} />
-                  </View>
-                  <Text style={styles.typingText}>{companion?.name} is thinking...</Text>
-                </GlassCard>
-              </View>
+              <TypingIndicator name={companion?.name ?? 'Aurora'} />
             ) : null
           }
-          renderItem={renderMessage}
+          renderItem={({ item }) => (
+            <MessageBubble
+              item={item}
+              isUser={item.role === 'user'}
+              companionName={companion?.name ?? 'Aurora'}
+              colorFrom={companion?.colorFrom ?? '#c9bfff'}
+              colorTo={companion?.colorTo ?? '#8fd8ff'}
+              seed={companion?.name ?? 'Aurora'}
+            />
+          )}
         />
 
         {/* Input area */}
         <View style={[styles.inputArea, { paddingBottom: bottomPad + 8 }]}>
-          {/* Quick chips */}
           <FlatList
             data={QUICK_REPLIES}
             horizontal
@@ -212,7 +309,6 @@ export default function ChatScreen() {
               </TouchableOpacity>
             )}
           />
-          {/* Input bar */}
           <View style={styles.inputBar}>
             <GlassCard style={styles.inputCard} radius={999}>
               <TouchableOpacity style={styles.inputIconBtn}>
@@ -222,22 +318,27 @@ export default function ChatScreen() {
                 style={styles.textInput}
                 value={input}
                 onChangeText={setInput}
-                placeholder={`Whisper to ${companion?.name ?? 'Aurora'}...`}
-                placeholderTextColor="rgba(146,142,161,0.5)"
+                placeholder={`Whisper to ${companion?.name ?? 'Aurora'}…`}
+                placeholderTextColor="rgba(146,142,161,0.45)"
                 multiline
                 returnKeyType="send"
                 onSubmitEditing={() => sendMessage()}
               />
               <View style={styles.inputRight}>
                 <TouchableOpacity style={styles.micBtn} onPress={() => router.push('/voice-call')}>
-                  <Ionicons name="mic" size={18} color="#c9bfff" />
+                  <Ionicons name="mic" size={17} color="#c9bfff" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
                   onPress={() => sendMessage()}
                   disabled={!input.trim()}
                 >
-                  <Ionicons name="send" size={16} color={input.trim() ? '#1a0063' : '#484555'} />
+                  <LinearGradient
+                    colors={input.trim() ? ['#c9bfff', '#8fd8ff'] : ['#2a2840', '#2a2840']}
+                    style={styles.sendBtnGrad}
+                  >
+                    <Ionicons name="send" size={15} color={input.trim() ? '#1a0063' : '#484555'} />
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </GlassCard>
@@ -249,16 +350,15 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0e1323' },
+  container: { flex: 1, backgroundColor: '#060a18' },
   flex: { flex: 1 },
-  ambientTop: {
+  companionGlow: {
     position: 'absolute',
-    top: -50,
-    left: -50,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(201,191,255,0.06)',
+    top: -60,
+    right: -60,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
   },
   header: {
     flexDirection: 'row',
@@ -267,53 +367,50 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(14,19,35,0.8)',
+    backgroundColor: 'rgba(6,10,24,0.85)',
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerCompanion: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 4 },
-  headerOrbWrapper: { position: 'relative' },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4ade80',
-    borderWidth: 2,
-    borderColor: '#0e1323',
-  },
   headerName: {
     fontFamily: 'Sora_600SemiBold',
     fontSize: 17,
     color: '#c9bfff',
   },
+  headerStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  onlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ade80',
+  },
   headerStatus: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 9,
-    color: 'rgba(201,191,255,0.7)',
-    letterSpacing: 1.5,
+    color: 'rgba(201,191,255,0.65)',
+    letterSpacing: 1.8,
   },
-  headerActions: { flexDirection: 'row', gap: 4 },
+  headerActions: { flexDirection: 'row', gap: 6 },
   headerBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   messageList: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingBottom: 8,
     gap: 14,
     flexGrow: 1,
     justifyContent: 'flex-end',
   },
-  messageWrapper: { maxWidth: '85%', alignSelf: 'flex-start' },
-  messageWrapperUser: { alignSelf: 'flex-end' },
+  messageWrapperAI: { maxWidth: '88%', alignSelf: 'flex-start' },
+  messageWrapperUser: { maxWidth: '80%', alignSelf: 'flex-end' },
   aiBubble: { gap: 6 },
+  aiRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  aiContent: { flex: 1, gap: 5 },
   aiCard: { padding: 14 },
   aiText: {
     fontFamily: 'Manrope_400Regular',
@@ -324,14 +421,19 @@ const styles = StyleSheet.create({
   timestampLeft: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 11,
-    color: 'rgba(146,142,161,0.7)',
+    color: 'rgba(146,142,161,0.6)',
     paddingLeft: 4,
   },
-  userBubble: { alignItems: 'flex-end', gap: 6 },
+  userBubble: { alignItems: 'flex-end', gap: 5 },
   userBubbleGradient: {
     borderRadius: 20,
     borderBottomRightRadius: 4,
     padding: 14,
+    shadowColor: '#917eff',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
   userText: {
     fontFamily: 'Manrope_400Regular',
@@ -342,29 +444,36 @@ const styles = StyleSheet.create({
   timestampRight: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 11,
-    color: 'rgba(146,142,161,0.7)',
+    color: 'rgba(146,142,161,0.6)',
     paddingRight: 4,
   },
-  typingWrapper: { alignSelf: 'flex-start' },
-  typingBubble: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
-  typingDots: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  typingWrapper: { alignSelf: 'flex-start', marginBottom: 4 },
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  typingDots: { flexDirection: 'row', gap: 5, alignItems: 'center' },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: '#c9bfff',
   },
   typingText: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 12,
-    color: '#c9bfff',
-    letterSpacing: 0.5,
+    color: 'rgba(201,191,255,0.75)',
+    letterSpacing: 0.3,
   },
   inputArea: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
     gap: 6,
     paddingTop: 6,
+    backgroundColor: 'rgba(6,10,24,0.7)',
   },
   quickChip: {
     paddingHorizontal: 14,
@@ -380,9 +489,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 4,
-    paddingRight: 6,
+    paddingRight: 4,
     paddingVertical: 6,
-    minHeight: 50,
+    minHeight: 52,
   },
   inputIconBtn: { padding: 8 },
   textInput: {
@@ -394,11 +503,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     maxHeight: 100,
   },
-  inputRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  inputRight: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
   micBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(201,191,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -407,11 +516,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#c9bfff',
+    overflow: 'hidden',
+  },
+  sendBtnGrad: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendBtnDisabled: {
-    backgroundColor: 'rgba(72,69,85,0.4)',
-  },
+  sendBtnDisabled: { opacity: 0.6 },
 });
