@@ -1,0 +1,1 @@
+- [Aura AI backend architecture](aura-ai-backend.md) — full stack connected: PostgreSQL + Express API + Expo app with JWT auth and fallback

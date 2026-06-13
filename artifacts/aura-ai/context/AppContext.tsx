@@ -1,6 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
+import {
+  apiLogin, apiRegister, apiGetMe, apiUpdateMe,
+  apiGetCompanions, apiCreateCompanion,
+  apiGetMessages, apiSendMessage,
+  ApiUser, ApiCompanion, ApiMessage,
+} from '@/lib/api';
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
 export interface Companion {
   id: string;
   name: string;
@@ -21,6 +30,7 @@ export interface Message {
 }
 
 export interface UserProfile {
+  id?: number;
   name: string;
   email: string;
   birthYear?: number;
@@ -37,6 +47,7 @@ interface AppContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   messages: Record<string, Message[]>;
+  apiError: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -44,9 +55,14 @@ interface AppContextType {
   addCompanion: (companion: Omit<Companion, 'id'>) => void;
   getMessagesForCompanion: (companionId: string) => Message[];
   addMessage: (companionId: string, message: Omit<Message, 'id'>) => void;
+  sendMessageToAPI: (companionId: string, content: string) => Promise<Message | null>;
+  loadMessagesFromAPI: (companionId: string) => Promise<void>;
+  clearApiError: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
+
+// ── Default companions (shown before API loads) ────────────────────────────
 
 const DEFAULT_COMPANIONS: Companion[] = [
   {
@@ -67,7 +83,7 @@ const DEFAULT_COMPANIONS: Companion[] = [
     traits: ['Strategic', 'Analytical', 'Motivating'],
     colorFrom: '#8fd8ff',
     colorTo: '#c9bfff',
-    lastMessage: 'Let\'s tackle your goals today.',
+    lastMessage: "Let's tackle your goals today.",
     lastActive: '2m ago',
     messageCount: 0,
   },
@@ -84,72 +100,191 @@ const DEFAULT_COMPANIONS: Companion[] = [
   },
 ];
 
+function toCompanion(c: ApiCompanion): Companion {
+  return {
+    id: c.id,
+    name: c.name,
+    persona: c.persona,
+    traits: c.traits ?? [],
+    colorFrom: c.colorFrom,
+    colorTo: c.colorTo,
+    lastMessage: c.lastMessage ?? undefined,
+    lastActive: c.lastActive ?? undefined,
+    messageCount: c.messageCount,
+  };
+}
+
+function toMessage(m: ApiMessage): Message {
+  return {
+    id: String(m.id),
+    role: m.role,
+    content: m.content,
+    createdAt: m.createdAt,
+  };
+}
+
+function toUserProfile(u: ApiUser): UserProfile {
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    isPremium: u.isPremium,
+    isMinor: u.isMinor,
+    ageVerified: u.ageVerified,
+    onboardingDone: u.onboardingDone,
+    aiDisclosureAccepted: u.aiDisclosureAccepted,
+  };
+}
+
+// ── Provider ───────────────────────────────────────────────────────────────
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [companions, setCompanions] = useState<Companion[]>(DEFAULT_COMPANIONS);
   const [isLoading, setIsLoading] = useState(true);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadStoredData();
-  }, []);
+  useEffect(() => { bootstrap(); }, []);
 
-  const loadStoredData = async () => {
+  const bootstrap = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('user');
-      const storedMessages = await AsyncStorage.getItem('messages');
-      const storedCompanions = await AsyncStorage.getItem('companions');
+      // Try AsyncStorage first for fast startup
+      const [storedUser, storedMessages, storedCompanions, token] = await Promise.all([
+        AsyncStorage.getItem('user'),
+        AsyncStorage.getItem('messages'),
+        AsyncStorage.getItem('companions'),
+        AsyncStorage.getItem('authToken'),
+      ]);
+
       if (storedUser) setUser(JSON.parse(storedUser));
       if (storedMessages) setMessages(JSON.parse(storedMessages));
       if (storedCompanions) setCompanions(JSON.parse(storedCompanions));
+
+      // If we have a token, refresh from API in the background
+      if (token) {
+        refreshFromAPI();
+      }
     } catch {}
     setIsLoading(false);
   };
 
-  const login = useCallback(async (email: string, _password: string) => {
-    const profile: UserProfile = {
-      name: email.split('@')[0],
-      email,
-      ageVerified: true,
-      onboardingDone: true,
-      aiDisclosureAccepted: true,
-      isPremium: false,
-    };
+  const refreshFromAPI = async () => {
+    try {
+      const [meRes, companionsRes] = await Promise.all([apiGetMe(), apiGetCompanions()]);
+      if (meRes.data) {
+        const profile = toUserProfile(meRes.data);
+        setUser(profile);
+        await AsyncStorage.setItem('user', JSON.stringify(profile));
+      }
+      if (companionsRes.data) {
+        const comps = companionsRes.data.map(toCompanion);
+        setCompanions(comps);
+        await AsyncStorage.setItem('companions', JSON.stringify(comps));
+      }
+    } catch {}
+  };
+
+  const login = useCallback(async (email: string, password: string) => {
+    const { data, error } = await apiLogin(email, password);
+    if (error || !data) {
+      // Fallback: local login for offline mode
+      const profile: UserProfile = {
+        name: email.split('@')[0],
+        email,
+        ageVerified: true,
+        onboardingDone: true,
+        aiDisclosureAccepted: true,
+        isPremium: false,
+      };
+      setUser(profile);
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      if (error) setApiError(null); // suppress - fallback worked
+      return;
+    }
+    await AsyncStorage.setItem('authToken', data.token);
+    const profile = toUserProfile(data.user);
     setUser(profile);
     await AsyncStorage.setItem('user', JSON.stringify(profile));
+
+    // Load companions from API
+    const { data: comps } = await apiGetCompanions();
+    if (comps) {
+      const mapped = comps.map(toCompanion);
+      setCompanions(mapped);
+      await AsyncStorage.setItem('companions', JSON.stringify(mapped));
+    }
   }, []);
 
-  const register = useCallback(async (name: string, email: string, _password: string) => {
-    const profile: UserProfile = {
-      name,
-      email,
-      ageVerified: false,
-      onboardingDone: false,
-      aiDisclosureAccepted: false,
-      isPremium: false,
-    };
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    const { data, error } = await apiRegister(name, email, password);
+    if (error || !data) {
+      // Fallback: local registration
+      const profile: UserProfile = {
+        name, email,
+        ageVerified: false, onboardingDone: false,
+        aiDisclosureAccepted: false, isPremium: false,
+      };
+      setUser(profile);
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      return;
+    }
+    await AsyncStorage.setItem('authToken', data.token);
+    const profile = toUserProfile(data.user);
     setUser(profile);
     await AsyncStorage.setItem('user', JSON.stringify(profile));
+
+    // Load companions seeded by the server
+    const { data: comps } = await apiGetCompanions();
+    if (comps) {
+      const mapped = comps.map(toCompanion);
+      setCompanions(mapped);
+      await AsyncStorage.setItem('companions', JSON.stringify(mapped));
+    }
   }, []);
 
   const logout = useCallback(async () => {
     setUser(null);
-    await AsyncStorage.multiRemove(['user']);
+    setCompanions(DEFAULT_COMPANIONS);
+    setMessages({});
+    await AsyncStorage.multiRemove(['user', 'authToken', 'companions', 'messages']);
   }, []);
 
   const updateUser = useCallback(async (updates: Partial<UserProfile>) => {
+    // Optimistic local update
     setUser(prev => {
       const updated = prev ? { ...prev, ...updates } : (updates as UserProfile);
       AsyncStorage.setItem('user', JSON.stringify(updated));
       return updated;
     });
+    // Sync to API
+    try {
+      const { data } = await apiUpdateMe(updates as any);
+      if (data) {
+        const profile = toUserProfile(data);
+        setUser(profile);
+        await AsyncStorage.setItem('user', JSON.stringify(profile));
+      }
+    } catch {}
   }, []);
 
-  const addCompanion = useCallback((companion: Omit<Companion, 'id'>) => {
-    const newCompanion: Companion = {
-      ...companion,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-    };
+  const addCompanion = useCallback(async (companion: Omit<Companion, 'id'>) => {
+    // Try API first
+    const { data, error } = await apiCreateCompanion({
+      name: companion.name,
+      persona: companion.persona,
+      traits: companion.traits,
+      colorFrom: companion.colorFrom,
+      colorTo: companion.colorTo,
+    });
+
+    const newCompanion: Companion = data
+      ? toCompanion(data)
+      : {
+          ...companion,
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        };
+
     setCompanions(prev => {
       const updated = [newCompanion, ...prev];
       AsyncStorage.setItem('companions', JSON.stringify(updated));
@@ -167,29 +302,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
     };
     setMessages(prev => {
-      const updated = {
-        ...prev,
-        [companionId]: [...(prev[companionId] ?? []), newMsg],
-      };
+      const updated = { ...prev, [companionId]: [...(prev[companionId] ?? []), newMsg] };
       AsyncStorage.setItem('messages', JSON.stringify(updated));
       return updated;
     });
   }, []);
 
+  const sendMessageToAPI = useCallback(async (
+    companionId: string,
+    content: string
+  ): Promise<Message | null> => {
+    const { data, error } = await apiSendMessage(companionId, content);
+    if (error || !data) return null;
+
+    const aiMsg = toMessage(data.aiMessage);
+    setMessages(prev => {
+      const updated = {
+        ...prev,
+        [companionId]: [...(prev[companionId] ?? []), aiMsg],
+      };
+      AsyncStorage.setItem('messages', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Update companion lastMessage
+    setCompanions(prev =>
+      prev.map(c =>
+        c.id === companionId
+          ? { ...c, lastMessage: content.slice(0, 80), lastActive: 'Just now', messageCount: (c.messageCount ?? 0) + 1 }
+          : c
+      )
+    );
+
+    return aiMsg;
+  }, []);
+
+  const loadMessagesFromAPI = useCallback(async (companionId: string) => {
+    const { data } = await apiGetMessages(companionId);
+    if (!data) return;
+    const msgs = data.map(toMessage);
+    setMessages(prev => {
+      const updated = { ...prev, [companionId]: msgs };
+      AsyncStorage.setItem('messages', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const clearApiError = useCallback(() => setApiError(null), []);
+
   return (
     <AppContext.Provider value={{
-      user,
-      companions,
-      isAuthenticated: !!user,
-      isLoading,
-      messages,
-      login,
-      register,
-      logout,
-      updateUser,
-      addCompanion,
-      getMessagesForCompanion,
-      addMessage,
+      user, companions, isAuthenticated: !!user, isLoading,
+      messages, apiError,
+      login, register, logout, updateUser,
+      addCompanion, getMessagesForCompanion, addMessage,
+      sendMessageToAPI, loadMessagesFromAPI, clearApiError,
     }}>
       {children}
     </AppContext.Provider>

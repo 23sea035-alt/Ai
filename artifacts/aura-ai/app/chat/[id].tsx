@@ -161,7 +161,7 @@ function MessageBubble({ item, isUser, companionName, colorFrom, colorTo, seed }
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { companions, getMessagesForCompanion, addMessage } = useApp();
+  const { companions, getMessagesForCompanion, addMessage, sendMessageToAPI, loadMessagesFromAPI } = useApp();
   const companion = companions.find((c) => c.id === id) ?? companions[0];
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -181,6 +181,26 @@ export default function ChatScreen() {
   const topInset = Platform.OS === 'web' ? 67 : insets.top;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
 
+  // Load messages from API on mount
+  useEffect(() => {
+    if (id) {
+      loadMessagesFromAPI(id).then(() => {
+        const apiMsgs = getMessagesForCompanion(id);
+        if (apiMsgs.length > 0) {
+          setLocalMessages([
+            {
+              id: 'initial',
+              role: 'assistant',
+              content: `Good ${getTimeOfDay()}. ${companion?.name ?? 'I'} is here with you. What's on your mind today?`,
+              createdAt: new Date(0).toISOString(),
+            },
+            ...apiMsgs,
+          ]);
+        }
+      });
+    }
+  }, [id]);
+
   function getTimeOfDay() {
     const h = new Date().getHours();
     if (h < 12) return 'morning';
@@ -188,7 +208,7 @@ export default function ChatScreen() {
     return 'evening';
   }
 
-  const sendMessage = (text?: string) => {
+  const sendMessage = async (text?: string) => {
     const content = text ?? input.trim();
     if (!content) return;
     setInput('');
@@ -200,21 +220,31 @@ export default function ChatScreen() {
       createdAt: new Date().toISOString(),
     };
     setLocalMessages((prev) => [userMsg, ...prev]);
-    addMessage(id ?? '', { role: 'user', content, createdAt: new Date().toISOString() });
 
     setIsTyping(true);
+
+    // Try real API first
+    const aiMsg = await sendMessageToAPI(id ?? '', content);
+    if (aiMsg) {
+      setLocalMessages((prev) => [aiMsg, ...prev]);
+      setIsTyping(false);
+      return;
+    }
+
+    // Fallback: local AI replies if API is unavailable
+    addMessage(id ?? '', { role: 'user', content, createdAt: new Date().toISOString() });
     setTimeout(() => {
       const reply = AI_REPLIES[Math.floor(Math.random() * AI_REPLIES.length)];
-      const aiMsg: Message = {
+      const fallbackMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: reply,
         createdAt: new Date().toISOString(),
       };
-      setLocalMessages((prev) => [aiMsg, ...prev]);
+      setLocalMessages((prev) => [fallbackMsg, ...prev]);
       addMessage(id ?? '', { role: 'assistant', content: reply, createdAt: new Date().toISOString() });
       setIsTyping(false);
-    }, 1600 + Math.random() * 800);
+    }, 1200 + Math.random() * 600);
   };
 
   return (
