@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "peo_t0HkoIEk6I4GWagvu"
+uri = "file://artifacts/aura-ai/assets/images/icon.png"
+type = "image"
+title = "generated_image"
