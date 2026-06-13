@@ -24,9 +24,9 @@ const MENU_SECTIONS = [
   {
     title: 'Account',
     items: [
-      { icon: 'person-outline', label: 'Edit Profile', route: null, color: '#c9bfff', bg: '#c9bfff' },
-      { icon: 'notifications-outline', label: 'Notifications', route: null, color: '#ffb77d', bg: '#ffb77d' },
-      { icon: 'lock-closed-outline', label: 'Privacy & Security', route: null, color: '#4ade80', bg: '#4ade80' },
+      { icon: 'person-outline', label: 'Edit Profile', route: '/edit-profile', color: '#c9bfff', bg: '#c9bfff' },
+      { icon: 'notifications-outline', label: 'Notifications', route: '/notifications', color: '#ffb77d', bg: '#ffb77d' },
+      { icon: 'lock-closed-outline', label: 'Privacy & Security', route: '/privacy', color: '#4ade80', bg: '#4ade80' },
     ],
   },
   {
@@ -34,15 +34,15 @@ const MENU_SECTIONS = [
     items: [
       { icon: 'mic-outline', label: 'Voice Settings', route: '/voice-call', color: '#8fd8ff', bg: '#8fd8ff' },
       { icon: 'settings-outline', label: 'Settings', route: '/settings', color: '#B388FF', bg: '#B388FF' },
-      { icon: 'shield-checkmark-outline', label: 'Safety Center', route: null, color: '#ff8fb0', bg: '#ff8fb0' },
+      { icon: 'shield-checkmark-outline', label: 'Safety Center', route: '/safety', color: '#ff8fb0', bg: '#ff8fb0' },
     ],
   },
   {
     title: 'Community',
     items: [
-      { icon: 'help-circle-outline', label: 'Help & Support', route: null, color: '#60a5fa', bg: '#60a5fa' },
-      { icon: 'star-outline', label: 'Rate Aura AI', route: null, color: '#ffd700', bg: '#ffd700' },
-      { icon: 'share-social-outline', label: 'Invite Friends', route: null, color: '#4ade80', bg: '#4ade80' },
+      { icon: 'help-circle-outline', label: 'Help & Support', route: '/help', color: '#60a5fa', bg: '#60a5fa' },
+      { icon: 'star-outline', label: 'Rate Aura AI', route: '/rate-app', color: '#ffd700', bg: '#ffd700' },
+      { icon: 'share-social-outline', label: 'Invite Friends', route: '/invite', color: '#4ade80', bg: '#4ade80' },
     ],
   },
 ];
