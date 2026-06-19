@@ -39,6 +39,13 @@ export interface UserProfile {
   onboardingDone?: boolean;
   aiDisclosureAccepted?: boolean;
   isPremium?: boolean;
+  bio?: string;
+  avatarUri?: string;
+}
+
+export interface SafetyState {
+  breakReminder: string | null;
+  showDisclosure: boolean;
 }
 
 interface AppContextType {
@@ -48,16 +55,20 @@ interface AppContextType {
   isLoading: boolean;
   messages: Record<string, Message[]>;
   apiError: string | null;
+  safetyState: SafetyState;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, birthYear: number) => Promise<void>;
   logout: () => void;
   updateUser: (updates: Partial<UserProfile>) => void;
   addCompanion: (companion: Omit<Companion, 'id'>) => void;
   getMessagesForCompanion: (companionId: string) => Message[];
   addMessage: (companionId: string, message: Omit<Message, 'id'>) => void;
-  sendMessageToAPI: (companionId: string, content: string) => Promise<Message | null>;
+  sendMessageToAPI: (companionId: string, content: string, sessionStartedAt?: string) => Promise<Message | null>;
   loadMessagesFromAPI: (companionId: string) => Promise<void>;
   clearApiError: () => void;
+  setBreakReminder: (message: string | null) => void;
+  dismissDisclosure: () => void;
+  startCheckout: () => Promise<string | null>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -128,11 +139,12 @@ function toUserProfile(u: ApiUser): UserProfile {
     id: u.id,
     name: u.name,
     email: u.email,
-    isPremium: u.isPremium,
+    birthYear: u.birthYear ?? undefined,
     isMinor: u.isMinor,
     ageVerified: u.ageVerified,
     onboardingDone: u.onboardingDone,
     aiDisclosureAccepted: u.aiDisclosureAccepted,
+    isPremium: u.isPremium,
   };
 }
 
@@ -144,6 +156,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [apiError, setApiError] = useState<string | null>(null);
+  const [safetyState, setSafetyState] = useState<SafetyState>({
+    breakReminder: null,
+    showDisclosure: true,
+  });
 
   useEffect(() => { bootstrap(); }, []);
 
@@ -216,14 +232,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const { data, error } = await apiRegister(name, email, password);
+  const register = useCallback(async (name: string, email: string, password: string, birthYear: number = new Date().getFullYear() - 18) => {
+    const { data, error } = await apiRegister(name, email, password, birthYear);
     if (error || !data) {
       // Fallback: local registration
       const profile: UserProfile = {
-        name, email,
-        ageVerified: false, onboardingDone: false,
-        aiDisclosureAccepted: false, isPremium: false,
+        name,
+        email,
+        birthYear,
+        ageVerified: false,
+        onboardingDone: false,
+        aiDisclosureAccepted: false,
+        isPremium: false,
       };
       setUser(profile);
       await AsyncStorage.setItem('user', JSON.stringify(profile));
@@ -310,11 +330,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const sendMessageToAPI = useCallback(async (
     companionId: string,
-    content: string
+    content: string,
+    sessionStartedAt?: string
   ): Promise<Message | null> => {
-    const { data, error } = await apiSendMessage(companionId, content);
-    if (error || !data) return null;
+    const { data, error, errorData } = await apiSendMessage(companionId, content, sessionStartedAt);
+    if (error || !data) {
+      if (errorData?.limitReached) {
+        setApiError(`limitReached:${errorData.used}/${errorData.limit}`);
+      } else if (error) {
+        setApiError(error);
+      }
+      return null;
+    }
 
+    setApiError(null);
     const aiMsg = toMessage(data.aiMessage);
     setMessages(prev => {
       const updated = {
@@ -334,6 +363,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       )
     );
 
+    // Handle break reminder from API
+    if (data.breakReminder) {
+      setSafetyState(prev => ({ ...prev, breakReminder: data.breakReminder! }));
+    }
+
     return aiMsg;
   }, []);
 
@@ -350,13 +384,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearApiError = useCallback(() => setApiError(null), []);
 
+  const setBreakReminder = useCallback((message: string | null) => {
+    setSafetyState(prev => ({ ...prev, breakReminder: message }));
+  }, []);
+
+  const dismissDisclosure = useCallback(() => {
+    setSafetyState(prev => ({ ...prev, showDisclosure: false }));
+  }, []);
+
+  const startCheckout = useCallback(async (): Promise<string | null> => {
+    const { data, error } = await import('@/lib/api').then(m => m.apiCreateCheckoutSession());
+    if (error || !data?.url) {
+      setApiError(error ?? 'Failed to start checkout');
+      return null;
+    }
+    return data.url;
+  }, []);
+
   return (
     <AppContext.Provider value={{
       user, companions, isAuthenticated: !!user, isLoading,
-      messages, apiError,
+      messages, apiError, safetyState,
       login, register, logout, updateUser,
       addCompanion, getMessagesForCompanion, addMessage,
       sendMessageToAPI, loadMessagesFromAPI, clearApiError,
+      setBreakReminder, dismissDisclosure, startCheckout,
     }}>
       {children}
     </AppContext.Provider>

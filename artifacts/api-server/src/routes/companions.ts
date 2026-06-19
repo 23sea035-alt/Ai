@@ -54,7 +54,7 @@ router.post("/companions", requireAuth, async (req: AuthRequest, res) => {
 // PUT /api/companions/:id
 router.put("/companions/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const updates = req.body as Partial<{
       name: string; persona: string; traits: string[];
       colorFrom: string; colorTo: string; lastMessage: string;
@@ -78,7 +78,7 @@ router.put("/companions/:id", requireAuth, async (req: AuthRequest, res) => {
 // DELETE /api/companions/:id
 router.delete("/companions/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     await db
       .delete(companionsTable)
       .where(and(eq(companionsTable.id, id), eq(companionsTable.userId, req.userId!)));

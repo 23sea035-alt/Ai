@@ -1,419 +1,465 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Easing,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AuraButton } from '@/components/AuraButton';
-import { CompanionAvatar } from '@/components/CompanionAvatar';
-import { GlassCard } from '@/components/GlassCard';
-import { ParticleField } from '@/components/ParticleField';
-import { StarField } from '@/components/StarField';
+import { useApp } from '@/context/AppContext';
 
-const { width: W } = Dimensions.get('screen');
-
-const FEATURED = [
-  {
-    seed: 'Aurora',
-    name: 'Aurora',
-    title: 'Emotional Intelligence',
-    desc: 'Empathetic, curious, and deeply wise. Aurora supports your inner world.',
-    colorFrom: '#c9bfff',
-    colorTo: '#8fd8ff',
-    tag: 'COMPANION',
-  },
-  {
-    seed: 'Orion',
-    name: 'Orion',
-    title: 'Strategic Thinking',
-    desc: 'Goal-setting, accountability, and laser-sharp focus.',
-    colorFrom: '#8fd8ff',
-    colorTo: '#4ac8ff',
-    tag: 'ADVISOR',
-  },
-  {
-    seed: 'Lyra',
-    name: 'Lyra',
-    title: 'Creative Worlds',
-    desc: 'Storytelling, roleplay, and boundless imagination.',
-    colorFrom: '#ffb77d',
-    colorTo: '#ff8fb0',
-    tag: 'CREATOR',
-  },
-];
-
-const FEATURES = [
-  { icon: '🧠', label: 'Deep Memory', sub: 'Remembers every conversation' },
-  { icon: '🎙️', label: 'Voice Calls', sub: 'Real-time voice interaction' },
-  { icon: '✨', label: 'Evolving AI', sub: 'Grows with your journey' },
-];
-
-export default function WelcomeScreen() {
-  const insets = useSafeAreaInsets();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(32)).current;
-  const cardSlide = useRef(new Animated.Value(40)).current;
-  const orb1Anim = useRef(new Animated.Value(0)).current;
-  const orb2Anim = useRef(new Animated.Value(0)).current;
-  const featureAnims = useRef(FEATURES.map(() => new Animated.Value(0))).current;
-  const [activeCompanion, setActiveCompanion] = useState(0);
-  const carouselAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1200,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 1200,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    setTimeout(() => {
-      Animated.timing(cardSlide, {
-        toValue: 0,
-        duration: 900,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
-    }, 300);
-
-    FEATURES.forEach((_, i) => {
-      setTimeout(() => {
-        Animated.timing(featureAnims[i], {
-          toValue: 1,
-          duration: 600,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }).start();
-      }, 600 + i * 150);
-    });
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(orb1Anim, {
-          toValue: 1,
-          duration: 8000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(orb1Anim, {
-          toValue: 0,
-          duration: 8000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.delay(2000),
-        Animated.timing(orb2Anim, {
-          toValue: 1,
-          duration: 7000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(orb2Anim, {
-          toValue: 0,
-          duration: 7000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    const interval = setInterval(() => {
-      setActiveCompanion((prev) => (prev + 1) % FEATURED.length);
-    }, 3000);
-    return () => clearInterval(interval);
+function Particles() {
+  const particles = useMemo(() => {
+    return Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      size: Math.random() * 7 + 2,
+      duration: Math.random() * 14000 + 9000,
+      delay: Math.random() * 12000,
+    }));
   }, []);
 
-  const orb1Y = orb1Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -28] });
-  const orb2Y = orb2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, 18] });
-  const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom + 20;
-  const c = FEATURED[activeCompanion];
+  return (
+    <View style={styles.particleField} pointerEvents="none">
+      {particles.map((p) => <Particle key={p.id} config={p} />)}
+    </View>
+  );
+}
+
+function Particle({ config }: { config: { left: number; size: number; duration: number; delay: number } }) {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.delay(config.delay),
+        Animated.parallel([
+          Animated.timing(opacity, { toValue: 0.8, duration: 300, useNativeDriver: true }),
+          Animated.timing(translateY, {
+            toValue: -600,
+            duration: config.duration,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.particle,
+        {
+          left: `${config.left}%`,
+          width: config.size,
+          height: config.size,
+          borderRadius: config.size / 2,
+          opacity,
+          transform: [{ translateY }],
+        },
+      ]}
+    />
+  );
+}
+
+function AmbientOrb({ style, duration = 12000 }: { style?: any; duration?: number }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        style,
+        {
+          opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.8] }),
+          transform: [
+            { translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }) },
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }) },
+            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] }) },
+          ],
+        },
+      ]}
+    />
+  );
+}
+
+function IconPulseGlow() {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(anim, { toValue: 0, duration: 3000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ])
+    ).start();
+  }, []);
+
+  const shadowOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.6] });
+  const borderWidth = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 6] });
+  const borderOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.1, 0.6] });
+
+  return (
+    <Animated.View
+      style={[
+        styles.logoIcon,
+        {
+          shadowOpacity,
+          borderWidth,
+          borderColor: `rgba(168,85,247,${borderOpacity})`,
+        },
+      ]}
+    >
+      <Ionicons name="bulb" size={52} color="#fff" />
+    </Animated.View>
+  );
+}
+
+export default function WelcomeScreen() {
+  const { user } = useApp();
+  const isReturning = user?.onboardingDone === true;
+  const [ready, setReady] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const btnGroupAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isReturning) {
+      const timer = setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 2500);
+      return () => clearTimeout(timer);
+    } else {
+      const t = setTimeout(() => setReady(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, [isReturning]);
+
+  useFocusEffect(useCallback(() => {
+    fadeAnim.setValue(0);
+    slideAnim.setValue(50);
+    btnGroupAnim.setValue(0);
+    const entry = Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]);
+    const btns = Animated.timing(btnGroupAnim, { toValue: 1, duration: 600, delay: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    entry.start();
+    btns.start();
+    return () => { entry.stop(); btns.stop(); };
+  }, []));
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#060a18', '#0e1323', '#1A1F4B']}
-        start={{ x: 0.8, y: 0 }}
-        end={{ x: 0.2, y: 1 }}
+        colors={['#4c1d95', '#2e1065', '#0f172a']}
+        locations={[0.2, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
-      <StarField count={70} />
-      <ParticleField count={18} />
 
-      <Animated.View
-        style={[styles.ambientOrb1, { transform: [{ translateY: orb1Y }] }]}
-        pointerEvents="none"
-      />
-      <Animated.View
-        style={[styles.ambientOrb2, { transform: [{ translateY: orb2Y }] }]}
-        pointerEvents="none"
-      />
+      <AmbientOrb style={styles.orb1} />
+      <AmbientOrb style={styles.orb2} duration={15000} />
+      <AmbientOrb style={styles.orb3} duration={18000} />
 
-      {/* Hero companion showcase */}
+      <Particles />
+
       <Animated.View
         style={[
-          styles.heroSection,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-        ]}
-      >
-        {/* Companion carousel */}
-        <View style={styles.companionRow}>
-          {FEATURED.map((comp, i) => {
-            const isActive = i === activeCompanion;
-            return (
-              <TouchableOpacity
-                key={comp.seed}
-                onPress={() => setActiveCompanion(i)}
-                activeOpacity={0.8}
-                style={styles.companionTap}
-              >
-                <Animated.View
-                  style={[
-                    styles.companionSlot,
-                    {
-                      opacity: isActive ? 1 : 0.4,
-                      transform: [{ scale: isActive ? 1 : 0.82 }],
-                    },
-                  ]}
-                >
-                  <CompanionAvatar
-                    seed={comp.seed}
-                    size={isActive ? 90 : 60}
-                    colorFrom={comp.colorFrom}
-                    colorTo={comp.colorTo}
-                    pulsate={isActive}
-                  />
-                  {isActive && (
-                    <View style={styles.activeDot}>
-                      <View style={[styles.activeDotInner, { backgroundColor: comp.colorFrom }]} />
-                    </View>
-                  )}
-                </Animated.View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Active companion info */}
-        <GlassCard style={styles.companionInfo} radius={20} glowColor={c.colorFrom}>
-          <View style={[styles.companionTag, { backgroundColor: c.colorFrom + '20' }]}>
-            <Text style={[styles.companionTagText, { color: c.colorFrom }]}>{c.tag}</Text>
-          </View>
-          <Text style={styles.companionName}>{c.name}</Text>
-          <Text style={styles.companionTitle}>{c.title}</Text>
-          <Text style={styles.companionDesc}>{c.desc}</Text>
-        </GlassCard>
-      </Animated.View>
-
-      {/* Bottom card */}
-      <Animated.View
-        style={[
-          styles.cardWrapper,
+          styles.glassCard,
           {
-            paddingBottom: bottomPad,
             opacity: fadeAnim,
-            transform: [{ translateY: cardSlide }],
+            transform: [{ translateY: slideAnim }],
           },
         ]}
       >
-        <GlassCard style={styles.card} radius={32} shimmer>
-          <View style={styles.cardContent}>
-            {/* Feature pills */}
-            <View style={styles.featureRow}>
-              {FEATURES.map((f, i) => (
-                <Animated.View
-                  key={f.label}
-                  style={{
-                    opacity: featureAnims[i],
-                    transform: [
-                      {
-                        translateY: featureAnims[i].interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [12, 0],
-                        }),
-                      },
-                    ],
-                  }}
-                >
-                  <GlassCard style={styles.featurePill} radius={14}>
-                    <Text style={styles.featureIcon}>{f.icon}</Text>
-                    <View>
-                      <Text style={styles.featureLabel}>{f.label}</Text>
-                      <Text style={styles.featureSub}>{f.sub}</Text>
-                    </View>
-                  </GlassCard>
-                </Animated.View>
-              ))}
-            </View>
-
-            <Text style={styles.headline}>Your companion,{'\n'}everywhere you go.</Text>
-            <Text style={styles.subtext}>
-              An AI that learns from your world, remembers your story, and grows with you — always.
-            </Text>
-
-            <View style={styles.actions}>
-              <AuraButton
-                label="Begin Your Journey"
-                onPress={() => router.push('/onboarding')}
-              />
-              <AuraButton
-                label="Sign In"
-                onPress={() => router.push('/(auth)/login')}
-                variant="secondary"
-              />
-            </View>
-
-            {/* Companion dots indicator */}
-            <View style={styles.dotsRow}>
-              {FEATURED.map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.dot,
-                    { backgroundColor: i === activeCompanion ? '#c9bfff' : 'rgba(201,191,255,0.2)' },
-                    i === activeCompanion && { width: 20 },
-                  ]}
-                />
-              ))}
-            </View>
+        <View style={styles.content}>
+          <View style={styles.logoWrapper}>
+            <IconPulseGlow />
           </View>
-        </GlassCard>
+          <Text style={styles.brandName}>AURA AI</Text>
+          <View style={styles.taglineRow}>
+            <Text style={styles.tagline}>Your Companion, anywhere, anytime.</Text>
+          </View>
+
+          <View style={styles.descriptionCard}>
+            <Text style={styles.descriptionText}>
+              Experience a <Text style={styles.highlight}>sentient AI</Text> that learns from your world and grows with you.
+              {'\n'}A premium digital entity <Text style={styles.highlight}>tailored for your lifestyle</Text>.
+            </Text>
+          </View>
+
+          {ready && !isReturning && (
+            <>
+              <Animated.View style={[styles.buttonGroup, { opacity: btnGroupAnim, transform: [{ translateY: btnGroupAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+                <TouchableOpacity
+                  style={styles.btnPrimary}
+                  onPress={() => router.push('/onboarding')}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={['#8b5cf6', '#c084fc']}
+                    style={styles.btnPrimaryGrad}
+                  >
+                    <Ionicons name="sparkles" size={16} color="#fff" />
+                    <Text style={styles.btnPrimaryText}>Get Started</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.btnTertiary}
+                  onPress={() => router.push('/(auth)/register')}
+                  activeOpacity={0.9}
+                >
+                  <Ionicons name="person-add-outline" size={16} color="#c084fc" />
+                  <Text style={styles.btnTertiaryText}>Sign Up</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.btnSecondary}
+                  onPress={() => router.push('/(auth)/login')}
+                  activeOpacity={0.9}
+                >
+                  <Ionicons name="log-in-outline" size={16} color="#fff" />
+                  <Text style={styles.btnSecondaryText}>Log In</Text>
+                </TouchableOpacity>
+              </Animated.View>
+
+              <Text style={styles.termsText}>
+                By continuing, you agree to our{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/help')}>
+                  Terms of Service
+                </Text>
+              </Text>
+            </>
+          )}
+        </View>
       </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#060a18', justifyContent: 'flex-end' },
-  ambientOrb1: {
+  container: { flex: 1, backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
+
+  orb1: {
     position: 'absolute',
     top: -100,
     left: -100,
-    width: 500,
-    height: 500,
-    borderRadius: 250,
-    backgroundColor: 'rgba(179,136,255,0.1)',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(168,85,247,0.3)',
   },
-  ambientOrb2: {
+  orb2: {
     position: 'absolute',
-    bottom: -50,
-    right: -100,
-    width: 600,
-    height: 600,
-    borderRadius: 300,
-    backgroundColor: 'rgba(143,216,255,0.05)',
+    bottom: -150,
+    right: -150,
+    width: 400,
+    height: 400,
+    borderRadius: 200,
+    backgroundColor: 'rgba(168,85,247,0.25)',
   },
-  heroSection: {
+  orb3: {
     position: 'absolute',
-    top: '8%',
+    top: '40%',
+    right: -80,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(168,85,247,0.15)',
+  },
+
+  particleField: {
+    position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
-    alignItems: 'center',
-    gap: 20,
-    paddingHorizontal: 24,
+    bottom: 0,
+    overflow: 'hidden',
+    zIndex: 1,
   },
-  companionRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 16,
-    marginBottom: 4,
+  particle: {
+    position: 'absolute',
+    bottom: -20,
+    backgroundColor: 'rgba(192,132,252,0.8)',
   },
-  companionTap: { alignItems: 'center' },
-  companionSlot: { alignItems: 'center', gap: 8 },
-  activeDot: { alignItems: 'center', marginTop: 4 },
-  activeDotInner: { width: 6, height: 6, borderRadius: 3 },
-  companionInfo: {
+
+  glassCard: {
+    maxWidth: 420,
     width: '100%',
-    padding: 18,
-    gap: 8,
+    backgroundColor: 'rgba(15, 12, 35, 0.45)',
+    borderRadius: 64,
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.4)',
+    overflow: 'hidden',
+    zIndex: 2,
+    marginHorizontal: 20,
   },
-  companionTag: {
-    alignSelf: 'flex-start',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+
+  content: {
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingBottom: 48,
+    paddingTop: 16,
   },
-  companionTagText: {
+
+  logoWrapper: {
+    marginBottom: 20,
+  },
+  logoIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 32,
+    backgroundColor: 'linear-gradient(145deg, #c084fc, #7c3aed)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.3,
+    shadowRadius: 35,
+    elevation: 12,
+    overflow: 'hidden',
+  },
+
+  brandName: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -1,
+    fontFamily: 'Sora_800ExtraBold',
+    marginBottom: 8,
+  },
+
+  taglineRow: {
+    backgroundColor: 'rgba(168,85,247,0.15)',
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    borderRadius: 40,
+    marginBottom: 32,
+  },
+  tagline: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(216,180,254,0.95)',
+    letterSpacing: 0.3,
     fontFamily: 'Manrope_600SemiBold',
-    fontSize: 10,
-    letterSpacing: 2,
   },
-  companionName: {
+
+  descriptionCard: {
+    backgroundColor: 'rgba(168,85,247,0.12)',
+    borderRadius: 40,
+    padding: 28,
+    marginBottom: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.4)',
+    width: '100%',
+  },
+  descriptionText: {
+    fontSize: 17,
+    lineHeight: 26,
+    color: 'rgba(255,255,255,0.95)',
+    fontWeight: '500',
+    textAlign: 'center',
+    fontFamily: 'Manrope_500Medium',
+  },
+  highlight: {
+    fontWeight: '700',
+    color: '#c084fc',
     fontFamily: 'Sora_700Bold',
-    fontSize: 22,
-    color: '#dee1f9',
-    letterSpacing: -0.3,
   },
-  companionTitle: {
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 13,
-    color: '#8fd8ff',
-    letterSpacing: 0.5,
+
+  buttonGroup: {
+    width: '100%',
+    gap: 16,
+    marginBottom: 28,
   },
-  companionDesc: {
-    fontFamily: 'Manrope_400Regular',
-    fontSize: 13,
-    color: 'rgba(201,196,216,0.7)',
-    lineHeight: 19,
+  btnPrimary: {
+    borderRadius: 60,
+    overflow: 'hidden',
+    shadowColor: 'rgba(139,92,246,0.5)',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 28,
+    elevation: 10,
   },
-  cardWrapper: { paddingHorizontal: 14 },
-  card: { padding: 0 },
-  cardContent: { padding: 24, gap: 18 },
-  featureRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  featurePill: {
+  btnPrimaryGrad: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 18,
   },
-  featureIcon: { fontSize: 16 },
-  featureLabel: {
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 12,
-    color: '#dee1f9',
-  },
-  featureSub: {
-    fontFamily: 'Manrope_400Regular',
-    fontSize: 10,
-    color: '#928ea1',
-  },
-  headline: {
+  btnPrimaryText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
     fontFamily: 'Sora_700Bold',
-    fontSize: 24,
-    color: '#dee1f9',
-    lineHeight: 32,
-    letterSpacing: -0.3,
   },
-  subtext: {
-    fontFamily: 'Manrope_400Regular',
-    fontSize: 14,
-    color: 'rgba(201,196,216,0.75)',
-    lineHeight: 21,
+  btnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(168,85,247,0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(168,85,247,0.6)',
+    borderRadius: 60,
+    paddingVertical: 18,
   },
-  actions: { gap: 10 },
-  dotsRow: { flexDirection: 'row', gap: 6, alignSelf: 'center', alignItems: 'center' },
-  dot: { height: 4, width: 8, borderRadius: 2 },
+  btnSecondaryText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+    fontFamily: 'Sora_700Bold',
+  },
+  btnTertiary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(168,85,247,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.35)',
+    borderRadius: 60,
+    paddingVertical: 16,
+  },
+  btnTertiaryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#c084fc',
+    fontFamily: 'Sora_600SemiBold',
+  },
+
+  termsText: {
+    fontSize: 13,
+    color: 'rgba(216,180,254,0.7)',
+    textAlign: 'center',
+    fontFamily: 'Manrope_500Medium',
+  },
+  termsLink: {
+    color: '#c084fc',
+    fontWeight: '600',
+    fontFamily: 'Manrope_600SemiBold',
+  },
 });

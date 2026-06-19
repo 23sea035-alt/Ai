@@ -1,337 +1,841 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Easing,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { apiStt, apiTts, apiSendMessage } from '@/lib/api';
 
-import { AuraOrb } from '@/components/AuraOrb';
-import { GlassCard } from '@/components/GlassCard';
+const WAVE_BAR_COUNT = 9;
+const IS_WEB = Platform.OS === 'web';
+function hasWebSpeech(): boolean {
+  if (!IS_WEB || typeof window === 'undefined') return false;
+  try {
+    return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+  } catch { return false; }
+}
 
-const WAVEFORM_BARS = 24;
+function PulseRings() {
+  const ring1 = useRef(new Animated.Value(0)).current;
+  const ring2 = useRef(new Animated.Value(0)).current;
+  const ring3 = useRef(new Animated.Value(0)).current;
 
-export default function VoiceCallScreen() {
-  const insets = useSafeAreaInsets();
-  const [isListening, setIsListening] = useState(false);
-  const [callState, setCallState] = useState<'idle' | 'listening' | 'speaking'>('idle');
-  const [duration, setDuration] = useState(0);
-  const waveAnims = useRef(Array.from({ length: WAVEFORM_BARS }, () => new Animated.Value(0.2))).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const animateRing = (anim: Animated.Value, delay: number) => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.parallel([
+          Animated.timing(anim, { toValue: 1, duration: 2500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+  };
 
-  const topInset = Platform.OS === 'web' ? 67 : insets.top;
-  const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom;
+  useEffect(() => {
+    animateRing(ring1, 0);
+    animateRing(ring2, 800);
+    animateRing(ring3, 1600);
+  }, []);
+
+  const ringStyle = (anim: Animated.Value) => ({
+    position: 'absolute' as const,
+    top: '50%' as const,
+    left: '50%' as const,
+    width: 120,
+    height: 120,
+    marginLeft: -60,
+    marginTop: -60,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: 'rgba(192,132,252,0.5)',
+    opacity: anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.8, 0.4, 0] }),
+    transform: [
+      { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.4] }) },
+    ],
+  });
+
+  return (
+    <>
+      <Animated.View style={ringStyle(ring1)} pointerEvents="none" />
+      <Animated.View style={[ringStyle(ring2), { width: 130, height: 130, marginLeft: -65, marginTop: -65 }]} pointerEvents="none" />
+      <Animated.View style={[ringStyle(ring3), { width: 140, height: 140, marginLeft: -70, marginTop: -70 }]} pointerEvents="none" />
+    </>
+  );
+}
+
+function RotatingRing({ children }: { children: React.ReactNode }) {
+  const rotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
+      Animated.timing(rotation, { toValue: 1, duration: 8000, easing: Easing.linear, useNativeDriver: true })
     ).start();
+  }, []);
+
+  return (
+    <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: 110,
+          height: 110,
+          marginLeft: -55,
+          marginTop: -55,
+          borderRadius: 55,
+          borderWidth: 1,
+          borderColor: 'rgba(192,132,252,0.3)',
+          transform: [
+            { rotate: rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) },
+          ],
+        }}
+      >
+        <View style={{
+          position: 'absolute',
+          top: -4,
+          left: '50%',
+          width: 10,
+          height: 10,
+          marginLeft: -5,
+          borderRadius: 5,
+          backgroundColor: '#c084fc',
+          shadowColor: '#c084fc',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 8,
+          elevation: 0,
+        }} />
+      </Animated.View>
+      {children}
+    </View>
+  );
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+export default function VoiceCallScreen() {
+  const insets = useSafeAreaInsets();
+  const [callActive, setCallActive] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [waveHeights, setWaveHeights] = useState(Array(WAVE_BAR_COUNT).fill(12));
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [lastResponse, setLastResponse] = useState<string | null>(null);
+
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const waveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(IS_WEB ? window.speechSynthesis : null);
+  const loopActiveRef = useRef(false);
+
+  const topPad = Platform.OS === 'web' ? 14 : insets.top + 10;
+  const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom + 24;
+
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (waveRef.current) clearInterval(waveRef.current);
+      recordingRef.current?.stopAndUnloadAsync();
+      soundRef.current?.unloadAsync();
+      loopActiveRef.current = false;
     };
   }, []);
 
-  const animateWaveform = () => {
-    waveAnims.forEach((anim, i) => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 30),
-          Animated.timing(anim, {
-            toValue: 0.3 + Math.random() * 0.7,
-            duration: 200 + Math.random() * 300,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, {
-            toValue: 0.2,
-            duration: 200,
-            easing: Easing.out(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    });
-  };
-
-  const handleMic = () => {
-    if (callState === 'idle' || callState === 'speaking') {
-      setCallState('listening');
-      setIsListening(true);
-      animateWaveform();
-      if (!timerRef.current) {
-        timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
-      }
-    } else {
-      setCallState('speaking');
-      setIsListening(false);
-      waveAnims.forEach((a) =>
-        Animated.timing(a, { toValue: 0.2, duration: 300, useNativeDriver: true }).start()
-      );
-    }
-  };
-
-  const formatDuration = (secs: number) => {
-    const m = Math.floor(secs / 60).toString().padStart(2, '0');
-    const s = (secs % 60).toString().padStart(2, '0');
+  const formatTime = (sec: number) => {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
 
-  const handleEnd = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  const startWaveAnimation = useCallback(() => {
+    if (waveRef.current) clearInterval(waveRef.current);
+    waveRef.current = setInterval(() => {
+      setWaveHeights(Array.from({ length: WAVE_BAR_COUNT }, () => Math.floor(Math.random() * 35) + 12));
+    }, 120);
+  }, []);
+
+  const stopWaveAnimation = useCallback(() => {
+    if (waveRef.current) {
+      clearInterval(waveRef.current);
+      waveRef.current = null;
     }
+    setWaveHeights(Array(WAVE_BAR_COUNT).fill(12));
+  }, []);
+
+  // ── Web Speech loop ──────────────────────────────────────────────────
+  const startWebSpeechLoop = useCallback(() => {
+    if (!hasWebSpeech()) return;
+    loopActiveRef.current = true;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recog = new SpeechRecognition();
+    recog.continuous = true;
+    recog.interimResults = false;
+    recog.lang = 'en-US';
+    recognitionRef.current = recog;
+
+    recog.onresult = async (event: any) => {
+      if (!loopActiveRef.current) return;
+      const userText = event.results[event.results.length - 1][0].transcript;
+      setTranscript(userText);
+      setIsProcessing(true);
+
+      try {
+        const { data: chatData } = await apiSendMessage('aurora', userText);
+        const replyText = chatData?.aiMessage?.content ?? "I'm here. Tell me more.";
+        setLastResponse(replyText);
+
+        // TTS via Web Speech API (free, no key needed)
+        if (synthRef.current && !muted) {
+          synthRef.current.cancel();
+          const utterance = new SpeechSynthesisUtterance(replyText);
+          utterance.rate = 1.05;
+          utterance.pitch = 1.1;
+          utterance.onend = () => {
+            if (loopActiveRef.current) startWebSpeechLoop();
+          };
+          synthRef.current.speak(utterance);
+        } else {
+          if (loopActiveRef.current) startWebSpeechLoop();
+        }
+      } catch {
+        if (loopActiveRef.current) startWebSpeechLoop();
+      }
+      setIsProcessing(false);
+    };
+
+    recog.onerror = () => {
+      if (loopActiveRef.current) setTimeout(() => startWebSpeechLoop(), 1000);
+    };
+
+    recog.onend = () => {
+      if (loopActiveRef.current) setTimeout(() => startWebSpeechLoop(), 500);
+    };
+
+    recog.start();
+  }, [muted]);
+
+  const stopWebSpeechLoop = useCallback(() => {
+    loopActiveRef.current = false;
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
+    if (synthRef.current) synthRef.current.cancel();
+  }, []);
+
+  // ── Expo-native voice loop (uses apiStt/apiTts) ──────────────────────
+  const transcribeAndReply = async (audioUri: string) => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch(audioUri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve((reader.result as string).split(',')[1] ?? '');
+        reader.readAsDataURL(blob);
+      });
+
+      const { data: sttData } = await apiStt(base64);
+      const userText = sttData?.text ?? '(Speech not recognized)';
+      setTranscript(userText);
+
+      const { data: chatData } = await apiSendMessage('aurora', userText);
+      const replyText = chatData?.aiMessage?.content ?? "I'm here. Tell me more.";
+      setLastResponse(replyText);
+
+      const { data: ttsData } = await apiTts(replyText);
+      if (ttsData) {
+        const uint8 = new Uint8Array(ttsData);
+        const binary = String.fromCharCode(...uint8);
+        const b64 = btoa(binary);
+        const dataUri = `data:audio/mp3;base64,${b64}`;
+
+        if (soundRef.current) await soundRef.current.unloadAsync();
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: dataUri },
+          { shouldPlay: !muted },
+        );
+        soundRef.current = sound;
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            startCallRecording();
+          }
+        });
+      } else {
+        startCallRecording();
+      }
+    } catch {
+      startCallRecording();
+    }
+    setIsProcessing(false);
+  };
+
+  const startCallRecording = async () => {
+    try {
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync();
+        recordingRef.current = null;
+      }
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recordingRef.current = recording;
+      await recording.startAsync();
+    } catch {
+      Alert.alert('Recording Error', 'Could not start recording. Check microphone permissions.');
+    }
+  };
+
+  const stopCallRecording = async () => {
+    try {
+      if (!recordingRef.current) return;
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+      if (uri) await transcribeAndReply(uri);
+    } catch {
+      setIsProcessing(false);
+    }
+  };
+
+  const [micError, setMicError] = useState<string | null>(null);
+
+  const startCall = async () => {
+    if (callActive) return;
+    setCallActive(true);
+    setSecondsElapsed(0);
+    setTranscript(null);
+    setLastResponse(null);
+    setMicError(null);
+    startWaveAnimation();
+
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setSecondsElapsed(prev => prev + 1);
+    }, 1000);
+
+    if (IS_WEB) {
+      if (hasWebSpeech()) {
+        try {
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch {
+          setMicError('Microphone permission denied. Please allow mic access in your browser and try again.');
+          endCall();
+          return;
+        }
+        startWebSpeechLoop();
+      } else {
+        setMicError('Voice recording requires Chrome or Edge browser. Please switch or allow microphone access.');
+        endCall();
+      }
+    } else {
+      await startCallRecording();
+    }
+  };
+
+  const endCall = async () => {
+    loopActiveRef.current = false;
+    setCallActive(false);
+    setMuted(false);
+    stopWaveAnimation();
+    stopWebSpeechLoop();
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    await stopCallRecording();
+    await soundRef.current?.stopAsync();
+    soundRef.current = null;
+    setSecondsElapsed(0);
+    setTranscript(null);
+    setLastResponse(null);
     router.back();
+  };
+
+  const toggleMute = () => {
+    if (!callActive) {
+      Alert.alert('Start a call first', 'Tap the mic to begin a call before using mute.');
+      return;
+    }
+    setMuted(prev => {
+      if (!prev) {
+        setWaveHeights(Array(WAVE_BAR_COUNT).fill(8));
+        if (waveRef.current) clearInterval(waveRef.current);
+        soundRef.current?.setVolumeAsync(0);
+        if (synthRef.current) synthRef.current.cancel();
+      } else {
+        startWaveAnimation();
+        soundRef.current?.setVolumeAsync(1);
+      }
+      return !prev;
+    });
   };
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#080d1d', '#0B1020', '#121A35']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['#4c1d95', '#2e1065', '#0f172a']}
+        locations={[0.2, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
-      {/* Ambient glows */}
-      <View style={styles.ambientPurple} pointerEvents="none" />
-      <View style={styles.ambientBlue} pointerEvents="none" />
 
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: topInset }]}>
-        <TouchableOpacity onPress={handleEnd} style={styles.topBtn}>
-          <Ionicons name="chevron-down" size={24} color="#dee1f9" />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Voice Call</Text>
-        <TouchableOpacity style={styles.topBtn}>
-          <Ionicons name="ellipsis-horizontal" size={22} color="#dee1f9" />
-        </TouchableOpacity>
-      </View>
+      <View pointerEvents="none" style={styles.orbOverlay1} />
+      <View pointerEvents="none" style={styles.orbOverlay2} />
 
-      {/* Main orb */}
-      <View style={styles.orbSection}>
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <AuraOrb size={200} colorFrom="#c9bfff" colorTo="#8fd8ff" pulsate />
-        </Animated.View>
-        <Text style={styles.companionName}>Aurora</Text>
-        <Text style={styles.callStatus}>
-          {callState === 'idle' && 'Tap mic to begin'}
-          {callState === 'listening' && 'Listening...'}
-          {callState === 'speaking' && 'Aurora is speaking...'}
-        </Text>
-        {duration > 0 && <Text style={styles.duration}>{formatDuration(duration)}</Text>}
-      </View>
-
-      {/* Waveform */}
-      <View style={styles.waveformArea}>
-        <GlassCard style={styles.waveformCard} radius={20}>
-          <View style={styles.waveform}>
-            {waveAnims.map((anim, i) => (
-              <Animated.View
-                key={i}
-                style={[
-                  styles.waveBar,
-                  {
-                    backgroundColor: i % 3 === 0 ? '#c9bfff' : i % 3 === 1 ? '#8fd8ff' : '#B388FF',
-                    transform: [{ scaleY: anim }],
-                  },
-                ]}
-              />
-            ))}
-          </View>
-          <Text style={styles.waveformLabel}>
-            {isListening ? 'Voice detected' : 'Tap mic to speak'}
-          </Text>
-        </GlassCard>
-      </View>
-
-      {/* Controls */}
-      <View style={[styles.controls, { paddingBottom: bottomPad + 24 }]}>
-        <TouchableOpacity style={styles.controlBtn}>
-          <GlassCard style={styles.controlCard} radius={999}>
-            <Ionicons name="volume-mute-outline" size={24} color="#dee1f9" />
-          </GlassCard>
-          <Text style={styles.controlLabel}>Mute</Text>
-        </TouchableOpacity>
-
-        {/* Big mic button */}
-        <View style={styles.micWrapper}>
-          <TouchableOpacity
-            onPress={handleMic}
-            activeOpacity={0.85}
-            style={styles.micButtonOuter}
-          >
-            <LinearGradient
-              colors={isListening ? ['#ffb77d', '#ff8c4b'] : ['#c9bfff', '#8fd8ff']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.micButton}
-            >
-              <Ionicons
-                name={isListening ? 'mic' : 'mic-outline'}
-                size={32}
-                color="#1a0063"
-              />
-            </LinearGradient>
+      <View style={[styles.containerInner, { paddingTop: topPad }]}>
+        <View style={styles.mainHeader}>
+          <TouchableOpacity style={styles.backBtn} onPress={endCall} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Voice Call</Text>
+          <View style={{ width: 44 }} />
         </View>
 
-        <TouchableOpacity style={styles.controlBtn} onPress={handleEnd}>
-          <GlassCard style={[styles.controlCard, styles.endCallCard]} radius={999}>
-            <Ionicons name="call" size={24} color="#ffb4ab" />
-          </GlassCard>
-          <Text style={[styles.controlLabel, { color: '#ffb4ab' }]}>End</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.callContainer}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarWrapper}>
+              <PulseRings />
+              <LinearGradient
+                colors={['#c084fc', '#7c3aed']}
+                style={styles.avatarLarge}
+              >
+                <Ionicons name="sparkles" size={56} color="#fff" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.callerName}>Aurora</Text>
+            <View style={styles.callStatus}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Neural voice channel</Text>
+            </View>
+          </View>
 
-      {/* AI disclosure */}
-      <GlassCard style={[styles.disclosureBanner, { bottom: bottomPad + 100 }]} radius={12}>
-        <Ionicons name="information-circle-outline" size={14} color="#8fd8ff" />
-        <Text style={styles.disclosureText}>AI companion — not a real person</Text>
-      </GlassCard>
+          {callActive && (
+            <>
+              <View style={styles.timerBox}>
+                <Text style={styles.timerText}>{formatTime(secondsElapsed)}</Text>
+              </View>
+
+              <View style={styles.waveform}>
+                {waveHeights.map((h, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.waveBar,
+                      {
+                        height: h,
+                        opacity: muted ? 0.3 : (0.5 + Math.random() * 0.5),
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+
+              {(transcript || lastResponse) && (
+                <ScrollView style={styles.transcriptBox} showsVerticalScrollIndicator={false}>
+                  {transcript && (
+                    <View style={styles.transcriptRow}>
+                      <Text style={styles.transcriptLabel}>You said:</Text>
+                      <Text style={styles.transcriptText}>{transcript}</Text>
+                    </View>
+                  )}
+                  {lastResponse && (
+                    <View style={styles.transcriptRow}>
+                      <Text style={styles.transcriptLabel}>Aurora:</Text>
+                      <Text style={styles.transcriptText}>{lastResponse}</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+
+              {isProcessing && (
+                <Text style={styles.processingText}>Processing...</Text>
+              )}
+
+              {micError && (
+                <View style={styles.errorBox}>
+                  <Ionicons name="warning" size={16} color="#f87171" />
+                  <Text style={styles.errorText}>{micError}</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          <View>
+            <RotatingRing>
+              <TouchableOpacity
+                style={[styles.micButton, callActive && styles.micButtonActive]}
+                onPress={startCall}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={muted ? 'mic-off' : 'mic'}
+                  size={40}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+            </RotatingRing>
+            <Text style={styles.micLabel}>
+              {callActive ? 'Connected · Listening' : 'Tap mic to begin'}
+            </Text>
+          </View>
+
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.muteBtn, muted && styles.muteBtnActive]}
+              onPress={toggleMute}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={muted ? 'mic-off' : 'mic-off-outline'}
+                size={24}
+                color={muted ? '#f87171' : '#fff'}
+              />
+              <Text style={styles.actionLabel}>Mute</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.endBtn]}
+              onPress={endCall}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call" size={24} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+              <Text style={styles.actionLabel}>End</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.disclaimer}>
+            <Ionicons name="hardware-chip-outline" size={12} color="rgba(216,180,254,0.85)" />
+            <Text style={styles.disclaimerText}>AI companion — not a real person</Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080d1d' },
-  ambientPurple: {
+  container: { flex: 1, backgroundColor: '#0f172a' },
+
+  orbOverlay1: {
     position: 'absolute',
-    top: '10%',
-    left: '10%',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(201,191,255,0.07)',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'transparent',
+    shadowColor: '#c084fc',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 120,
+    elevation: 0,
   },
-  ambientBlue: {
+  orbOverlay2: {
     position: 'absolute',
-    bottom: '20%',
-    right: '5%',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(143,216,255,0.05)',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'transparent',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 120,
+    elevation: 0,
   },
-  topBar: {
+  containerInner: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 12, 35, 0.45)',
+    zIndex: 2,
+  },
+
+  mainHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  topBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  topTitle: {
-    fontFamily: 'Sora_600SemiBold',
-    fontSize: 17,
-    color: '#dee1f9',
-  },
-  orbSection: {
-    flex: 1,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 30,
+    backgroundColor: 'rgba(168,85,247,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.5)',
   },
-  companionName: {
-    fontFamily: 'Sora_700Bold',
-    fontSize: 28,
-    color: '#dee1f9',
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
     letterSpacing: -0.3,
+    fontFamily: 'Sora_700Bold',
+  },
+
+  callContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 32,
+  },
+
+  avatarSection: {
+    alignItems: 'center',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    width: 120,
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  avatarLarge: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.3,
+    shadowRadius: 35,
+    elevation: 10,
+    borderWidth: 4,
+    borderColor: 'rgba(168,85,247,0.6)',
+    zIndex: 2,
+  },
+  callerName: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    fontFamily: 'Sora_800ExtraBold',
+    marginBottom: 6,
   },
   callStatus: {
-    fontFamily: 'Manrope_400Regular',
-    fontSize: 14,
-    color: 'rgba(201,196,216,0.7)',
-    letterSpacing: 0.3,
-  },
-  duration: {
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 13,
-    color: '#8fd8ff',
-    letterSpacing: 2,
-  },
-  waveformArea: { paddingHorizontal: 20, marginBottom: 16 },
-  waveformCard: { padding: 16, alignItems: 'center', gap: 10 },
-  waveform: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 40 },
-  waveBar: {
-    width: 3,
-    height: 32,
-    borderRadius: 2,
-    opacity: 0.8,
-  },
-  waveformLabel: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 12,
-    color: '#928ea1',
-    letterSpacing: 0.5,
-  },
-  controls: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 20,
-    paddingHorizontal: 40,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
   },
-  controlBtn: { alignItems: 'center', gap: 8 },
-  controlCard: { width: 54, height: 54, alignItems: 'center', justifyContent: 'center' },
-  endCallCard: { backgroundColor: 'rgba(255,180,171,0.1)' },
-  controlLabel: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 12,
-    color: '#928ea1',
-  },
-  micWrapper: { alignItems: 'center' },
-  micButtonOuter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    overflow: 'hidden',
-    shadowColor: '#c9bfff',
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#34d399',
+    shadowColor: '#34d399',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
+    elevation: 0,
   },
-  micButton: {
-    flex: 1,
+  statusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(216,180,254,0.9)',
+    fontFamily: 'Manrope_600SemiBold',
+  },
+
+  timerBox: {
+    backgroundColor: 'rgba(168,85,247,0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: 28,
+    borderRadius: 60,
+    borderWidth: 0.5,
+    borderColor: 'rgba(168,85,247,0.5)',
+    marginBottom: 16,
+  },
+  timerText: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 3,
+    fontFamily: 'Sora_700Bold',
+    fontVariant: ['tabular-nums'],
+  },
+
+  waveform: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    height: 50,
+    marginBottom: 20,
   },
-  disclosureBanner: {
+  waveBar: {
+    width: 5,
+    backgroundColor: '#c084fc',
+    borderRadius: 8,
+    shadowColor: 'rgba(192,132,252,0.5)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 0,
+  },
+
+  micButton: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#8b5cf6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: 'rgba(139,92,246,0.5)',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 10,
+    zIndex: 3,
+  },
+  micButtonActive: {
+    backgroundColor: '#c084fc',
+  },
+  transcriptBox: {
+    maxHeight: 100,
+    width: '100%',
+    marginBottom: 12,
+    backgroundColor: 'rgba(168,85,247,0.1)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(168,85,247,0.3)',
+  },
+  transcriptRow: {
+    marginBottom: 6,
+  },
+  transcriptLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(192,132,252,0.7)',
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  transcriptText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+    fontFamily: 'Manrope_500Medium',
+    lineHeight: 18,
+  },
+  processingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(192,132,252,0.8)',
+    textAlign: 'center',
+    fontFamily: 'Manrope_600SemiBold',
+    marginBottom: 8,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(239,68,68,0.4)',
+    marginBottom: 8,
+    maxWidth: '90%',
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fca5a5',
+    fontFamily: 'Manrope_600SemiBold',
+    flex: 1,
+  },
+  micLabel: {
+    marginTop: 14,
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(216,180,254,0.9)',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+    fontFamily: 'Manrope_600SemiBold',
+  },
+
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 36,
+    marginTop: 12,
+  },
+  actionBtn: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(168,85,247,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.4)',
+  },
+  actionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: 'Manrope_600SemiBold',
     position: 'absolute',
-    left: 20,
-    right: 20,
+    bottom: -18,
+  },
+  muteBtn: {},
+  muteBtnActive: {
+    backgroundColor: 'rgba(239,68,68,0.3)',
+    borderColor: '#ef4444',
+  },
+  endBtn: {
+    backgroundColor: 'rgba(239,68,68,0.5)',
+    borderColor: '#ef4444',
+  },
+
+  disclaimer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    backgroundColor: 'rgba(168,85,247,0.12)',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 40,
+    borderWidth: 0.5,
+    borderColor: 'rgba(168,85,247,0.3)',
+    marginTop: 8,
   },
-  disclosureText: {
-    fontFamily: 'Manrope_500Medium',
+  disclaimerText: {
     fontSize: 12,
-    color: 'rgba(143,216,255,0.7)',
-    letterSpacing: 0.3,
+    fontWeight: '500',
+    color: 'rgba(216,180,254,0.85)',
+    fontFamily: 'Manrope_500Medium',
   },
 });

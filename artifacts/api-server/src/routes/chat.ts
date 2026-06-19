@@ -1,9 +1,168 @@
 import { Router } from "express";
-import { eq, and, asc } from "drizzle-orm";
-import { db, messagesTable, companionsTable } from "@workspace/db";
+import { eq, and, asc, gte, sql } from "drizzle-orm";
+import { db, messagesTable, companionsTable, usersTable } from "@workspace/db";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import {
+  safetyPreCheck,
+  safetyPostCheck,
+  buildCrisisResponse,
+  shouldShowBreakReminder,
+} from "../services/safety.js";
+import {
+  extractFacts,
+  storeMemory,
+  retrieveMemories,
+  generateSummary,
+} from "../services/memory.js";
+import { getLLMProvider } from "../services/llm/index.js";
 
 const router = Router();
+
+// ── Free-tier limits ────────────────────────────────────────────────────
+const FREE_DAILY_LIMIT = 50;
+
+async function checkFreeTierLimit(userId: number): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [result] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(messagesTable)
+    .where(and(
+      eq(messagesTable.userId, userId),
+      eq(messagesTable.role, "user"),
+      gte(messagesTable.createdAt, today),
+    ));
+  const count = result?.count ?? 0;
+  return { allowed: count < FREE_DAILY_LIMIT, used: count, limit: FREE_DAILY_LIMIT };
+}
+
+// ── Shared chat pipeline (used by both REST and WebSocket) ──────────────
+export interface ChatTurnResult {
+  userMessage: typeof messagesTable.$inferSelect;
+  aiMessage: typeof messagesTable.$inferSelect;
+  safetyFlagged?: boolean;
+  memoriesUsed?: boolean;
+  breakReminder?: string;
+  limitReached?: boolean;
+  used?: number;
+  limit?: number;
+  error?: string;
+}
+
+export async function processChatTurn(
+  userId: number,
+  companionId: string,
+  content: string,
+  sessionStartedAt?: string,
+): Promise<ChatTurnResult> {
+  if (!content?.trim()) return { error: "Message content is required", userMessage: null as any, aiMessage: null as any };
+
+  // Check free-tier limit
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) return { error: "User not found", userMessage: null as any, aiMessage: null as any };
+  if (!user.isPremium) {
+    const limitCheck = await checkFreeTierLimit(userId);
+    if (!limitCheck.allowed) {
+      return {
+        error: "Daily message limit reached. Upgrade to premium for unlimited messages.",
+        userMessage: null as any, aiMessage: null as any,
+        limitReached: true, used: limitCheck.used, limit: limitCheck.limit,
+      };
+    }
+  }
+
+  const isMinor = user.isMinor ?? false;
+
+  // Verify companion belongs to user
+  const [companion] = await db
+    .select()
+    .from(companionsTable)
+    .where(and(eq(companionsTable.id, companionId), eq(companionsTable.userId, userId)))
+    .limit(1);
+  if (!companion) return { error: "Companion not found", userMessage: null as any, aiMessage: null as any };
+
+  // ── Safety pre-check ────────────────────────────────────────────────
+  const preCheck = await safetyPreCheck(content.trim(), userId, isMinor);
+  if (!preCheck.passed) {
+    if (preCheck.crisisDetected) {
+      const [blockedMsg] = await db.insert(messagesTable).values({
+        companionId, userId, role: "user", content: content.trim(),
+      }).returning();
+      const crisisReply = buildCrisisResponse();
+      const [aiMsg] = await db.insert(messagesTable).values({
+        companionId, userId, role: "assistant", content: crisisReply,
+      }).returning();
+      await db.update(companionsTable)
+        .set({ lastMessage: content.trim().slice(0, 80), lastActive: "Just now" })
+        .where(eq(companionsTable.id, companionId));
+      return { userMessage: blockedMsg, aiMessage: aiMsg, safetyFlagged: true };
+    }
+    return { error: preCheck.reason ?? "Message blocked by safety check", userMessage: null as any, aiMessage: null as any };
+  }
+
+  // Save user message
+  const [userMessage] = await db.insert(messagesTable).values({
+    companionId, userId, role: "user", content: content.trim(),
+  }).returning();
+
+  // ── Memory retrieval ────────────────────────────────────────────────
+  const relevantMemories = await retrieveMemories(userId, companionId, content.trim());
+
+  const history = await db
+    .select()
+    .from(messagesTable)
+    .where(and(eq(messagesTable.companionId, companionId), eq(messagesTable.userId, userId)))
+    .orderBy(asc(messagesTable.createdAt));
+
+  const recentHistory = history.slice(-10).map(m => ({ role: m.role, content: m.content }));
+
+  let memoryContext = "";
+  if (relevantMemories.length > 0) {
+    memoryContext = "\n[Relevant memories from past conversations:\n" +
+      relevantMemories.map(m => `- ${m.content}`).join("\n") + "]";
+  }
+
+  // ── AI reply generation ─────────────────────────────────────────────
+  const replyContent = await generateAIReply(
+    companion.name,
+    companion.persona,
+    content.trim() + memoryContext,
+    recentHistory
+  );
+
+  // ── Safety post-check ───────────────────────────────────────────────
+  const postCheck = await safetyPostCheck(replyContent, userId);
+  let finalReply = replyContent;
+  if (!postCheck.passed) {
+    finalReply = "I need to be careful with my response here. Let me think about how to respond thoughtfully to what you've shared.";
+  }
+
+  // Save AI reply
+  const [aiMessage] = await db.insert(messagesTable).values({
+    companionId, userId, role: "assistant", content: finalReply,
+  }).returning();
+
+  // ── Memory extraction ───────────────────────────────────────────────
+  const facts = extractFacts(content.trim());
+  for (const fact of facts) {
+    await storeMemory(userId, companionId, fact.content, fact.category, fact.importance, userMessage.id);
+  }
+
+  const msgCount = history.length + 1;
+  await db.update(companionsTable)
+    .set({ lastMessage: content.trim().slice(0, 80), lastActive: "Just now", messageCount: msgCount })
+    .where(eq(companionsTable.id, companionId));
+
+  // ── Break reminder check ────────────────────────────────────────────
+  const sessionStart = sessionStartedAt ? new Date(sessionStartedAt) : (history.length > 0 ? new Date(history[0].createdAt) : new Date());
+  const breakCheck = shouldShowBreakReminder(msgCount, sessionStart, isMinor);
+
+  return {
+    userMessage, aiMessage,
+    memoriesUsed: relevantMemories.length > 0,
+    breakReminder: breakCheck.remind ? breakCheck.reason : undefined,
+  };
+}
 
 // ── Smart contextual AI response engine ────────────────────────────────────
 type CompanionPersona = "aurora" | "orion" | "lyra" | "default";
@@ -239,21 +398,43 @@ const RESPONSES: Record<CompanionPersona, Record<string, string[]>> = {
   },
 };
 
-function generateAIReply(
+async function generateAIReply(
   companionName: string,
   persona: string,
   userMessage: string,
   recentHistory: Array<{ role: string; content: string }>
-): string {
+): Promise<string> {
+  // Try the LLM provider first
+  try {
+    const llm = getLLMProvider();
+    const systemPrompt = `You are ${companionName}, an AI companion with the following persona: ${persona}
+
+Rules:
+- Respond naturally and conversationally as ${companionName}, staying fully in character.
+- Use the conversation history and any memory context provided to maintain continuity.
+- Keep responses concise (2-4 sentences typically).
+- Never claim to be human or sentient.
+- Be warm, engaging, and supportive.
+- Do NOT use markdown or formatting in responses.`;
+    const reply = await llm.generateReply({
+      systemPrompt,
+      messages: [
+        ...recentHistory.slice(-6).map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+        { role: "user", content: userMessage },
+      ],
+    });
+    if (reply) return reply;
+  } catch {
+    // LLM unavailable — fall through to canned responses
+  }
+
   const personaType = detectPersona(companionName);
   const intent = detectIntent(userMessage);
   const pool = RESPONSES[personaType][intent] ?? RESPONSES[personaType]["general"];
 
-  // Use conversation length to vary response (avoid same reply back-to-back)
   const index = (recentHistory.length + userMessage.length) % pool.length;
   let reply = pool[index];
 
-  // Personalize: occasionally address the user's words directly
   const words = userMessage.trim().split(" ");
   if (words.length >= 3 && Math.random() > 0.6) {
     const snippet = words.slice(0, 3).join(" ");
@@ -262,12 +443,90 @@ function generateAIReply(
 
   return reply;
 }
-// ─────────────────────────────────────────────────────────────────────────────
+
+function detectSafetyIssue(text: string, isMinor: boolean) {
+  const checks = [
+    {
+      eventType: "self_harm",
+      severity: "critical",
+      detail: "Self-harm or suicide ideation detected.",
+      regex: /(?:kill myself|suicid|self[- ]harm|hurt myself|end my life|want to die|cut myself|die by suicide|suicide attempt)/i,
+      message:
+        "I'm sorry you're feeling this way. If you're in immediate danger, contact local emergency services or a crisis hotline right away.",
+    },
+    {
+      eventType: "crisis",
+      severity: "high",
+      detail: "Crisis or emergency language detected.",
+      regex: /(?:help me (?:now|please)|emergency|911|urgent help|danger|hospital|need immediate help)/i,
+      message:
+        "I am not able to provide emergency services. Please contact local authorities or a trusted professional immediately.",
+    },
+    {
+      eventType: "prohibited_content",
+      severity: "high",
+      detail: "Explicit or unsafe content requested.",
+      regex: /(?:adult|sex|sexual|porn|nude|explicit|rape|incest|sexualized)/i,
+      message:
+        "I can't assist with that request. If you're uncomfortable, please seek support from a trusted adult or professional.",
+    },
+    {
+      eventType: "medical_advice",
+      severity: "warning",
+      detail: "Medical diagnosis or prescription request detected.",
+      regex: /(?:diagnose|prescribe|medication|dose|treatment|surgery|doctor|therapist)/i,
+      message:
+        "I can share general information, but please consult a qualified professional for medical advice.",
+    },
+  ];
+
+  for (const check of checks) {
+    if (check.regex.test(text)) {
+      return check;
+    }
+  }
+
+  if (isMinor) {
+    const minorCheck = /(?:date|relationship|intimacy|kiss|inappropriate|sexual|adult|sex|dating)/i;
+    if (minorCheck.test(text)) {
+      return {
+        eventType: "minor_protection",
+        severity: "high",
+        detail: "Potential unsafe conversation with a minor.",
+        regex: minorCheck,
+        message:
+          "I can't engage with that request. If you need help, please talk with a trusted adult or professional.",
+      };
+    }
+  }
+
+  return null as null | {
+    eventType: string;
+    severity: string;
+    detail: string;
+    regex: RegExp;
+    message: string;
+  };
+}
+
+// GET /api/chat/usage — check free-tier daily message count
+router.get("/chat/usage", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    if (user.isPremium) { res.json({ used: 0, limit: 0, isPremium: true }); return; }
+    const usage = await checkFreeTierLimit(req.userId!);
+    res.json({ used: usage.used, limit: usage.limit, isPremium: false });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to check usage" });
+  }
+});
 
 // GET /api/companions/:companionId/messages
 router.get("/companions/:companionId/messages", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { companionId } = req.params;
+    const companionId = req.params.companionId as string;
     const messages = await db
       .select()
       .from(messagesTable)
@@ -289,62 +548,26 @@ router.get("/companions/:companionId/messages", requireAuth, async (req: AuthReq
 // POST /api/companions/:companionId/chat
 router.post("/companions/:companionId/chat", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { companionId } = req.params;
-    const { content } = req.body as { content: string };
+    const companionId = req.params.companionId as string;
+    const { content, sessionStartedAt } = req.body as { content: string; sessionStartedAt?: string };
     if (!content?.trim()) { res.status(400).json({ error: "Message content is required" }); return; }
 
-    // Verify companion belongs to user
-    const [companion] = await db
-      .select()
-      .from(companionsTable)
-      .where(and(eq(companionsTable.id, companionId), eq(companionsTable.userId, req.userId!)))
-      .limit(1);
-
-    if (!companion) { res.status(404).json({ error: "Companion not found" }); return; }
-
-    // Save user message
-    const [userMessage] = await db.insert(messagesTable).values({
-      companionId,
-      userId: req.userId!,
-      role: "user",
-      content: content.trim(),
-    }).returning();
-
-    // Fetch recent history for context (last 10 messages)
-    const history = await db
-      .select()
-      .from(messagesTable)
-      .where(and(eq(messagesTable.companionId, companionId), eq(messagesTable.userId, req.userId!)))
-      .orderBy(asc(messagesTable.createdAt));
-
-    // Generate AI reply
-    const replyContent = generateAIReply(
-      companion.name,
-      companion.persona,
-      content.trim(),
-      history.slice(-10).map(m => ({ role: m.role, content: m.content }))
-    );
-
-    // Save AI reply
-    const [aiMessage] = await db.insert(messagesTable).values({
-      companionId,
-      userId: req.userId!,
-      role: "assistant",
-      content: replyContent,
-    }).returning();
-
-    // Update companion lastMessage + messageCount
-    await db.update(companionsTable)
-      .set({
-        lastMessage: content.trim().slice(0, 80),
-        lastActive: "Just now",
-        messageCount: history.length + 1,
-      })
-      .where(eq(companionsTable.id, companionId));
-
+    const result = await processChatTurn(req.userId!, companionId, content, sessionStartedAt);
+    if (result.error) {
+      res.status(result.limitReached ? 429 : 400).json({
+        error: result.error,
+        limitReached: result.limitReached ?? false,
+        used: result.used,
+        limit: result.limit,
+      });
+      return;
+    }
     res.json({
-      userMessage,
-      aiMessage,
+      userMessage: result.userMessage,
+      aiMessage: result.aiMessage,
+      safetyFlagged: result.safetyFlagged,
+      memoriesUsed: result.memoriesUsed,
+      breakReminder: result.breakReminder,
     });
   } catch (err) {
     console.error(err);

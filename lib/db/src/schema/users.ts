@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, serial, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -7,11 +7,13 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  birthYear: integer("birth_year"),
   isPremium: boolean("is_premium").notNull().default(false),
   isMinor: boolean("is_minor").notNull().default(false),
   ageVerified: boolean("age_verified").notNull().default(false),
   onboardingDone: boolean("onboarding_done").notNull().default(false),
   aiDisclosureAccepted: boolean("ai_disclosure_accepted").notNull().default(false),
+  stripeCustomerId: text("stripe_customer_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

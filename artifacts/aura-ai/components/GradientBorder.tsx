@@ -1,10 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { View, ViewStyle } from 'react-native';
+import { ColorValue, View, ViewStyle } from 'react-native';
 
 interface GradientBorderProps {
   children: React.ReactNode;
-  colors?: string[];
+  colors?: readonly [ColorValue, ColorValue, ...ColorValue[]];
   radius?: number;
   borderWidth?: number;
   style?: ViewStyle;

@@ -1,131 +1,121 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { isLiquidGlassAvailable } from 'expo-glass-effect';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
-import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
-import { SymbolView } from 'expo-symbols';
 import React from 'react';
-import { Platform, StyleSheet, View, useColorScheme } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS, FONTS, RADIUS } from '@/constants/theme';
 
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: 'house', selected: 'house.fill' }} />
-        <Label>Home</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="chat">
-        <Icon sf={{ default: 'bubble.left', selected: 'bubble.left.fill' }} />
-        <Label>Chat</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="memory">
-        <Icon sf={{ default: 'brain', selected: 'brain.filled.head.profile' }} />
-        <Label>Memory</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="premium">
-        <Icon sf={{ default: 'star', selected: 'star.fill' }} />
-        <Label>Premium</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: 'person', selected: 'person.fill' }} />
-        <Label>Profile</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
+const TAB_ICONS: Record<string, { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }> = {
+  index: { focused: 'home', unfocused: 'home-outline' },
+  chat: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
+  memory: { focused: 'server', unfocused: 'server-outline' },
+  premium: { focused: 'diamond', unfocused: 'diamond-outline' },
+};
 
-function ClassicTabLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const isIOS = Platform.OS === 'ios';
-  const isWeb = Platform.OS === 'web';
+export default function TabLayout() {
   const insets = useSafeAreaInsets();
-
-  const tabIcon = (
-    name: string,
-    sfName: string,
-    sfFilled: string,
-    iosIcon: string,
-    androidIcon: string
-  ) => ({ color, focused }: { color: string; focused: boolean }) => {
-    if (isIOS) return <SymbolView name={focused ? sfFilled : sfName} tintColor={color} size={24} />;
-    return <Ionicons name={(focused ? iosIcon : androidIcon) as any} size={23} color={color} />;
-  };
+  const isWeb = Platform.OS === 'web';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#c9bfff',
-        tabBarInactiveTintColor: '#928ea1',
+        tabBarActiveTintColor: '#fff',
+        tabBarInactiveTintColor: 'rgba(216,180,254,0.6)',
+        tabBarShowLabel: true,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: isIOS ? 'transparent' : '#0e1323',
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.08)',
-          elevation: 0,
-          height: isWeb ? 84 : 60 + insets.bottom,
-          paddingBottom: isWeb ? 0 : insets.bottom,
+          bottom: isWeb ? 20 : insets.bottom + 8,
+          left: 20,
+          right: 20,
+          backgroundColor: 'rgba(25,20,45,0.85)',
+          borderTopWidth: 0,
+          borderRadius: RADIUS.full,
+          height: isWeb ? 68 : 64,
+          paddingVertical: 6,
+          paddingHorizontal: 8,
+          borderWidth: 1,
+          borderColor: 'rgba(168,85,247,0.5)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.3,
+          shadowRadius: 20,
+          elevation: 10,
         },
         tabBarLabelStyle: {
           fontFamily: 'Manrope_500Medium',
           fontSize: 10,
-          letterSpacing: 0.5,
-          marginTop: 2,
+          marginTop: 0,
+          letterSpacing: 0.3,
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0e1323' }]} />
-          ) : null,
+        tabBarBackground: () => (
+          <View style={[StyleSheet.absoluteFill, { borderRadius: RADIUS.full, backgroundColor: 'transparent' }]} />
+        ),
+        tabBarItemStyle: {
+          borderRadius: RADIUS.full,
+          paddingVertical: 8,
+          paddingHorizontal: 4,
+          marginHorizontal: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: tabIcon('home', 'house', 'house.fill', 'home', 'home-outline'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? TAB_ICONS.index.focused : TAB_ICONS.index.unfocused}
+              size={20}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: 'Chat',
-          tabBarIcon: tabIcon('chat', 'bubble.left', 'bubble.left.fill', 'chatbubble', 'chatbubble-outline'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? TAB_ICONS.chat.focused : TAB_ICONS.chat.unfocused}
+              size={20}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="memory"
         options={{
           title: 'Memory',
-          tabBarIcon: tabIcon('memory', 'brain', 'brain', 'planet', 'planet-outline'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? TAB_ICONS.memory.focused : TAB_ICONS.memory.unfocused}
+              size={20}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="premium"
         options={{
           title: 'Premium',
-          tabBarIcon: tabIcon('premium', 'star', 'star.fill', 'star', 'star-outline'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? TAB_ICONS.premium.focused : TAB_ICONS.premium.unfocused}
+              size={20}
+              color={color}
+            />
+          ),
         }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: tabIcon('profile', 'person', 'person.fill', 'person', 'person-outline'),
-        }}
-      />
+      <Tabs.Screen name="profile" options={{ href: null, title: 'Profile' }} />
     </Tabs>
   );
-}
-
-export default function TabLayout() {
-  if (isLiquidGlassAvailable()) return <NativeTabLayout />;
-  return <ClassicTabLayout />;
 }

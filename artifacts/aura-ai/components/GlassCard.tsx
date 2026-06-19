@@ -1,10 +1,10 @@
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, StyleSheet, View, ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 
 interface GlassCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   radius?: number;
   intensity?: number;
   noBorder?: boolean;

@@ -45,11 +45,20 @@ const DEFAULT_COMPANIONS = [
 // POST /api/auth/register
 router.post("/auth/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body as { name: string; email: string; password: string };
+    const { name, email, password, birthYear } = req.body as { name: string; email: string; password: string; birthYear?: number };
     if (!name || !email || !password) {
       res.status(400).json({ error: "Name, email and password are required" });
       return;
     }
+
+    // Age gate: require birthYear
+    if (!birthYear || typeof birthYear !== "number" || birthYear < 1900 || birthYear > new Date().getFullYear()) {
+      res.status(400).json({ error: "Valid birth year is required" });
+      return;
+    }
+
+    const age = new Date().getFullYear() - birthYear;
+    const isMinor = age < 18;
 
     const existing = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1);
     if (existing.length > 0) {
@@ -62,6 +71,9 @@ router.post("/auth/register", async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       passwordHash,
+      birthYear,
+      isMinor,
+      ageVerified: true,
     }).returning();
 
     // Seed default companions for new user (user-scoped IDs)
@@ -88,6 +100,7 @@ router.post("/auth/register", async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        birthYear: user.birthYear,
         isPremium: user.isPremium,
         isMinor: user.isMinor,
         ageVerified: user.ageVerified,
@@ -129,6 +142,7 @@ router.post("/auth/login", async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        birthYear: user.birthYear,
         isPremium: user.isPremium,
         isMinor: user.isMinor,
         ageVerified: user.ageVerified,
@@ -156,6 +170,7 @@ router.get("/auth/me", async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      birthYear: user.birthYear,
       isPremium: user.isPremium,
       isMinor: user.isMinor,
       ageVerified: user.ageVerified,
@@ -175,8 +190,8 @@ router.put("/auth/me", async (req, res) => {
     const jwt = await import("jsonwebtoken");
     const token = header.slice(7);
     const payload = jwt.default.verify(token, process.env.SESSION_SECRET ?? "aura-ai-secret-2026") as { userId: number };
-    const { name, email, isPremium, isMinor, ageVerified, onboardingDone, aiDisclosureAccepted } = req.body as Partial<{
-      name: string; email: string; isPremium: boolean; isMinor: boolean;
+    const { name, email, birthYear, isPremium, isMinor, ageVerified, onboardingDone, aiDisclosureAccepted } = req.body as Partial<{
+      name: string; email: string; birthYear: number; isPremium: boolean; isMinor: boolean;
       ageVerified: boolean; onboardingDone: boolean; aiDisclosureAccepted: boolean;
     }>;
 
@@ -184,6 +199,16 @@ router.put("/auth/me", async (req, res) => {
     if (name !== undefined) updates.name = name;
     if (email !== undefined) updates.email = email.toLowerCase();
     if (isPremium !== undefined) updates.isPremium = isPremium;
+    if (birthYear !== undefined) {
+      const parsedBirthYear = typeof birthYear === "number" && !Number.isNaN(birthYear) ? birthYear : undefined;
+      if (!parsedBirthYear || parsedBirthYear <= 1900 || parsedBirthYear > new Date().getFullYear()) {
+        res.status(400).json({ error: "Invalid birth year" });
+        return;
+      }
+      updates.birthYear = parsedBirthYear;
+      updates.ageVerified = true;
+      updates.isMinor = new Date().getFullYear() - parsedBirthYear < 18;
+    }
     if (isMinor !== undefined) updates.isMinor = isMinor;
     if (ageVerified !== undefined) updates.ageVerified = ageVerified;
     if (onboardingDone !== undefined) updates.onboardingDone = onboardingDone;
@@ -194,6 +219,7 @@ router.put("/auth/me", async (req, res) => {
     const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, payload.userId)).returning();
     res.json({
       id: user.id, name: user.name, email: user.email,
+      birthYear: user.birthYear,
       isPremium: user.isPremium, isMinor: user.isMinor,
       ageVerified: user.ageVerified, onboardingDone: user.onboardingDone,
       aiDisclosureAccepted: user.aiDisclosureAccepted,

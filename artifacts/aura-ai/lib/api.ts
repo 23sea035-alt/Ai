@@ -15,10 +15,17 @@ async function getToken(): Promise<string | null> {
   try { return await AsyncStorage.getItem('authToken'); } catch { return null; }
 }
 
+interface ApiErrorData {
+  error: string;
+  limitReached?: boolean;
+  used?: number;
+  limit?: number;
+}
+
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
-): Promise<{ data: T | null; error: string | null }> {
+): Promise<{ data: T | null; error: string | null; errorData?: ApiErrorData }> {
   try {
     const token = await getToken();
     const headers: Record<string, string> = {
@@ -33,7 +40,7 @@ async function apiFetch<T>(
     });
 
     const json = await res.json();
-    if (!res.ok) return { data: null, error: json.error ?? `HTTP ${res.status}` };
+    if (!res.ok) return { data: null, error: json.error ?? `HTTP ${res.status}`, errorData: json };
     return { data: json as T, error: null };
   } catch (err: any) {
     return { data: null, error: err?.message ?? 'Network error' };
@@ -46,6 +53,7 @@ export interface ApiUser {
   id: number;
   name: string;
   email: string;
+  birthYear?: number;
   isPremium: boolean;
   isMinor: boolean;
   ageVerified: boolean;
@@ -58,10 +66,10 @@ export interface AuthResponse {
   user: ApiUser;
 }
 
-export async function apiRegister(name: string, email: string, password: string) {
+export async function apiRegister(name: string, email: string, password: string, birthYear: number) {
   return apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, birthYear }),
   });
 }
 
@@ -135,15 +143,66 @@ export interface ApiMessage {
 export interface ChatResponse {
   userMessage: ApiMessage;
   aiMessage: ApiMessage;
+  safetyFlagged?: boolean;
+  memoriesUsed?: boolean;
+  breakReminder?: string;
 }
 
 export async function apiGetMessages(companionId: string) {
   return apiFetch<ApiMessage[]>(`/companions/${companionId}/messages`);
 }
 
-export async function apiSendMessage(companionId: string, content: string) {
+export async function apiSendMessage(companionId: string, content: string, sessionStartedAt?: string) {
   return apiFetch<ChatResponse>(`/companions/${companionId}/chat`, {
     method: 'POST',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, sessionStartedAt }),
   });
+}
+
+// ── Payments ──────────────────────────────────────────────────────────────
+
+export interface CheckoutResponse {
+  url: string | null;
+  sessionId: string;
+}
+
+export async function apiCreateCheckoutSession() {
+  return apiFetch<CheckoutResponse>('/payments/create-checkout-session', {
+    method: 'POST',
+  });
+}
+
+// ── Voice ──────────────────────────────────────────────────────────────────
+
+export interface SttResponse {
+  text: string;
+}
+
+export async function apiStt(audioBase64: string) {
+  return apiFetch<SttResponse>('/voice/stt', {
+    method: 'POST',
+    body: JSON.stringify({ audio: audioBase64 }),
+  });
+}
+
+export async function apiTts(text: string): Promise<{ data: ArrayBuffer | null; error: string | null }> {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${getBaseUrl()}/voice/tts`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ text }),
+    });
+
+    if (!res.ok) {
+      const json = await res.json();
+      return { data: null, error: json.error ?? `HTTP ${res.status}` };
+    }
+    return { data: await res.arrayBuffer(), error: null };
+  } catch (err: any) {
+    return { data: null, error: err?.message ?? 'Network error' };
+  }
 }

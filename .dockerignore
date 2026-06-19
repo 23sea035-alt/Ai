@@ -1,0 +1,15 @@
+node_modules
+.git
+.gitignore
+*.md
+.env
+.env.local
+artifacts/aura-ai/node_modules
+artifacts/mockup-sandbox
+artifacts/aura-ai/.expo
+artifacts/aura-ai/android
+artifacts/aura-ai/ios
+artifacts/aura-ai/static-build
+attached_assets
+stitch_ai_companion_app_ui_ux_design_extracted
+scripts

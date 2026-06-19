@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   Platform,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,174 +14,320 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AuraButton } from '@/components/AuraButton';
-import { GradientBorder } from '@/components/GradientBorder';
-import { useApp } from '@/context/AppContext';
+import { COLORS, FONTS, SPACING, RADIUS } from '@/constants/theme';
 
-const REFERRAL_CODE = 'AURA2026';
-const SHARE_OPTIONS = [
-  { icon: '💬', label: 'Messages', color: '#4ade80' },
-  { icon: '📸', label: 'Instagram', color: '#ff8fb0' },
-  { icon: '🐦', label: 'Twitter', color: '#60a5fa' },
-  { icon: '📧', label: 'Email', color: '#ffb77d' },
-  { icon: '🔗', label: 'Copy Link', color: '#c9bfff' },
-  { icon: '📤', label: 'More', color: '#B388FF' },
+const INVITE_LINK = 'aura.ai/invite/lucas_aura_2024';
+
+const SOCIALS = [
+  { name: 'iMessage', icon: 'chatbubble', color: '#007AFF' },
+  { name: 'WhatsApp', icon: 'chatbox', color: '#25D366' },
+  { name: 'Telegram', icon: 'send', color: '#0088CC' },
 ];
 
 export default function InviteScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useApp();
   const [copied, setCopied] = useState(false);
-  const [friends] = useState(3);
+  const [pressedItem, setPressedItem] = useState<string | null>(null);
+  const btnScale = useRef(new Animated.Value(1)).current;
+  const entryAnim = useRef(new Animated.Value(0)).current;
 
   const topInset = Platform.OS === 'web' ? 67 : insets.top;
   const bottomPad = Platform.OS === 'web' ? 34 : insets.bottom + 24;
+
+  useEffect(() => {
+    Animated.timing(entryAnim, {
+      toValue: 1,
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [entryAnim]);
 
   const handleCopy = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = () => {
-    Share.share({
-      message: `Join me on Aura AI — the most immersive AI companion app! Use my code ${REFERRAL_CODE} for a free week of Premium. https://aura.ai/invite`,
-      title: 'Invite a friend to Aura AI',
-    }).catch(() => {});
-  };
-
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
-      <LinearGradient colors={['#060a18', '#0B1020', '#121A35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-      <View style={styles.glowTop} />
-      <View style={styles.glowBottom} />
+      <LinearGradient
+        colors={['#0B1020', '#0e1323']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <GradientBorder colors={['rgba(201,191,255,0.35)', 'rgba(143,216,255,0.15)']} radius={14} borderWidth={1} innerStyle={styles.backInner}>
-            <Ionicons name="arrow-back" size={20} color="#dee1f9" />
-          </GradientBorder>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={COLORS.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Invite Friends</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/settings')}>
+          <Ionicons name="settings-outline" size={22} color={COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Invite Friends</Text>
-        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
+      <Animated.View style={[styles.entryWrapper, {
+        opacity: entryAnim,
+        transform: [{ translateY: entryAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+      }]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: bottomPad, paddingHorizontal: SPACING.containerMargin, gap: SPACING.md }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hero */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroEmoji}>🎁</Text>
-          <Text style={styles.heroTitle}>Invite & Earn</Text>
-          <Text style={styles.heroSub}>Share Aura AI with friends. When they join, you both get 1 week of Premium free.</Text>
+          <View style={styles.heroOrb} />
+          <Text style={styles.heroTitle}>Share the Future</Text>
+          <Text style={styles.heroSub}>
+            Invite a friend to experience Aura AI. They'll get{' '}
+            <Text style={styles.heroHighlight}>1 Month Premium</Text> free, and you'll
+            unlock exclusive rewards.
+          </Text>
         </View>
 
-        {/* Referral code */}
-        <GradientBorder colors={['#c9bfff', '#8fd8ff', '#B388FF']} radius={20} borderWidth={2} innerStyle={styles.codeCard}>
-          <Text style={styles.codeLabel}>YOUR REFERRAL CODE</Text>
-          <Text style={styles.codeText}>{REFERRAL_CODE}</Text>
-          <TouchableOpacity onPress={handleCopy} activeOpacity={0.8} style={styles.copyBtn}>
-            <LinearGradient
-              colors={copied ? ['#4ade80', '#22c55e'] : ['#c9bfff', '#8fd8ff']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.copyGrad}
-            >
-              <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color="#160050" />
-              <Text style={styles.copyText}>{copied ? 'Copied!' : 'Copy Code'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </GradientBorder>
-
-        {/* Progress */}
-        <GradientBorder colors={['#ffb77d88', '#ffb77d33']} radius={18} borderWidth={1.5} innerStyle={styles.progressCard}>
-          <View style={styles.progressRow}>
-            <Text style={{ fontSize: 20 }}>🔥</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.progressTitle}>{friends} friends joined</Text>
-              <Text style={styles.progressSub}>{5 - friends} more for a bonus month of Premium</Text>
+        {/* Reward Preview */}
+        <View style={styles.rewardCard}>
+          <View style={styles.rewardGlow} />
+          <View style={styles.rewardTop}>
+            <View>
+              <Text style={styles.rewardLabel}>FRIEND'S WELCOME REWARD</Text>
+              <Text style={styles.rewardTitle}>Full Premium Access</Text>
             </View>
-            <Text style={styles.progressBig}>{friends}/5</Text>
+            <Ionicons name="trophy" size={32} color={COLORS.secondary} />
           </View>
-          <View style={styles.progressBarBg}>
-            <LinearGradient colors={['#ffb77d', '#ffd87a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.progressBarFill, { width: `${(friends / 5) * 100}%` }]} />
-          </View>
-        </GradientBorder>
-
-        {/* Share options */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SHARE VIA</Text>
-          <View style={styles.shareGrid}>
-            {SHARE_OPTIONS.map((opt) => (
-              <TouchableOpacity key={opt.label} onPress={handleShare} activeOpacity={0.8} style={styles.shareWrapper}>
-                <GradientBorder colors={[opt.color + '88', opt.color + '33']} radius={18} borderWidth={1.5} innerStyle={styles.shareCard}>
-                  <Text style={{ fontSize: 24 }}>{opt.icon}</Text>
-                  <Text style={[styles.shareLabel, { color: opt.color }]}>{opt.label}</Text>
-                </GradientBorder>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.rewardStats}>
+            <View style={styles.rewardStat}>
+              <Text style={styles.rewardStatLabel}>Duration</Text>
+              <Text style={styles.rewardStatValue}>30 Days</Text>
+            </View>
+            <View style={styles.rewardStat}>
+              <Text style={styles.rewardStatLabel}>Credits</Text>
+              <Text style={styles.rewardStatValue}>Unlimited</Text>
+            </View>
           </View>
         </View>
 
-        <AuraButton label="Share Aura AI" onPress={handleShare} variant="primary" />
+        {/* Invite Link */}
+        <View style={styles.linkSection}>
+          <Text style={styles.linkLabel}>YOUR UNIQUE INVITE LINK</Text>
+          <View style={styles.linkRow}>
+            <Text style={styles.linkText} numberOfLines={1}>{INVITE_LINK}</Text>
+            <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+              <TouchableOpacity onPress={handleCopy} activeOpacity={0.9} style={styles.copyBtn} onPressIn={() => Animated.spring(btnScale, { toValue: 0.95, useNativeDriver: true, friction: 8 }).start()} onPressOut={() => Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, friction: 8 }).start()}>
+                <LinearGradient
+                  colors={copied ? ['#4ade80', '#22c55e'] : ['#917eff', '#00c1fd']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.copyGrad}
+                >
+                  <Text style={styles.copyText}>{copied ? 'Copied!' : 'Copy'}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        </View>
 
-        {/* How it works */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>HOW IT WORKS</Text>
-          <GradientBorder colors={['rgba(201,191,255,0.2)', 'rgba(143,216,255,0.1)']} radius={20} borderWidth={1} innerStyle={styles.stepsCard}>
-            {[
-              { step: '1', text: 'Share your unique referral code', color: '#c9bfff' },
-              { step: '2', text: 'Friend signs up using your code', color: '#8fd8ff' },
-              { step: '3', text: 'You both get 7 days Premium free', color: '#4ade80' },
-            ].map((s, idx, arr) => (
-              <View key={s.step} style={[styles.stepRow, idx < arr.length - 1 && styles.stepBorder]}>
-                <View style={[styles.stepNum, { backgroundColor: s.color + '22', borderColor: s.color + '55' }]}>
-                  <Text style={[styles.stepNumText, { color: s.color }]}>{s.step}</Text>
-                </View>
-                <Text style={styles.stepText}>{s.text}</Text>
+        {/* Social Sharing */}
+        <View style={styles.socialGrid}>
+          {SOCIALS.map(s => (
+            <TouchableOpacity key={s.name} activeOpacity={0.85} style={[styles.socialCard, pressedItem === s.name && { backgroundColor: `${COLORS.primary}15` }]} onPressIn={() => setPressedItem(s.name)} onPressOut={() => setPressedItem(null)}>
+              <View style={[styles.socialIconWrap, { backgroundColor: `${s.color}20` }]}>
+                <Ionicons name={s.icon as any} size={24} color={s.color} />
               </View>
-            ))}
-          </GradientBorder>
+              <Text style={styles.socialName}>{s.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Visual Banner */}
+        <View style={styles.banner}>
+          <View style={styles.bannerOverlay}>
+            <Text style={styles.bannerTitle}>Better together.</Text>
+            <Text style={styles.bannerSub}>Shared intelligence is the most powerful tool.</Text>
+          </View>
         </View>
       </ScrollView>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#060a18' },
-  glowTop: { position: 'absolute', top: -60, left: '10%', width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(201,191,255,0.07)' },
-  glowBottom: { position: 'absolute', bottom: '20%', right: -60, width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(143,216,255,0.04)' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
-  backBtn: {},
-  backInner: { padding: 10 },
-  headerTitle: { fontFamily: 'Sora_700Bold', fontSize: 18, color: '#dee1f9' },
-  scroll: { paddingHorizontal: 20, gap: 20 },
-  heroSection: { alignItems: 'center', gap: 10, paddingTop: 8 },
-  heroEmoji: { fontSize: 48 },
-  heroTitle: { fontFamily: 'Sora_700Bold', fontSize: 26, color: '#dee1f9', letterSpacing: -0.3 },
-  heroSub: { fontFamily: 'Manrope_400Regular', fontSize: 14, color: 'rgba(201,196,216,0.7)', textAlign: 'center', lineHeight: 21, maxWidth: 300 },
-  codeCard: { padding: 24, alignItems: 'center', gap: 12 },
-  codeLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 10, color: '#8fd8ff', letterSpacing: 2.5 },
-  codeText: { fontFamily: 'Sora_700Bold', fontSize: 34, color: '#dee1f9', letterSpacing: 6 },
-  copyBtn: { borderRadius: 999, overflow: 'hidden' },
-  copyGrad: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
-  copyText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: '#160050' },
-  progressCard: { padding: 18, gap: 14 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  progressTitle: { fontFamily: 'Sora_600SemiBold', fontSize: 15, color: '#dee1f9' },
-  progressSub: { fontFamily: 'Manrope_400Regular', fontSize: 12, color: '#928ea1', marginTop: 2 },
-  progressBig: { fontFamily: 'Sora_700Bold', fontSize: 20, color: '#ffb77d' },
-  progressBarBg: { height: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' },
-  progressBarFill: { height: 6, borderRadius: 3 },
-  section: { gap: 10 },
-  sectionLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 10, color: 'rgba(146,142,161,0.7)', letterSpacing: 2, paddingHorizontal: 4 },
-  shareGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  shareWrapper: { width: '30%' },
-  shareCard: { padding: 14, alignItems: 'center', gap: 8 },
-  shareLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 12 },
-  stepsCard: { overflow: 'hidden' },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 14 },
-  stepBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  stepNum: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
-  stepNumText: { fontFamily: 'Sora_600SemiBold', fontSize: 14 },
-  stepText: { fontFamily: 'Manrope_400Regular', fontSize: 14, color: 'rgba(222,225,249,0.8)', flex: 1 },
+  container: { flex: 1, backgroundColor: '#0B1020' },
+  entryWrapper: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.containerMargin,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.glassStroke,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 20,
+    color: COLORS.primary,
+  },
+  heroSection: { alignItems: 'center', gap: 12, paddingTop: 16 },
+  heroOrb: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'transparent',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 40,
+    elevation: 10,
+    marginBottom: 8,
+  },
+  heroTitle: {
+    fontFamily: 'Sora_600SemiBold',
+    fontSize: 28,
+    color: COLORS.onSurface,
+  },
+  heroSub: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 15,
+    color: COLORS.onSurfaceVariant,
+    textAlign: 'center',
+    maxWidth: 300,
+    lineHeight: 22,
+  },
+  heroHighlight: {
+    color: COLORS.secondary,
+    fontFamily: 'Manrope_600SemiBold',
+  },
+  rewardCard: {
+    backgroundColor: COLORS.glassFill,
+    borderWidth: 1,
+    borderColor: COLORS.glassStroke,
+    borderRadius: RADIUS.lg,
+    padding: 24,
+    gap: 16,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  rewardGlow: {
+    position: 'absolute',
+    right: -40,
+    top: -40,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: 'rgba(201,191,255,0.2)',
+  },
+  rewardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  rewardLabel: {
+    fontFamily: 'JetBrainsMono_500Medium',
+    fontSize: 12,
+    letterSpacing: 2.4,
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  rewardTitle: {
+    fontFamily: 'Sora_500Medium',
+    fontSize: 20,
+    color: COLORS.onSurface,
+  },
+  rewardStats: { flexDirection: 'row', gap: 8 },
+  rewardStat: {
+    flex: 1,
+    backgroundColor: COLORS.glassFill,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    gap: 4,
+  },
+  rewardStatLabel: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 13,
+    color: COLORS.outline,
+  },
+  rewardStatValue: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 15,
+    color: COLORS.onSurface,
+  },
+  linkSection: { gap: 12 },
+  linkLabel: {
+    fontFamily: 'JetBrainsMono_500Medium',
+    fontSize: 12,
+    letterSpacing: 2.4,
+    color: COLORS.outline,
+    paddingHorizontal: 4,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.glassFill,
+    borderWidth: 1,
+    borderColor: COLORS.glassStroke,
+    borderRadius: RADIUS.lg,
+    paddingLeft: 16,
+    overflow: 'hidden',
+  },
+  linkText: {
+    flex: 1,
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 15,
+    color: COLORS.onSurface,
+  },
+  copyBtn: { borderRadius: RADIUS.md, overflow: 'hidden' },
+  copyGrad: { paddingHorizontal: 24, paddingVertical: 12 },
+  copyText: {
+    fontFamily: 'Sora_500Medium',
+    fontSize: 15,
+    color: '#28008a',
+  },
+  socialGrid: { flexDirection: 'row', gap: 16 },
+  socialCard: {
+    flex: 1,
+    aspectRatio: 1,
+    backgroundColor: COLORS.glassFill,
+    borderWidth: 1,
+    borderColor: COLORS.glassStroke,
+    borderRadius: RADIUS.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  socialIconWrap: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  socialName: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 13,
+    color: COLORS.onSurface,
+  },
+  banner: {
+    height: 192,
+    borderRadius: RADIUS.xl,
+    backgroundColor: COLORS.glassFill,
+    borderWidth: 1,
+    borderColor: COLORS.glassStroke,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  bannerOverlay: {
+    padding: 24,
+    gap: 4,
+  },
+  bannerTitle: {
+    fontFamily: 'Sora_600SemiBold',
+    fontSize: 17,
+    color: '#ffffff',
+  },
+  bannerSub: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 13,
+    color: COLORS.outline,
+  },
 });
