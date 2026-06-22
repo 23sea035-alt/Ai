@@ -57,7 +57,7 @@ if (typeof document !== 'undefined' && !document.getElementById('aura-devrail-st
   const st = document.createElement('style');
   st.id = 'aura-devrail-style';
   st.textContent = `
-    .dev-stage{display:flex;align-items:stretch;min-height:100vh;background:#0c0c0f;}
+    .dev-stage{display:flex;align-items:stretch;height:100vh;overflow:hidden;background:#0c0c0f;}
     .dev-rail{width:248px;flex:0 0 248px;box-sizing:border-box;padding:18px 16px;overflow-y:auto;
       background:#141418;border-right:1px solid rgba(255,255,255,0.08);color:#e6e6ea;
       font-family:-apple-system,system-ui,sans-serif;}
@@ -75,7 +75,7 @@ if (typeof document !== 'undefined' && !document.getElementById('aura-devrail-st
     .dev-chip:hover{color:#fff;}
     .dev-chip.on{background:#2b6cff;border-color:#2b6cff;color:#fff;}
     .dev-hint{font-size:10.5px;color:#6a6a73;line-height:1.5;margin-top:16px;}
-    .dev-scaler{transform-origin:center center;}
+    .dev-scaler{transform-origin:top left;}
   `;
   document.head.appendChild(st);
 }
@@ -146,13 +146,16 @@ function DevStage({ children, frameW = 402, frameH = 874 }) {
     return () => window.removeEventListener('resize', fit);
   }, [frameW, frameH]);
 
-  if (!d.devOn) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: d.theme === 'dark' ? '#000' : '#F2F2F7' }}>{children}</div>;
-
+  // Outer box takes the SCALED layout size — `transform: scale()` shrinks the visual but NOT the
+  // layout box, so without this wrapper the full-size frame still claims its height and forces a
+  // page scroll (the overflow bug). The inner frame scales from its top-left corner.
   return (
     <div className="dev-stage">
-      <DevRail />
+      {d.devOn ? <DevRail /> : null}
       <div className="dev-stage-canvas" ref={canvasRef}>
-        <div className="dev-scaler" style={{ transform: `scale(${scale})`, width: frameW, height: frameH }}>{children}</div>
+        <div style={{ width: frameW * scale, height: frameH * scale }}>
+          <div className="dev-scaler" style={{ width: frameW, height: frameH, transform: `scale(${scale})` }}>{children}</div>
+        </div>
       </div>
     </div>
   );
