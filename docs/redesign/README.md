@@ -25,8 +25,8 @@ playbook successfully (same Expo/React Native stack).
 | [`01-doctrine.md`](01-doctrine.md) | Standing design rules — the anti-"vibe-coded" doctrine + the completeness/accessibility gate. Our grading rubric. |
 | [`02-demo-persona.md`](02-demo-persona.md) | The **one coherent demo persona** (user + companion + conversation + memories) that threads through every screen so the prototype tells one story. |
 | [`03-onboarding-scaffold.md`](03-onboarding-scaffold.md) | Build prompt for `Onboarding.html` (welcome → first chat). |
-| `04-hometabs-scaffold.md` *(next)* | Build prompt for `HomeTabs.html` (Home · Companions · You). |
-| `05-oneoff-screens.md` *(next)* | Build prompts for pushed screens (Chat, Paywall, Memory, …) + the system-states kit. |
+| [`04-hometabs-scaffold.md`](04-hometabs-scaffold.md) | Build prompt for `HomeTabs.html` (Home · Companions · You). |
+| [`05-oneoff-screens.md`](05-oneoff-screens.md) | Build prompts for pushed screens (Chat, Paywall, Memory, …) + the system-states kit. |
 | [`claude-design/ios-frame.jsx`](claude-design/ios-frame.jsx) | Reusable iOS device chrome (status bar, Dynamic Island, nav bar, home indicator, keyboard). |
 | [`claude-design/dev-harness.jsx`](claude-design/dev-harness.jsx) | Reusable **out-of-frame dev rail** + state context (screen jumper · theme · free/premium · per-screen states). |
 
