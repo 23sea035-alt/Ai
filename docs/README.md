@@ -26,6 +26,24 @@ Monetized via a single **$9.99/month** premium subscription (free tier: **30 mes
 5. **[privacy-policy-draft.md](privacy-policy-draft.md)** + **[data-retention-policy.md](data-retention-policy.md)**
    — counsel-review drafts. **Do NOT publish without legal sign-off.**
 
+### Chat-pipeline build specs (backend)
+
+The detailed **how** for the chat turn pipeline — read alongside `v1-tasklist.md` Phases 2–3 when
+building moderation, memory, and chat (`v1-architecture.md` D1/D5/D6/D12 is the **why**):
+
+- **[moderation-pipeline.md](moderation-pipeline.md)** — layered L0–L3 (prompt-guard ∥ omni →
+  gpt-oss-safeguard), per-category thresholds, fail-closed orchestration, the `Moderator` seam + safeguard policy.
+- **[memory-pipeline.md](memory-pipeline.md)** — async LLM consolidation (tool-call) + keyword retrieval
+  scoring (Jaccard + importance + recency, floor + identity bypass).
+- **[generation-pipeline.md](generation-pipeline.md)** — hardened prompt assembly, safety preamble,
+  3×3×3 personas, 8B-appropriate injection defense.
+- **[eval-safety-rubric.md](eval-safety-rubric.md)** — the hard/safety-tier eval criteria (8 dimensions,
+  crisis-PASS-vs-block, SB 243). **Jason owns this + the safety corpus.**
+- **[eval-report-layout.md](eval-report-layout.md)** — the human-in-the-loop eval report + the
+  generation / consolidation / moderation cards.
+- **[test-harness.md](test-harness.md)** — the test strategy: Vitest + PGlite contract tests, the DI
+  fakes, the 10 turn-orchestration tests, coverage + CI.
+
 ## Ownership
 
 - **Backend / server — coworker (on Replit):** the `v1-tasklist.md` phases (Express + Drizzle + Neon,

@@ -195,7 +195,8 @@ USER MESSAGE
   │      → hard-block term → block + log + rate-limit
   │
   ├─[L1] Injection/jailbreak detector  → meta-llama/llama-prompt-guard-2-86m (Groq)
-  │      ONLY when L0 flags suspicion (encodings, "ignore instructions", decode-and-act)
+  │      EVERY turn, in parallel with L2 (86M, ~92ms, ~$0.04/25M tok — cheap enough to always run;
+  │      revised from "on L0 suspicion" in moderation-pipeline.md). Block ≥0.9; escalate 0.5–0.9.
   │
   ├─[L2] Input moderation  → OpenAI omni-moderation (FREE, primary)
   │      escalate to openai/gpt-oss-safeguard-20b (Groq) on borderline scores / flagged users
@@ -218,7 +219,8 @@ DELIVER  (+ AI disclosure; break reminder per session)
   dedicated `sexual/minors` category. Cost-effective default.
 - **Policy escalation:** Groq `openai/gpt-oss-safeguard-20b` — reasons against our written safety
   policy; reserved for borderline/flagged cases (the deprecated Llama Guard 3/4 are **not** used).
-- **Injection:** Groq `meta-llama/llama-prompt-guard-2-86m` — cheap, fast; fired on suspicion.
+- **Injection:** Groq `meta-llama/llama-prompt-guard-2-86m` — cheap, fast; fired **every turn** (parallel
+  with L2) per [moderation-pipeline.md](moderation-pipeline.md) (revised from on-suspicion).
 
 **Principles**
 - Treat all user text as **data, never instructions**. Decode-then-rescan; never decode-and-act.
@@ -273,8 +275,9 @@ on-failure.
 ## 5. Persona model
 
 - 3 personas (Aurora / Orion / Lyra) × 3 **orthogonal** axes × 3 discrete levels.
-  Suggested axes: `warmth` (reserved/warm/affectionate), `energy` (calm/balanced/playful),
-  `verbosity` (concise/balanced/expansive).
+  Axes (adopted): `warmth` (reserved/warm/affectionate), `energy` (calm/balanced/playful),
+  `verbosity` (concise/balanced/expansive). Full build spec — assembled prompt, safety preamble, base
+  voices + 9 trait snippets, easy-tier eval rubric — in [generation-pipeline.md](generation-pipeline.md).
 - Stored on `companions.traits` (jsonb). Prompt assembled server-side: base persona + 3 modifier
   snippets, wrapped by the fixed safety preamble.
 - **QA:** 27 combinations/persona — don't hand-test all, but assert the safety preamble holds at
@@ -309,7 +312,10 @@ for ban-evasion; Anthropic 2yr flagged / 7yr scores); hashed ban identifiers 1�
 | Account-recovery grace (soft-delete) | **30 days** | recoverable |
 | Live purge (conversations, memories, companions, PII) | **≤30 days** after grace | hard delete |
 | Backups | **≤90 days**, "beyond use" (ICO) | expire on cycle |
-| `safety_events` (flagged content + context) | **24 months** | retain, identity severed |
+| `safety_events` raw content — **critical** (crisis/threats/CSAM-adjacent) | **~90 days**, extend on legal hold | full flagged content + minimal context; ids stripped at ingestion |
+| `safety_events` raw content — **standard** (sub-imminent/serious blocks) | **~6–12 months** | redacted snippet (matched span + tight context) |
+| `safety_events` raw content — **low** (routine hits/single injection) | **none** | metadata-only at write time |
+| `safety_events` de-identified metadata/scores (label, severity, score, referral flag, ts) | **long** | retain as structured fields; identity severed (SB 243 §22603 report draws only from here) |
 | `banned_identities` (salted hash) | **24 months** / until ban lifted | retain hash only |
 | Subscription/financial mirror | **up to 7 years** | tax/accounting (RC/Apple = system of record) |
 | Deletion audit record (id + timestamp, no content) | long-term | proof-of-erasure |
@@ -319,9 +325,11 @@ for ban-evasion; Anthropic 2yr flagged / 7yr scores); hashed ban identifiers 1�
 **retained** (FKs `set null` on hard purge). **Anti-evasion:** `banned_identities` holds salted/keyed
 hashes (email + OAuth `sub`), checked at registration.
 
-**Legal-review items (do NOT invent):** exact retention numbers; whether `safety_events.flagged_content`
-is retained in full or scrubbed to metadata; served jurisdictions (US-only vs EEA/UK); final
-privacy-policy + data-retention-policy wording (4 sections: Retention, Deletion, Trust & Safety, AI).
+**Legal-review items (do NOT invent):** exact per-tier retention numbers (the `safety_events` shape is
+**resolved** — tiered-by-severity with a long-lived de-identified metadata layer — but counsel sets the
+exact windows and whether critical-tier content is full vs minimal-context); served jurisdictions
+(US-only confirmed; EEA/UK would add GDPR Art. 9 analysis); final privacy-policy + data-retention-policy
+wording (4 sections: Retention, Deletion, Trust & Safety, AI).
 
 ---
 

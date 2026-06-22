@@ -66,7 +66,15 @@ type PersonaTraits = {
 FREE_DAILY_LIMIT      = 30      // free-tier messages/day (UTC reset; completed turns only); A/B-tunable
 MAX_MESSAGE_CHARS     = 2000    // input cap (count code points, not UTF-16 units)
 MEMORY_RETRIEVAL_TOP_N = 5      // memories injected per turn (prompt-budget bound)
-HISTORY_WINDOW        = 6       // recent messages sent to the LLM per turn
+MEMORY_SCORE_WEIGHTS   = { jaccard: 0.7, importance: 0.3, recency: 0.15 }       // retrieval ranking
+MEMORY_RECENCY_HALFLIFE_DAYS = 30   // recency = exp(-Δdays/halflife); Δ from last_recalled_at ?? created_at
+MEMORY_RELEVANCE_FLOOR = 0.08   // min Jaccard to inject (OR importance >= identity bar)
+MEMORY_IDENTITY_BAR    = 0.85   // importance >= this bypasses the floor (name, key relationships ride along)
+MEMORY_DEDUP_CANDIDATE_CAP = 50 // existing memories shown to the consolidation pass (importance desc)
+MEMORY_IMPORTANCE_BY_CATEGORY = { identity:0.9, relationship:0.9, work:0.7, location:0.7, attribute:0.6, preference:0.6, general:0.4 }  // highSalience -> 0.95
+HISTORY_WINDOW        = 8       // recent messages sent to the LLM per turn (bumped 6->8 for coherence)
+GENERATION_TEMPERATURE = 0.7    // companion warmth without drift; NOT a safety control (L3 is)
+GENERATION_MAX_TOKENS = 512     // headroom for the 2-4 sentence target
 ```
 
 ---
@@ -184,9 +192,12 @@ memories
   updated_at        timestamptz notNull default now() -- light contradiction overwrites in place
   INDEX (user_id, companion_id, importance DESC)
 ```
-Notes: retrieval = Jaccard(keywords) × 0.7 + importance × 0.3 + recency decay; top-N injected into
-the **system prompt** (not the user message). Real embeddings (separate `embedding vector` column) +
-full supersede engine are post-v1.0.
+Notes: retrieval score = `0.7·Jaccard(keywords) + 0.3·importance + 0.15·recency`, where
+`recency = exp(−Δdays / 30)` over `last_recalled_at` (fallback `created_at`). Inject **top-5** only if
+`Jaccard > 0.08` **OR** `importance ≥ 0.85` (identity bypass), into the **system prompt** (not the user
+message). Importance is category-driven (see constants). Full design + eval approach in
+[memory-pipeline.md](memory-pipeline.md). Real embeddings (separate `embedding vector` column) + full
+supersede engine are post-v1.0.
 
 ### 6. `safety_events`
 Moderation/safety audit + review queue. **Retained** on account deletion (identity severed) — this is

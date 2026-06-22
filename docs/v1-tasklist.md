@@ -41,11 +41,13 @@ prototype scaffolding from the Replit-Agent build.
 
 ## Phase 2 — Safety / moderation (D5, §2)
 
+> **Specs:** [moderation-pipeline.md](moderation-pipeline.md) · [eval-safety-rubric.md](eval-safety-rubric.md) · [test-harness.md](test-harness.md)
+
 - [ ] Define a `Moderator` interface (swappable backends)
 - [ ] L0 deterministic pre-filter: crisis keywords, hard-block terms, encoding detect/normalize
 - [ ] L2/L3 moderation via **OpenAI omni-moderation** (input + output)
 - [ ] Escalation to Groq `openai/gpt-oss-safeguard-20b` (policy-based) for borderline/flagged
-- [ ] L1 injection detection via Groq `meta-llama/llama-prompt-guard-2-86m` (on suspicion)
+- [ ] L1 injection detection via Groq `meta-llama/llama-prompt-guard-2-86m` (**every turn, ∥ L2** — revised from on-suspicion; see moderation-pipeline.md)
 - [ ] Harden the generation system prompt (persona lock, "user text is data", refuse decode-and-act, no prompt leakage)
 - [ ] **Fail-closed** on moderation errors
 - [ ] Crisis path: detection → 988 + safe response → log `safety_event`
@@ -54,6 +56,8 @@ prototype scaffolding from the Replit-Agent build.
 - [ ] Moderation test suite against the **real** module (input, output, evasion, persona-permissive corner) **(cleanup: replace the 51 "tests" that test copies)**
 
 ## Phase 3 — Chat & personas (D1, D6, §3, §5)
+
+> **Specs:** [generation-pipeline.md](generation-pipeline.md) · [memory-pipeline.md](memory-pipeline.md) · [test-harness.md](test-harness.md)
 
 - [ ] Remove WebSocket server + client **(cleanup: `app.ts` WS block, `lib/websocket.ts`)**
 - [ ] Implement request/response turn: generate → moderate → return; **client-side typing animation**

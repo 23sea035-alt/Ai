@@ -76,7 +76,8 @@ The following retention windows are **defaults pending counsel** and are intende
 | Account-recovery grace (soft-delete, recoverable) | 30 days |
 | Live-systems purge (conversations, memories, companions, PII) | Within 30 days of grace expiry |
 | Backups | ≤ 90 days ("beyond use" until overwritten) |
-| Safety/abuse records (flagged content + context) | 24 months |
+| Safety/abuse records — flagged content | Retained tiered by severity, for **shorter windows** (the most serious content kept the shortest time it remains needed; lower-severity content kept briefly or not at all) — [TODO: confirm with counsel] |
+| Safety/abuse records — de-identified safety signals (e.g. category, severity, scores; no conversation content) | Retained **longer** as de-identified records — [TODO: confirm with counsel] |
 | Banned-identity hashes (ban-evasion prevention) | 24 months / until ban lifted |
 | Subscription/financial records | Up to 7 years |
 | Deletion audit record (id + timestamp, no content) | Long-term |
@@ -116,7 +117,7 @@ Because Aura AI hosts sensitive conversations, we maintain safety systems to pro
 - **Automated moderation.** Automated classifiers scan both **inputs (your messages)** and **outputs (AI replies)** for content that may violate our policies or indicate harm.
 - **Possible human review.** Content flagged by our automated systems **may be reviewed by trained personnel** to assess severity, enforce our policies, and improve safety. Access to flagged content is limited to authorized, trained reviewers.
 - **Safety and crisis detection.** We use detection to identify situations involving risk of harm and may surface safety resources (for example, crisis support information).
-- **Extended retention of flagged content.** Flagged content and its surrounding context are retained for **24 months** (a default pending counsel) so we can investigate, enforce policies, prevent repeat abuse, and respond to legal obligations — this retention applies even where other data would otherwise be deleted.
+- **Retention of flagged content and safety signals.** We keep flagged content and its surrounding context **only as long as necessary, and the length depends on severity** — the most serious content (such as content indicating a risk of harm) is kept only for the limited time we need it, and lower-severity content is kept for a shorter time or not at all. Separately, we keep **de-identified safety signals** (for example, the category, severity, and scores produced by our systems, **without your conversation content**) for **longer**, so we can investigate, enforce policies, prevent repeat abuse, report as required by law, and respond to legal obligations. This retention may apply even where other data would otherwise be deleted. (Specific retention periods are defaults pending counsel — [TODO: confirm with counsel].)
 - **Banned accounts and re-registration prevention.** If we ban an account for serious violations, we retain a **hashed identifier** derived from that account to **prevent the banned user from re-registering (ban evasion)**, retained for **24 months / until the ban is lifted**. **This hashed identifier may be retained even after you delete your account**, solely to enforce the ban and prevent re-registration.
 
 [TODO: confirm with counsel — confirm the lawful basis/notice approach for retaining banned-identity hashes after deletion, and confirm the hashing method and that no recoverable plaintext identifier is retained.]

@@ -45,6 +45,7 @@ This document is the operational schedule that tells the engineering/ops team **
 - **Data minimization** — collect and retain only what a documented purpose requires.
 - **Purpose limitation** — every retained slice maps to a named purpose (§3 column). No "keep it just in case."
 - **Storage limitation** — every category has a finite window enforced by a job (§8). Nothing is kept indefinitely except the content-free deletion audit record and the financial mirror (regulatory).
+- **Decouple signal from content** — separate the long-lived (de-identified) safety signal from the short-lived raw content it was derived from. The signal we may keep for a long time; the raw flagged content we keep only as long as severity warrants.
 
 ### Right-to-erasure is NOT absolute
 
@@ -81,12 +82,21 @@ On account deletion we **purge the intimate bulk** (conversations, memories, com
 | **Account-recovery grace** (user soft-delete) | **30 days**, recoverable | Consent / contract — let users undo accidental deletion before irreversible purge | User deletion request → set `deleted_at`, mark `status='deleted'`; anonymize on hard-purge |
 | **Live PII + conversations** (`users` PII, `companions`, `messages`, `memories`) | **within 30 days of grace expiry** | No retained purpose after erasure — minimization/storage limitation | Hard delete / cascade purge; `users`: null `first_name`/`last_name`/`date_of_birth`, tombstone `email`, `status='deleted'` |
 | **Backups** | **≤ 90 days**, "beyond use" until overwritten | Disaster recovery only; not used for live access | Normal backup rotation; re-apply deletion if a backup is restored |
-| **`safety_events`** (flagged content + context) | **24 months** | Legitimate interest (Art. 6(1)(f)) — abuse/liability evidence, legal defense; Art. 17(3)(b)/(e), CCPA §1798.105(d)(2) | Retention-expiry job; FKs already `set null` on account purge (identity severed) |
+| **`safety_events` raw content — T1 Critical** (imminent self-harm/crisis, credible threats of violence, CSAM-adjacent) | **~90 days** (default), **extendable on legal hold / active escalation / law-enforcement preservation** | Legitimate interest (Art. 6(1)(f)) — abuse/liability evidence, legal defense; Art. 17(3)(b)/(e), CCPA §1798.105(d)(2) | Identifiers stripped at ingestion; full flagged content + minimal surrounding context retained short, then scrubbed to the metadata row by the retention-expiry job (hold pauses the clock) |
+| **`safety_events` raw content — T2 Standard** (sub-imminent self-harm signals, serious moderation blocks, repeated injection attempts) | **~6–12 months** (default) | Legitimate interest (Art. 6(1)(f)) — abuse/liability evidence, legal defense; Art. 17(3)(b)/(e), CCPA §1798.105(d)(2) | Identifiers stripped at ingestion; only a redacted/truncated snippet (matched span + tight context) retained, then scrubbed to the metadata row |
+| **`safety_events` raw content — T3 Low** (routine moderation hits, single injection attempts, low-confidence flags) | **none** — scrub to metadata **at write time** | n/a (no raw content retained) | No raw content stored; only the metadata row below is written |
+| **`safety_events` de-identified metadata** (event label, severity, classifier score, referral-fired flag, timestamp — **no raw content**) | **long** (structured fields, not prose) | Legitimate interest (Art. 6(1)(f)) — safety signal, trend/abuse analysis, SB 243 reporting; Art. 17(3)(b)/(e), CCPA §1798.105(d)(2) | Retained as structured fields; pseudonym↔identity key deleted once linkage no longer needed (→ effectively anonymized). SB 243 §22603 annual report draws **only** from this layer |
 | **`banned_identities`** (salted hash) | **24 months / until ban lifted** | Legitimate interest (Art. 6(1)(f)) — fraud/ban-evasion prevention; CCPA §1798.105(d)(2) | Retention-expiry job; delete on ban lift; honor `expires_at` |
 | **`subscriptions` / financial mirror** | **up to 7 years** | Legal obligation (Art. 6(1)(c)) — tax/accounting; CCPA §1798.105(d)(8). RC/Apple = system of record | Retained; RevenueCat/Apple is authoritative, this is a mirror |
 | **Deletion audit record** (request id + timestamp, **no content**) | **long-term** | Accountability (Art. 5(2)) — proof of erasure | Never purged on the normal cycle; content-free by design |
 
 `device_tokens` and `auth_identities` are not standalone rows in this table — they cascade-purge with the account (see §5).
+
+> **`safety_events` tiering rationale & crosscutting rules.** Mature programs decouple content from signal (e.g. Anthropic keeps flagged content ~2yr but trust-&-safety *scores* ~7yr; OpenAI's abuse logs run a ~30-day baseline, exception-extended). Uniform full-content 24-month retention is the **highest-risk** option for special-category conversation data under CPRA's storage-limitation rule, so v1.0 splits the long-lived **signal** from the short-lived **raw content**:
+> - **Strip identifiers at ingestion.** The pseudonym↔identity key is stored separately and access-controlled, and is deleted once linkage is no longer needed — converting the pseudonymized metadata tier to **effectively anonymized**. Prefer **true anonymization over indefinite pseudonymization** for the long-lived layer; because free-text transcripts resist anonymization, that layer is **structured fields, not prose**.
+> - **SB 243 reporting.** The California SB 243 annual report (§22603, from **July 1, 2027**) draws **only** from the de-identified metadata layer — a count of crisis-referral notifications plus protocol descriptions — which satisfies §22603(b)'s "no identifiers or personal information" requirement **by construction**. Raw crisis transcripts are never needed to *comply*, only to *operate/defend*.
+> - **Legal-hold override.** Any tier's retention clock **pauses** on an active claim/investigation/law-enforcement preservation (GDPR Art. 17(3)(e); CCPA security/fraud carve-out §1798.105(d)(2)).
+> - **Jurisdiction.** US-only (confirmed) → CCPA/CPRA "reasonably necessary and proportionate" is the governing test; GDPR Art. 9 special-category analysis only matters if EEA/UK is opened later (both point the same direction — see §9).
 
 ---
 
@@ -125,7 +135,9 @@ Requests must be tied to a verified, authenticated session or a verified email m
 4. BACKUPS          purged rows persist only in backups; "beyond use";
                     expire on normal rotation (≤ 90 days); re-applied if restored
                     ↓
-5. RETAINED SLICES  safety_events (24mo) + banned_identities (24mo/until lifted)
+5. RETAINED SLICES  safety_events: de-identified metadata (long) + tiered raw
+                    content (T1 ~90d/hold-extendable, T2 ~6–12mo snippet, T3 none)
+                    + banned_identities (24mo/until lifted)
                     + financial mirror (up to 7yr) live on, identity severed
 ```
 
@@ -148,7 +160,7 @@ Behavior on **account hard-purge**. FK on-delete semantics are defined in [v1-sc
 | `companions` | **Cascade purge** | `on delete cascade` — companions removed. |
 | `messages` | **Cascade purge** | `on delete cascade` — the intimate conversation bulk removed. |
 | `memories` | **Cascade purge** | `on delete cascade` — extracted personal facts removed. (`memories.source_message_id` is `set null`, but the rows themselves cascade with the user.) |
-| `safety_events` | **Retain, set-null identity** | `user_id` / `companion_id` / `message_id` → null. Evidence body retained; identity severed. Purged later by the 24-month retention-expiry job. |
+| `safety_events` | **Split: retain metadata, tier raw content; set-null identity** | Identifiers are stripped at ingestion (pseudonym↔identity key held separately, deleted when linkage is no longer needed); `user_id` / `companion_id` / `message_id` → null on purge. The **de-identified metadata** (label, severity, score, referral-fired flag, timestamp) is retained long as structured fields. **Raw flagged content** is retained only by severity tier — T1 ~90d (extendable on hold), T2 ~6–12mo snippet, T3 none — then scrubbed to metadata by the retention-expiry job (§3). |
 | `subscriptions` | **Retain (financial), identity severed** | FK is `on delete set null` — the subscription mirror survives with `user_id = null`, preserving the financial record (RC/Apple = system of record). |
 | `device_tokens` | **Cascade purge** | `on delete cascade` — push tokens removed. |
 | `banned_identities` | **Retain (hash only)** | Not deleted on account purge. `source_user_id` is `set null` (identity severed); `identifier_hash` retained. Purged by the 24-month / ban-lifted job. |
@@ -206,7 +218,7 @@ Retention is only real if it is **operationalized and enforced**, not aspiration
 | Job | Cadence | Responsibility |
 |---|---|---|
 | **Grace-expiry / hard-purge job** | Daily | Find `users` where `deleted_at` + 30 days has elapsed → run hard-purge lifecycle (§4 step 3). |
-| **`safety_events` retention-expiry job** | Daily/weekly | Delete `safety_events` older than 24 months. |
+| **`safety_events` content-scrub / retention-expiry job** | Daily/weekly | Scrub raw flagged content to the de-identified metadata layer once its tier window elapses (T1 ~90d, T2 ~6–12mo; T3 stored metadata-only at write time). Pause the clock for rows under legal hold / active escalation. The metadata layer is retained long. |
 | **`banned_identities` retention-expiry job** | Daily | Delete where `expires_at` < now() or 24-month default reached (unless permanent ban policy applies). |
 | **Backup rotation** | Per provider cycle | Ensure backups expire ≤ 90 days; verify restore runbook re-applies deletions. |
 
@@ -221,8 +233,8 @@ Retention is only real if it is **operationalized and enforced**, not aspiration
 
 These are **deliberately unresolved** — to be set by counsel, not invented here:
 
-1. **Exact retention numbers** — every window in §3 is a recommended default (30-day grace, ≤ 90-day backups, 24-month safety/ban, up to 7-year financial). Confirm or adjust.
-2. **`safety_events.flagged_content`** — retain **in full** (verbatim flagged content + context) vs. **scrub to metadata** (categories/severity/timestamps only). This is the single biggest sensitivity decision; the column is marked SENSITIVE in the schema.
+1. **Exact retention numbers** — every window in §3 is a recommended default (30-day grace, ≤ 90-day backups, tiered `safety_events` raw content [T1 ~90d / T2 ~6–12mo / T3 none] with a long-lived de-identified metadata layer, 24-month ban hashes, up to 7-year financial). Confirm or adjust.
+2. **`safety_events` retention shape — RESOLVED in shape (product+engineering):** tiered-by-severity, splitting short-lived raw content from a long-lived de-identified metadata layer (see §3 for the T1/T2/T3 model). Counsel still sets the **exact per-tier windows** (the ~90-day / ~6–12-month / metadata-long defaults) and whether **T1 content is full vs. minimal-context**. The `flagged_content` column remains marked SENSITIVE in the schema.
 3. **Served jurisdictions** — US-only vs. EEA/UK. Determines whether GDPR applies at all, which response deadline governs, and whether the GDPR Art. 17(3) bases are even in play. Drives much of this document.
 4. **`subscriptions` financial link** — whether the retained financial mirror keeps the user↔transaction link (useful for chargebacks/disputes) or is fully anonymized (`user_id`→null) on purge.
 5. **Third-party retention terms** — confirm Groq's API-tier retention/no-training stance and RevenueCat/Apple deletion-propagation behavior, then lock the §4 propagation steps.
