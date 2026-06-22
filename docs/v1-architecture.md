@@ -1,0 +1,394 @@
+# Aura AI — v1.0 Architecture & Decisions
+
+**Status:** Approved for build · **Scope:** iOS-first, adults-only (18+) AI companion app
+**Last updated:** 2026-06-22
+
+> This document is the single source of truth for v1.0 architecture decisions. It supersedes
+> the as-generated state of the repo (a Replit-Agent prototype: broad UI, a thin working
+> backend spine, prototype-grade engineering hygiene). Each decision below records **what**,
+> **why**, and **consequences**. See [§8 Deferred](#8-deferred--post-v10) for explicitly out-of-scope work.
+
+---
+
+## 0. Product context
+
+Aura AI is an AI companion chat app (Replika / Character.ai genre). Users chat 1:1 with vetted
+AI personas that remember facts across conversations. Differentiator: a **safety-first**,
+regulation-aware design (crisis detection + resources, content moderation, AI disclosure).
+Monetized via subscription (free tier with daily message cap; premium unlimited).
+
+**v1.0 platform:** native iOS app (Expo / React Native). No web, no Android in v1.0.
+
+---
+
+## 1. Decisions
+
+### D1 — Chat transport: request/response now, true SSE later
+- **Decision:** v1.0 uses plain HTTP request/response. The server fully generates **and moderates**
+  the reply, returns it in one response, and the **client animates a typing reveal**. No WebSocket.
+- **Why:** A 1:1 user↔AI chat is request/response, not realtime multiplayer. Output moderation
+  requires the *complete* reply before display, which conflicts with live token streaming. At
+  Groq's sub-second latency for short replies, a client-side typing animation is perceptually
+  identical to streaming. The WebSocket in the current repo ([artifacts/api-server/src/app.ts](../artifacts/api-server/src/app.ts))
+  is scaffolding that only fake-streams a fully-generated reply anyway.
+- **Consequences:** Delete the WebSocket server + client. iOS cannot hold a socket alive in the
+  background regardless (use APNs for away-delivery — see D10). True SSE is a fast-follow (see §4).
+
+### D2 — Database: managed Postgres (Neon); device → API → DB only
+- **Decision:** Production Postgres on **Neon**. The iOS app never touches the DB directly; all
+  CRUD goes through the Express API. Keep **Drizzle ORM** (Neon is standard Postgres). Docker
+  Postgres remains for local dev only.
+- **Why:** Credentials shipped in an app binary are extractable. The Express API is the trusted
+  boundary (authN/authZ, validation, rate limits) — and it must call Groq with a secret key and
+  enforce limits/safety server-side regardless. Neon scales to zero (spiky chat traffic), has
+  instant DB branching for dev/preview, and needs zero Drizzle changes.
+- **Consequences:** Migration is a `DATABASE_URL` swap. Start on Neon Free (dev), move to the
+  **Launch** plan at production launch (compute, not storage, is the binding constraint — see §7).
+  If the API ever goes serverless, switch to Neon's pooled connection string.
+
+### D3 — Web: deferred; build on Next.js later, not React Native Web
+- **Decision:** No consumer web in v1.0. When web demand is real, build a **separate Next.js app**
+  sharing TypeScript types / API client / business logic with the RN app — not React Native Web.
+- **Why:** Expo web (RNW) is production-capable but weak exactly where a consumer web surface needs
+  strength: SSR/SEO (Expo is SSG-only; SSR needs custom infra), bundle size, accessibility, and
+  web-native UX. The industry pattern (e.g. Discord) is *share logic, not the view layer*.
+- **Consequences:** To keep the later Next.js path cheap, **keep business logic out of RN
+  components now** (current code violates this — e.g. [app/index.tsx](../artifacts/aura-ai/app/index.tsx)
+  is ~1,067 lines). A thin standalone marketing/landing site can be built independently if needed.
+
+### D4 — Payments: RevenueCat + StoreKit (iOS); Stripe under RevenueCat for web later
+- **Decision:** iOS subscriptions via **RevenueCat on top of StoreKit (Apple IAP)**. Enroll in the
+  **Apple Small Business Program (15%)**. Keep Stripe for *future* web billing — under RevenueCat
+  Web Billing, mapping to the same entitlements.
+- **Plan & pricing (v1.0):** One paid tier — **Premium at $9.99/month** (monthly billing), unlimited
+  text. Free tier = **30 messages/day** (a `@aura/shared` constant; daily UTC reset; counts only
+  completed turns; A/B-tunable — a *secondary* funnel since features already gate). Tier on *features*,
+  not message count. Rules: (a) "unlimited" text carries an **invisible anti-abuse ceiling** (per-minute rate
+  limit + generous daily hard cap) to stop scripted abuse — no human hits it; (b) **voice is always
+  metered, never unlimited** (STT/TTS cost asymmetry). Net ~$8.49/sub after Apple 15%; inference is
+  pennies/user — high margin. Annual plan, intro free trial, and feature-based multi-tier are
+  deferred (see §8).
+- **Why:** Apple requires IAP for in-app digital subscriptions; embedding Stripe = rejection.
+  RevenueCat handles receipt validation, entitlements, cross-platform sync, and webhooks.
+- **Consequences:** New iOS purchase flow (RevenueCat SDK + StoreKit). Backend syncs entitlements
+  from **verified RevenueCat webhooks** — never trust client purchase state. Include a "Restore
+  Purchases" button (App Review requirement). The existing Stripe code
+  ([artifacts/api-server/src/routes/payments.ts](../artifacts/api-server/src/routes/payments.ts))
+  becomes the deferred web path. Handle the sandbox-vs-production webhook environment flag. The
+  **price must be rendered from the StoreKit/RevenueCat offering** (Apple requires the localized
+  price; currency varies by region) — remove the hardcoded `$19.99` string in
+  [app/(tabs)/premium.tsx](../artifacts/aura-ai/app/(tabs)/premium.tsx); set the $9.99 product in
+  App Store Connect.
+
+### D5 — Content moderation: layered, tiered, server-side (see §2)
+- **Decision:** Defense-in-depth pipeline: deterministic pre-filter → injection classifier →
+  input moderation → generation (hardened prompt) → **output moderation**. Primary moderation via
+  the **free OpenAI omni-moderation API**, with **Groq `openai/gpt-oss-safeguard-20b`** for
+  policy-based escalation and **`meta-llama/llama-prompt-guard-2-86m`** for injection detection.
+- **Why:** Keyword-only filtering won't survive evasion; model alignment is bypassable, so output
+  must be moderated too. SB 243's self-harm protocol applies to **all** users regardless of age.
+- **Consequences:** All moderation runs server-side, behind a `Moderator` interface (Groq's safety
+  models deprecate often — interface it). Fail **closed** on moderation errors. See §2 for detail.
+
+### D6 — Personas: 3 vetted personas × 3 axes × 3 levels (structured, not freeform)
+- **Decision:** Ship 3 fixed vetted personas (Aurora / Orion / Lyra). Allow customization only via
+  **3 orthogonal discrete axes, 3 levels each** (e.g. warmth, energy, verbosity). No freeform
+  persona/system-prompt authoring.
+- **Why:** Freeform authoring = arbitrary user-supplied system prompts = a prompt-injection and
+  brand-safety vector. Structured params keep the system prompt under our control. Discrete levels
+  (not percentages) are testable and map predictably to behavior.
+- **Consequences:** Store selections on the existing `companions.traits` jsonb column. Assemble the
+  prompt server-side as base persona + 3 modifier snippets wrapped by a **fixed, non-overridable
+  safety preamble**. Smoke-test the most permissive corner (high warmth + playful + expansive).
+
+### D7 — Minimum age: 18+ adults only
+- **Decision:** Self-attested **18+** (App Store 17+ rating). No under-18 support in v1.0.
+- **Why:** Removes COPPA and SB 243's minor-specific obligations and the minors-blocking streaming
+  branch — dramatically smaller compliance + engineering surface — while keeping the core safety
+  suite that applies to everyone.
+- **Consequences:** Crisis/self-harm protocol, content moderation, and AI disclosure **still apply
+  to all users**. Keep the `isMinor` plumbing dormant for future minor support. **Risk:** pure
+  self-attestation is the common baseline but regulators are tightening on age assurance — revisit
+  if expanding audience or regions.
+
+### D8 — Auth: email/password + Sign in with Apple + Google
+- **Decision:** Email/password (with a **real** password reset), **Sign in with Apple**, and
+  **Google** sign-in. No guest/anonymous accounts in v1.0.
+- **Why:** An account is required to age-gate, bill, and persist. Apple mandates Sign in with Apple
+  when any other social login (Google) is offered — so all three are consistent.
+- **Consequences:** Replace the current no-op forgot-password
+  ([app/(auth)/forgot-password.tsx](../artifacts/aura-ai/app/(auth)/forgot-password.tsx)) with a
+  real email reset. Add OAuth flows (Apple, Google) + account linking. Remove the silent local-user
+  auth fallback in [context/AppContext.tsx](../artifacts/aura-ai/context/AppContext.tsx) that
+  fabricates a user and hides failures.
+
+### D9 — Production API hosting: Render
+- **Decision:** Run the Express API on **Render** (always-on/autoscale, streaming-capable HTTPS).
+  Replit remains for prototyping only.
+- **Why:** Simple, cheap at small scale, persistent server keeps true-SSE-later viable without
+  sticky-session/serverless gymnastics.
+- **Consequences:** Move deploy config off Replit. Use a **`render.yaml`** blueprint (`rootDir: server`,
+  build `shared` first, install with `--include=dev` so `tsc` has its build-time deps). Use Render's
+  **`starter` plan, not the free `web` plan** — the free plan sleeps after ~15 min idle, which would
+  **drop RevenueCat webhook deliveries** (D4). Keep `/api/healthz` **unauthenticated** for Render's
+  health probe. Secrets via Render env (see §6) — no hardcoded fallbacks.
+
+### D10 — Notifications: APNs device-token + transactional only
+- **Decision:** Add APNs **device-token storage** + **transactional push** ("your companion
+  replied" when the user is away). Defer marketing/re-engagement pushes.
+- **Why:** Supports the away-delivery path (D1) cheaply; APNs is free. Re-engagement nudges carry
+  manipulation concerns and add scheduling infra — not worth it for v1.0.
+- **Consequences:** New `device_tokens` table (or column on `users`). A small server-side push
+  service triggered when a reply completes while the client is disconnected.
+
+### D11 — Repository structure: `client` / `server` / `shared` pnpm workspace
+- **Decision:** Reorganize the Replit `artifacts/*` + `lib/*` layout into a clean three-workspace
+  monorepo modeled on the sibling `ai-humanizer-app`: **`client/`** (Expo app), **`server/`**
+  (Express API, including the Drizzle DB layer at `server/src/db/`), **`shared/`** (`@aura/shared` —
+  enums, Zod schemas, DTOs, domain types), plus `tools/` (scripts) and `docs/`. Stay on **pnpm**.
+- **Why:** Obvious frontend/backend/shared separation; one shared package as the single source of
+  truth for the `text + CHECK` enum unions, Zod schemas, and API DTOs; mirrors a proven,
+  Render-deployed sibling repo (consistency + reusable conventions).
+- **Mapping:** `artifacts/aura-ai`→`client/`; `artifacts/api-server`→`server/`; `lib/db`→
+  `server/src/db/`; `lib/api-spec`/`api-zod`/`api-client-react`→consolidated into `shared/` (the dead
+  orval codegen is removed); `scripts/`→`tools/`; `artifacts/mockup-sandbox`→deleted.
+- **Dependency rule:** `shared` is the leaf — depends on nothing in-repo, **no `pg`/Node-only imports**
+  (so it's safe in the Expo bundle). `server` and `client` both depend on `@aura/shared`; `client`
+  never imports `server`. Drizzle tables import enum constants from `shared`; Drizzle-inferred types
+  stay server-internal (the client uses `shared` DTOs, not Drizzle types).
+- **Consequences:** (a) the Expo `client` needs Metro monorepo config (`watchFolders` → repo root +
+  `nodeModulesPaths`) to resolve `@aura/shared`; (b) `shared` compiles to `dist/` and must build
+  **before** `server`/`client` (CI + Render build order); (c) the physical move is the first Phase 0
+  task — logical schema design is independent of it.
+
+### D12 — Memory subsystem: keyword retrieval + async LLM consolidation
+- **Decision:** **Per-companion** memory. **Retrieval** = keyword/Jaccard over a stored `keywords`
+  set, blended with `importance` and a **recency-decay** term (`last_recalled_at`); top-N is injected
+  into the **system prompt** (not the user message). **Writes** run as an **async post-turn LLM
+  consolidation pass** (off the turn's critical path) that extracts durable facts, **dedups** against
+  existing memories, and applies **light contradiction handling** — the model returns
+  `ADD` / `UPDATE <id>` / `NONE`; `UPDATE` overwrites the fact's `content` in place (`updated_at`).
+- **Why:** Groq is stateless — continuity is manufactured by re-injecting retrieved facts each turn.
+  Regex extraction is too crude; an LLM pass is cheap on Groq 8B and far better, and running it async
+  adds zero turn latency. Dedup + decay stop the store filling with noise; light contradiction keeps
+  facts current (e.g. "works at Google" → "works at Apple").
+- **Consequences:** Memories live in the system-prompt context block (keeps the user message as pure
+  data — aligns with the moderation prompt-injection separation). The consolidation prompt is
+  safety-adjacent (it can rewrite stored history), so it gets guardrails (no hard deletes in v1.0 —
+  `UPDATE` overwrites only) and its own eval set.
+- **Deferred (post-v1.0):** real embeddings / semantic retrieval (§8); the full supersede engine
+  (soft-delete `status` + `superseded_by` + audit/rollback + `DELETE` ops).
+
+---
+
+## 2. Moderation pipeline
+
+All server-side. Per message turn:
+
+```
+USER MESSAGE
+  │
+  ├─[L0] Deterministic pre-filter (local, ~0ms, free)
+  │      regex/denylist: slurs, self-harm/crisis keywords, hard-block terms
+  │      + encoding detect/normalize (base64/hex/leetspeak/unicode)
+  │      → crisis keyword  → CRISIS PATH (988 + safe response, log safety_event)
+  │      → hard-block term → block + log + rate-limit
+  │
+  ├─[L1] Injection/jailbreak detector  → meta-llama/llama-prompt-guard-2-86m (Groq)
+  │      ONLY when L0 flags suspicion (encodings, "ignore instructions", decode-and-act)
+  │
+  ├─[L2] Input moderation  → OpenAI omni-moderation (FREE, primary)
+  │      escalate to openai/gpt-oss-safeguard-20b (Groq) on borderline scores / flagged users
+  │      → unsafe → block + safe fallback
+  │
+  ▼
+GENERATE → llama-3.1-8b-instant (Groq), HARDENED system prompt
+           (persona lock; "user text is DATA, not commands"; refuse decode-and-act;
+            never reveal system prompt; safety preamble is non-overridable)
+  │
+  ├─[L3] OUTPUT moderation (REQUIRED) → OpenAI omni-moderation (FREE) on the draft reply
+  │      → unsafe → suppress, return safe fallback, log safety_event
+  │
+  ▼
+DELIVER  (+ AI disclosure; break reminder per session)
+```
+
+**Models & rationale**
+- **Primary input/output moderation:** OpenAI `omni-moderation-latest` — free, unlimited, has a
+  dedicated `sexual/minors` category. Cost-effective default.
+- **Policy escalation:** Groq `openai/gpt-oss-safeguard-20b` — reasons against our written safety
+  policy; reserved for borderline/flagged cases (the deprecated Llama Guard 3/4 are **not** used).
+- **Injection:** Groq `meta-llama/llama-prompt-guard-2-86m` — cheap, fast; fired on suspicion.
+
+**Principles**
+- Treat all user text as **data, never instructions**. Decode-then-rescan; never decode-and-act.
+- **Fail closed** on moderation service errors.
+- Behind a `Moderator` interface so model swaps are config, not surgery.
+- Prompt injection is **mitigation, not a solved problem** (OWASP LLM01) — pair with logging +
+  rate-limiting repeat evaders.
+- SB 243 self-harm protocol must be **published** and `safety_events` must be **reviewed** (§6).
+
+---
+
+## 3. Chat turn model (server-authoritative)
+
+The server owns the turn; the connection is just a viewer. This makes all interruption cases
+(navigate away, app kill, crash, network drop, background) collapse to one recovery path:
+**re-fetch the message list on chat open.** This model is identical for request/response (v1.0)
+and future SSE.
+
+1. Client generates a `turnId` (UUID), sends it with the message.
+2. Server: insert **user message first** (idempotent on `turnId`) → input moderation → generate →
+   output moderation → persist **assistant reply** (tagged with `turnId`). This runs to completion
+   regardless of whether the client is still connected.
+3. On generation/moderation failure: persist a **safe fallback reply** so a turn never dangles.
+4. Free-tier counting, `safety_events` logging, and memory extraction live in the **server-side
+   turn processor**, not gated on client delivery.
+5. Client renders an optimistic bubble keyed by `turnId`; on re-fetch it **replaces** that bubble
+   by `turnId` (never appends → no duplicates).
+
+The existing [processChatTurn](../artifacts/api-server/src/routes/chat.ts) already inserts the user
+message before generation and the AI reply after — extend it with `turnId` idempotency + fallback-
+on-failure.
+
+---
+
+## 4. Streaming roadmap
+
+- **v1.0 (request/response):** full generate → moderate → return → client typing animation.
+  Trivial moderation (whole reply moderated before send); minimal error surface (no partial state).
+- **Fast-follow (true SSE):** server streams Groq tokens over `text/event-stream`; client renders
+  live (lower time-to-first-token). Requires **segment-buffered moderation** (moderate per sentence,
+  flush if clean, else stop + replace). Because v1.0 is **18+ only**, there is no minors-blocking
+  branch — adults-only segment streaming is the whole design.
+- **Cost delta of SSE:** generation cost identical; output moderation becomes N calls/turn but
+  stays ~free via OpenAI; infra cost negligible on the persistent Render server (not WebSocket — no
+  sticky sessions, no idle connections). The four reliability items in §3 become load-bearing.
+- **Why deferred:** the only payoff is lower TTFT, which is marginal for 2–4 sentence replies at
+  Groq speed. The §3 turn model carries straight into SSE — only the transport + segment moderation
+  are added later.
+
+---
+
+## 5. Persona model
+
+- 3 personas (Aurora / Orion / Lyra) × 3 **orthogonal** axes × 3 discrete levels.
+  Suggested axes: `warmth` (low/med/high), `energy` (calm/balanced/playful),
+  `verbosity` (concise/balanced/expansive).
+- Stored on `companions.traits` (jsonb). Prompt assembled server-side: base persona + 3 modifier
+  snippets, wrapped by the fixed safety preamble.
+- **QA:** 27 combinations/persona — don't hand-test all, but assert the safety preamble holds at
+  the most permissive corner, as part of the moderation test suite.
+
+---
+
+## 6. Data, privacy & compliance (required for v1.0)
+
+- **In-app account deletion** (Apple-required for account apps) + **data export** + **privacy
+  policy** (GDPR/CCPA). Conversations are sensitive personal data.
+- **UGC compliance (Apple Guideline 1.2):** in-app mechanism to **report/flag an AI message**;
+  a content-review path.
+- **`safety_events` review queue:** flagged content must actually be reviewed (SB 243 expectation),
+  not just stored.
+- **Secrets via env only** — remove hardcoded fallbacks (`aura-ai-secret-2026`,
+  `change-me-in-production`); fail-closed at startup if a required secret is missing.
+- **Memory:** keyword-based (Jaccard) for v1.0 — **rename the `embedding` column** (e.g. to
+  `keywords`) to stop overclaiming. Real embeddings are deferred.
+- **Region:** US-only at launch; crisis resources (988) are US-centric — region-aware resources are
+  deferred.
+
+### Data retention & deletion (recommended defaults — **counsel signs off final numbers**)
+
+Right-to-erasure is **not absolute** (GDPR Art. 17(3); CCPA §1798.105(d)(2) security/fraud) — we
+**purge the intimate bulk** and **retain minimal, time-bounded slices** for safety + ban evasion.
+Benchmarks: AI-chat apps purge ~30 days; safety/abuse data ~2 years modal (Discord's 2yr is explicitly
+for ban-evasion; Anthropic 2yr flagged / 7yr scores); hashed ban identifiers 1–3yr defensible (EDPB).
+
+| Data | Window | Action |
+|---|---|---|
+| Account-recovery grace (soft-delete) | **30 days** | recoverable |
+| Live purge (conversations, memories, companions, PII) | **≤30 days** after grace | hard delete |
+| Backups | **≤90 days**, "beyond use" (ICO) | expire on cycle |
+| `safety_events` (flagged content + context) | **24 months** | retain, identity severed |
+| `banned_identities` (salted hash) | **24 months** / until ban lifted | retain hash only |
+| Subscription/financial mirror | **up to 7 years** | tax/accounting (RC/Apple = system of record) |
+| Deletion audit record (id + timestamp, no content) | long-term | proof-of-erasure |
+
+**Deletion tiering** (not uniform): users **soft-delete** (anonymize PII, tombstone email, `status='deleted'`,
+`deleted_at`); conversations/memories/companions **purged**; `safety_events` + `banned_identities`
+**retained** (FKs `set null` on hard purge). **Anti-evasion:** `banned_identities` holds salted/keyed
+hashes (email + OAuth `sub`), checked at registration.
+
+**Legal-review items (do NOT invent):** exact retention numbers; whether `safety_events.flagged_content`
+is retained in full or scrubbed to metadata; served jurisdictions (US-only vs EEA/UK); final
+privacy-policy + data-retention-policy wording (4 sections: Retention, Deletion, Trust & Safety, AI).
+
+---
+
+## 7. Cost model (small-scale estimate)
+
+| Item | Cost |
+|---|---|
+| **Neon Postgres** | Free for dev; Launch plan ~**$20–40/mo** early production (compute-bound; scale-to-zero + spending cap) |
+| **Groq inference** | ~**$0.00007/turn** tiered (generation-dominated; moderation free via OpenAI) → ~**$63/mo @ 1k DAU**, ~$630/mo @ 10k DAU |
+| **OpenAI moderation** | **Free** |
+| **RevenueCat** | Free under $2,500/mo tracked revenue, then ~1% |
+| **Apple commission** | **15%** (Small Business Program) |
+| **APNs** | Free |
+| **Render (API)** | ~**$7–25/mo** at small scale |
+| **Apple Developer** | $99/yr |
+
+Generation dominates LLM cost; moderation is effectively free. Subscription revenue dwarfs
+inference cost at any real conversion rate.
+
+---
+
+## 8. Deferred / post-v1.0
+
+- Consumer **web** app (Next.js, separate codebase).
+- **True SSE** token streaming (segment-buffered moderation).
+- **Real embeddings** / semantic memory (replace keyword Jaccard).
+- **Rolling conversation summarization** (the dropped `summaries` table) + the **full memory supersede
+  engine** (soft-delete `status`/`superseded_by` + `DELETE` ops + audit/rollback).
+- **Under-18 support** (COPPA + full SB 243 minor clauses + age assurance).
+- **Re-engagement / scheduled notifications.**
+- **Android.**
+- **i18n / region-aware** crisis resources.
+- **Freeform companion authoring** (only after moderation is battle-tested).
+- **Annual plan** + **7-day intro free trial** (better LTV; StoreKit intro-offer config; defer exact terms).
+- **Feature-based multi-tier** pricing (good-better-best on voice minutes / model quality / companions /
+  memory / customization) — pending real usage data.
+- US web payment **link-out** (unstable post-2025 ruling; revisit when Apple's "reasonable" rate is set).
+
+---
+
+## 9. Open risks
+
+- **Prompt injection is unsolved** (OWASP LLM01) — our pipeline is mitigation + fast detection, not
+  a guarantee.
+- **Groq safety-model churn** — Llama Guard 3 and 4 already deprecated; the `Moderator` interface
+  contains the blast radius.
+- **Age self-attestation** — common baseline today, but regulatory pressure on age assurance is
+  rising.
+- **App Store review of AI companion apps** — heightened scrutiny; UGC reporting, age rating, and a
+  clear safety story are prerequisites, not nice-to-haves.
+
+---
+
+## Appendix — current-state cleanup (from the repo audit)
+
+These prototype artifacts should be removed/fixed during the v1.0 build (tracked in
+[v1-tasklist.md](v1-tasklist.md)):
+
+- WebSocket server/client ([app.ts](../artifacts/api-server/src/app.ts),
+  [lib/websocket.ts](../artifacts/aura-ai/lib/websocket.ts)).
+- `mockup-sandbox` package and the design-catalog screens
+  (`app/[screen].tsx`, `app/screen-map.tsx`, `components/screenData.ts`, `components/DesignShell.tsx`).
+- Hardcoded fake chat list ([app/(tabs)/chat.tsx](../artifacts/aura-ai/app/(tabs)/chat.tsx)) — wire
+  to real companions; fix the id mismatch with `chat/[id].tsx`.
+- Silent auth fallback + fake stats ([context/AppContext.tsx](../artifacts/aura-ai/context/AppContext.tsx)).
+- Triplicated/divergent safety logic (consolidate into one module; the unused `detectSafetyIssue`
+  in [chat.ts](../artifacts/api-server/src/routes/chat.ts) and the test's private copies).
+- Dead API-codegen pipeline (`lib/api-spec`, `lib/api-client-react`, `lib/api-zod`) — either
+  regenerate the OpenAPI spec to match real endpoints, or remove.
+- `@tanstack/react-query` is installed/provided but unused — adopt or drop.
