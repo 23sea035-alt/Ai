@@ -1,45 +1,64 @@
-# [Project name]
+# Aura AI — Companion Chat (Backend / Server)
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+> **Read [`docs/README.md`](docs/README.md) first**, then [`docs/v1-architecture.md`](docs/v1-architecture.md),
+> [`docs/v1-schema.md`](docs/v1-schema.md), and [`docs/v1-tasklist.md`](docs/v1-tasklist.md).
+> Those docs are the **plan of record** for the v1.0 rebuild — follow them; don't relitigate the
+> decisions without a real reason.
 
-## Run & Operate
+## What this is
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+Aura AI — an iOS AI-companion chat app (**18+, US-first**). Users chat 1:1 with vetted AI personas
+that remember facts across conversations; safety-first design; **$9.99/month** premium (free tier
+**30 msgs/day**). The current code is a **Replit-Agent prototype** being rebuilt per `docs/` — treat
+existing code as a sketch, not a foundation.
 
-## Stack
+**This workspace owns the BACKEND / SERVER.** The frontend (Expo app) is owned separately —
+**do NOT build frontend here.** Backend changes that affect the client get appended to
+[`docs/frontend-todo.md`](docs/frontend-todo.md) → "Backend-driven items."
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+## Stack (v1.0 target)
 
-## Where things live
+- Monorepo (pnpm): **`client`** (Expo/RN) + **`server`** (Express 5 + TS) + **`shared`**
+  (`@aura/shared` — enums, Zod DTOs, constants = the client/server contract). (Replaces the prototype's
+  `artifacts/*` + `lib/*` layout.)
+- DB: PostgreSQL on **Neon** + Drizzle ORM — **versioned migrations, NOT `drizzle-kit push`**.
+- LLM: **Groq** (Llama 3.1). Moderation: OpenAI omni + Groq gpt-oss-safeguard + prompt-guard
+  (layered, server-side, fail-closed). Payments: **RevenueCat + StoreKit**. Notifications: APNs.
+  Hosting: **Render** (or Replit always-on Reserved VM).
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+## Run & operate (after the Phase 0 restructure)
 
-## Architecture decisions
+- `pnpm --filter @aura/shared run build` — build `shared` first (server depends on it)
+- `pnpm --filter @aura/server run dev` — run the API server
+- `pnpm --filter @aura/server run typecheck`
+- DB: `drizzle-kit generate` → commit the SQL → `migrate` (see `docs/v1-schema.md`)
+- Required env: see the env-var list in `docs/v1-tasklist.md` (validated at boot, fail-closed)
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+## Critical rules
 
-## Product
+- **Follow `docs/`** — the architecture, schema, and task list are deliberate decisions.
+- **Don't build the frontend.** Append client-affecting changes to `docs/frontend-todo.md`.
+- **No hardcoded secrets** — Zod-validate env at boot and fail closed (replace the prototype's
+  `process.env.X ?? "fallback"` patterns; rename `SESSION_SECRET` → `JWT_SECRET`).
+- **Versioned migrations**, never `push` in shared/prod.
+- **Legal-review items** (retention numbers, `safety_events.flagged_content` retain-vs-scrub,
+  jurisdictions, policy wording) are **NOT to be guessed** — leave the defaults + flags for counsel.
+- Build the **`Moderator` interface (Phase 2) before the chat turn pipeline (Phase 3)** — they're
+  co-dependent.
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+## Where things live (target)
 
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- `server/src/` — layered `route → controller → service → db (repositories)`; see the server-structure
+  reference in `docs/v1-tasklist.md`. The chat turn pipeline + `Moderator`/`LLMProvider` interfaces
+  live under `server/src/services/`.
+- `shared/` — `@aura/shared` enum/DTO/constant catalog (`docs/v1-schema.md`).
+- `docs/` — the plan of record (start at `docs/README.md`).
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- The **iOS client can't be built/tested on Replit** (needs Mac + Xcode + simulator + EAS). This
+  workspace is the server; client work happens elsewhere.
+- The old `.replit` / `.replit-artifact/*` config targets the prototype's `artifacts/*` structure and
+  **needs rewriting** for `client/server/shared`.
+- If hosting on Replit instead of Render, use an **always-on Reserved VM** (not a sleeping instance)
+  so RevenueCat webhooks deliver within their retry window.
