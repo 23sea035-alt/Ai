@@ -352,6 +352,7 @@ inference cost at any real conversion rate.
   engine** (soft-delete `status`/`superseded_by` + `DELETE` ops + audit/rollback).
 - **Under-18 support** (COPPA + full SB 243 minor clauses + age assurance).
 - **Re-engagement / scheduled notifications.**
+- **Voice calls** (speech → STT → the existing turn pipeline → TTS; metered; needs an STT/TTS provider + a `voice_usage` table + transcript moderation through L0–L3).
 - **Android.**
 - **i18n / region-aware** crisis resources.
 - **Freeform companion authoring** (only after moderation is battle-tested).

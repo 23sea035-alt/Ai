@@ -4,6 +4,13 @@ Scoped to the decisions in [v1-architecture.md](v1-architecture.md). Ordered by 
 foundation → safety → chat → payments → compliance → polish. Items marked **(cleanup)** remove
 prototype scaffolding from the Replit-Agent build.
 
+## Ownership & coordination
+
+- **Backend / server — coworker (on Replit):** everything in the phases below except items tagged frontend. Express API, DB + migrations, moderation, memory, payments webhook, notifications, jobs, retention. **The coworker does NOT build the frontend.**
+- **Frontend / client — you (via Claude Code):** the Expo app, tracked in [frontend-todo.md](frontend-todo.md).
+- **Contract boundary:** `@aura/shared` (enums, Zod DTOs, constants). When the backend changes the contract, the client consumes the new shape; the coworker **appends any frontend implication to `frontend-todo.md`**.
+- Several items are [both] (e.g. input cap = server-enforce + client counter; Sign in with Apple = server-verify + client button) — coordinate via `@aura/shared`.
+
 ---
 
 ## Phase 0 — Foundation & hygiene
@@ -129,8 +136,8 @@ Principles: routes never touch db/services internals; services never see `req`/`
 Resolve in an implementation-kickoff session (a fresh session loading these docs is sufficient — the docs carry the state).
 
 **Product decisions (your call):**
-- [ ] **Voice scope** — defer to post-v1.0 *(recommended)* OR spec now (needs STT/TTS provider, a `voice_usage` metering table, transcript moderation through L0–L3). Currently half-committed (D4 "voice metered" + prototype `voice.ts`, but no schema/pipeline/tasks).
-- [ ] **Async-job substrate** — fire-and-forget-with-documented-loss vs a durable lightweight queue (`memory_jobs` table polled by an in-process interval worker, or pg-boss). Needed for async memory consolidation (D12) + retention jobs since D9 is a single request/response service. *(Recommend the durable lightweight option.)*
+- [x] **Voice scope — DECIDED: deferred to post-v1.0.** v1.0 is text-only. Voice = STT → the existing turn pipeline → TTS (a modality wrapper, not a separate AI); re-adds later with a provider + `voice_usage` metering table + transcript moderation. See Deferred section.
+- [x] **Async-job substrate — DECIDED: durable lightweight queue** (`memory_jobs` table polled by an in-process interval worker; pg-boss acceptable). Powers async memory consolidation (D12) + retention jobs. Lives in `server/src/services/jobs/`.
 
 **P0 — blockers / silently-wrong-if-guessed:**
 - [ ] Explicit Phase 0 task: **author + commit the initial Drizzle migration** for all 9 tables.
@@ -159,5 +166,6 @@ Resolve in an implementation-kickoff session (a fresh session loading these docs
 
 ## Deferred (post-v1.0) — do NOT build in v1.0
 
-True SSE streaming · Next.js web · real embeddings · under-18 support · re-engagement notifications ·
-Android · i18n/region crisis resources · freeform companion authoring · US web payment link-out.
+Voice calls (speech → turn pipeline → TTS; metered) · True SSE streaming · Next.js web · real embeddings ·
+under-18 support · re-engagement notifications · Android · i18n/region crisis resources ·
+freeform companion authoring · US web payment link-out.
