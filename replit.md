@@ -23,7 +23,9 @@ existing code as a sketch, not a foundation.
   `artifacts/*` + `lib/*` layout.)
 - DB: PostgreSQL on **Neon** + Drizzle ORM — **versioned migrations, NOT `drizzle-kit push`**.
 - LLM: **Groq** (Llama 3.1). Moderation: OpenAI omni + Groq gpt-oss-safeguard + prompt-guard
-  (layered, server-side, fail-closed). Payments: **RevenueCat + StoreKit**. Notifications: APNs.
+  (layered, server-side, fail-closed). **Auth: Clerk** (managed — email/password + Apple + Google;
+  reset/verification handled by Clerk; server verifies Clerk session tokens, webhook mirrors users).
+  Payments: **RevenueCat + StoreKit**. Notifications: APNs.
   Hosting: **Render** (or Replit always-on Reserved VM).
 
 ## Run & operate (after the Phase 0 restructure)
@@ -39,7 +41,9 @@ existing code as a sketch, not a foundation.
 - **Follow `docs/`** — the architecture, schema, and task list are deliberate decisions.
 - **Don't build the frontend.** Append client-affecting changes to `docs/frontend-todo.md`.
 - **No hardcoded secrets** — Zod-validate env at boot and fail closed (replace the prototype's
-  `process.env.X ?? "fallback"` patterns; rename `SESSION_SECRET` → `JWT_SECRET`).
+  `process.env.X ?? "fallback"` patterns). **Auth is Clerk-managed (D8):** verify the Clerk session
+  token server-side; there is **no app-minted JWT** — delete the prototype's `SESSION_SECRET`/JWT
+  logic. Add `CLERK_SECRET_KEY` / `CLERK_PUBLISHABLE_KEY` / `CLERK_WEBHOOK_SECRET`.
 - **Versioned migrations**, never `push` in shared/prod.
 - **Legal-review items** (retention numbers, `safety_events.flagged_content` retain-vs-scrub,
   jurisdictions, policy wording) are **NOT to be guessed** — leave the defaults + flags for counsel.
@@ -72,7 +76,9 @@ Replit Agent defaults to building whole apps in one pass; for this backend, **do
   live under `server/src/services/`.
 - `server/eval/` — **already on disk + committed:** the synthetic chat-pipeline eval corpus
   (`cases/` + the to-be-compiled `rubrics/`). Read `server/eval/cases/README.md`. The eval *harness*
-  is still to be built (this workspace); the cases/labels are the seed it runs against.
+  is still to be built (this workspace); the cases/labels are the seed it runs against. Note:
+  `cases/retrieval/` holds **Tier-1 deterministic** fixtures (consumed by the CI unit tests, not the
+  human report).
 - `shared/` — `@aura/shared` enum/DTO/constant catalog (`docs/v1-schema.md`).
 - `docs/` — the plan of record (start at `docs/README.md`).
 

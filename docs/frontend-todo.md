@@ -21,8 +21,8 @@
 ## Planned v1.0 frontend (from the rebuild plan)
 
 - [ ] **Monorepo wiring** — Metro config to resolve `@aura/shared` (`watchFolders` → repo root + `nodeModulesPaths`)
-- [ ] **Auth UI** — login/register, **real** forgot-password, **Sign in with Apple + Google** buttons; remove the silent local-user auth fallback in `AppContext`
-- [ ] **Age gate & onboarding** — DOB picker (18+), AI-disclosure screen, first/last-name capture; flow ends in atomic account creation
+- [ ] **Auth UI (Clerk)** — integrate `@clerk/clerk-expo`; build sign-in/sign-up + forgot-password + email-verification via Clerk hooks (**Clerk sends the reset/verification emails** — no custom flow), **Sign in with Apple + Google** via Clerk; persist the session in `expo-secure-store`; remove the silent local-user auth fallback in `AppContext`
+- [ ] **Age gate & onboarding** — DOB picker (18+), AI-disclosure screen, first/last-name capture; runs after Clerk sign-up and completes the local profile (the Clerk webhook creates the `users` mirror)
 - [ ] **Chat list** — wire to **real** companions (remove the hardcoded `CHATS` array + the id mismatch with `chat/[id]`)
 - [ ] **Chat conversation** — client-side **typing animation** on the (already-moderated) reply; render break-reminders, crisis responses, and the AI-disclosure banner; optimistic bubble keyed by `turn_id`, reconcile on re-fetch
 - [ ] **Input cap** — live char counter (count code points, not UTF-16) + block-send at `MAX_MESSAGE_CHARS`
@@ -38,4 +38,4 @@
 
 ## Backend-driven items (coworker appends as work lands)
 
-_(none yet — append `- [ ] <what changed on the backend> → <frontend implication>` here)_
+- [ ] **Auth → Clerk (D8, reverses in-house auth)** — all sign-in/up/forgot-password/email-verification + Apple/Google move to `@clerk/clerk-expo`; the server verifies the Clerk session token (no app JWT). → rebuild the Auth UI on Clerk (the "Auth UI (Clerk)" item above) and attach the Clerk session token to API requests. New client env: `CLERK_PUBLISHABLE_KEY`.

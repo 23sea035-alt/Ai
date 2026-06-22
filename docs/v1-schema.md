@@ -3,7 +3,7 @@
 **Status:** Locked · **Target:** the first Drizzle migration in `server/src/db/`
 **Last updated:** 2026-06-22 · **Companion doc:** [v1-architecture.md](v1-architecture.md) (decisions), [v1-tasklist.md](v1-tasklist.md) (build order)
 
-> Single source of truth for the v1.0 schema. 9 tables. Build this as a **versioned Drizzle
+> Single source of truth for the v1.0 schema. 8 tables (auth is Clerk-managed — D8). Build this as a **versioned Drizzle
 > migration** — not `drizzle-kit push`. Enums and shared types live in `@aura/shared`; the Drizzle
 > tables live in `server/src/db/` and import the enum constants from `shared`.
 
@@ -14,7 +14,7 @@
 - **Primary keys:** `uuid`, **app-generated UUIDv7** (time-ordered — preserves index locality on
   write-heavy tables; pairs with the client-minted `turn_id` idempotency model).
 - **Column naming:** **snake_case** in Postgres, **camelCase** in TypeScript — bridged by Drizzle's
-  `casing: 'snake_case'` setting (write `passwordHash: text()` → column `password_hash`).
+  `casing: 'snake_case'` setting (write `clerkUserId: text()` → column `clerk_user_id`).
 - **Enums:** **`text` + `CHECK` constraint**, values defined once in `@aura/shared` (NOT native
   Postgres `enum` types — those are painful to alter).
 - **Timestamps:** `timestamptz`, `default now()`; `updated_at` bumped via Drizzle `$onUpdate`.
@@ -32,7 +32,7 @@
 // ── enums (text + CHECK) ──────────────────────────────────────────────
 USER_STATUS            = ['active', 'suspended', 'banned', 'deleted']
 AGE_ASSURANCE_METHOD   = ['self_declared', 'apple_declared_age_range', 'third_party']  // apple_declared_age_range + third_party reserved for post-v1.0
-AUTH_PROVIDER          = ['password', 'apple', 'google']
+// AUTH_PROVIDER removed — auth providers (password/apple/google) are managed by Clerk (D8), not an app enum
 PERSONA_KEY            = ['aurora', 'orion', 'lyra']
 MESSAGE_ROLE           = ['user', 'assistant']
 MESSAGE_STATUS         = ['pending', 'complete', 'failed', 'blocked']   // 'pending' reserved for SSE (post-v1.0)
@@ -88,6 +88,7 @@ soft-delete anonymization (email is *tombstoned* instead, to free it for re-regi
 ```
 users
   id                      uuid PK                         -- UUIDv7
+  clerk_user_id           text  notNull UNIQUE            -- Clerk user id (the auth identity); synced by the Clerk webhook
   first_name              text  nullable                  -- onboarding source of truth; nulled on delete
   last_name               text  nullable                  -- nulled on delete
   email                   text  notNull UNIQUE            -- lowercased; tombstoned on delete
@@ -106,26 +107,19 @@ users
   updated_at              timestamptz notNull default now()
   deleted_at              timestamptz nullable            -- soft-delete marker
 ```
-Notes: user row is created **atomically at the end of onboarding** (provider auth + name + DOB
-collected first), so there's no half-populated window. Onboarding gate enforces presence of
-first/last/DOB for active accounts at the app layer.
+Notes: identity is created in **Clerk** first; the Clerk webhook (`user.created`) upserts the local
+mirror keyed by `clerk_user_id`. Onboarding then collects name + DOB and completes the row; the
+onboarding gate enforces presence of first/last/DOB for active accounts at the app layer.
 
-### 2. `auth_identities`
-One user ↔ many login methods (Supabase-Auth-style identity linking, built in-house). Password hash
-lives here, not on `users`, so OAuth-only accounts are valid.
+### 2. Auth identities → managed by Clerk (no local table)
 
-```
-auth_identities
-  id                uuid PK
-  user_id           uuid notNull FK -> users.id (on delete cascade)
-  provider          text notNull              -- AUTH_PROVIDER (CHECK): password|apple|google
-  provider_user_id  text nullable             -- Apple/Google stable 'sub'; null for password
-  password_hash     text nullable             -- only for provider='password' (bcrypt)
-  created_at        timestamptz notNull default now()
-  UNIQUE (provider, provider_user_id)
-  UNIQUE (user_id, provider)
-```
-Notes: key off `provider_user_id` (the OAuth `sub`), not email (Apple "Hide My Email" gives relays).
+v1.0 auth is **Clerk-managed** (D8): Clerk owns credentials, OAuth (Apple/Google) account linking,
+password reset, and email verification. There is **no `auth_identities` table** — the prototype's
+in-house identity store is removed. The only local link is **`users.clerk_user_id`** (the Clerk user
+id, unique), kept in sync by the **Clerk webhook** (`user.created` / `user.updated` / `user.deleted`
+→ mirror upsert / email sync / sever; svix-signed, idempotent on `svix-id`). Key off `clerk_user_id`,
+never email. *(This is why the live table count is **8**, not 9 — slot 2 is intentionally a note, not
+a table.)*
 
 ### 3. `companions`
 Per-user AI companions. `id` is opaque (NOT the old `aurora-{userId}` scheme) so a user can own
@@ -317,7 +311,7 @@ user↔transaction link (for chargebacks/disputes) or is fully anonymized on pur
 
 ## Migration / ops notes
 
-- One initial migration creating all 9 tables + enums-as-CHECK + indexes + FKs.
+- One initial migration creating all 8 tables + enums-as-CHECK + indexes + FKs.
 - `drizzle.config.ts`: add `out: "./migrations"`; generate → commit SQL → `migrate` on deploy.
 - Build order (CI + Render): `@aura/shared` compiles before `server` (tables import its enum constants).
 - Retention is enforced by scheduled jobs (purge, retention-expiry), not the schema — see

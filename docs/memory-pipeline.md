@@ -57,6 +57,12 @@ consolidate_memory({
 // empty ops array = NONE (nothing durable). No DELETE op in v1.0.
 ```
 
+> **`UPDATE id` is a short integer handle, not the DB UUID.** `memories.id` is a `uuid` (v1-schema §5),
+> but the consolidation pass is shown the dedup set with each memory under a small integer handle (the
+> `#id` rendered in the eval cards); the model returns that handle, and the server maps it back to the
+> row's `uuid` before writing — so the 8B never emits (or hallucinates) a UUID. The §2.6 validation
+> rejects any handle that wasn't in the set the pass was shown.
+
 ### 2.4 Prompt responsibilities
 - **Extract only durable, user-asserted facts** — not ephemera ("I'm tired today").
 - **Dedup semantically** — if a fact is already represented (even reworded), omit it.

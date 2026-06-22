@@ -16,7 +16,7 @@ This document is the operational schedule that tells the engineering/ops team **
 - Retention windows are enforced by **scheduled jobs**, not by memory or ad-hoc SQL.
 - A later legal review has a single, concrete artifact to mark up.
 
-**In scope:** all 9 v1.0 Postgres (Neon) tables, database backups, and data mirrored to third parties (Groq, RevenueCat/Apple).
+**In scope:** all 8 v1.0 Postgres (Neon) tables, database backups, and data mirrored to third parties (Groq, RevenueCat/Apple, Clerk).
 
 **Out of scope:** the user-facing privacy policy wording, marketing/analytics tooling (none in v1.0), and server/application logs beyond what is noted under §7.
 
@@ -26,8 +26,7 @@ This document is the operational schedule that tells the engineering/ops team **
 
 | Table | Holds |
 |---|---|
-| `users` | Identity, age-gate, entitlement cache, account status. PII columns nullable so they can be anonymized on delete; email tombstoned. |
-| `auth_identities` | Login methods per user (password hash, Apple/Google `sub`). One user ↔ many identities. |
+| `users` | Identity (incl. `clerk_user_id`), age-gate, entitlement cache, account status. PII columns nullable so they can be anonymized on delete; email tombstoned. Auth credentials live at **Clerk**, not here. |
 | `companions` | Per-user AI companions (persona, resolved traits, chat-list preview cache). |
 | `messages` | Chat messages (user + assistant), grouped by `turn_id`. The intimate conversation bulk. |
 | `memories` | Per-companion long-term facts extracted from conversations. Sensitive. |
@@ -90,7 +89,7 @@ On account deletion we **purge the intimate bulk** (conversations, memories, com
 | **`subscriptions` / financial mirror** | **up to 7 years** | Legal obligation (Art. 6(1)(c)) — tax/accounting; CCPA §1798.105(d)(8). RC/Apple = system of record | Retained; RevenueCat/Apple is authoritative, this is a mirror |
 | **Deletion audit record** (request id + timestamp, **no content**) | **long-term** | Accountability (Art. 5(2)) — proof of erasure | Never purged on the normal cycle; content-free by design |
 
-`device_tokens` and `auth_identities` are not standalone rows in this table — they cascade-purge with the account (see §5).
+`device_tokens` is not a standalone row in this table — it cascade-purges with the account (see §5). Auth identities live at **Clerk** (no local table); account deletion deletes the Clerk user (§4 / §5).
 
 > **`safety_events` tiering rationale & crosscutting rules.** Mature programs decouple content from signal (e.g. Anthropic keeps flagged content ~2yr but trust-&-safety *scores* ~7yr; OpenAI's abuse logs run a ~30-day baseline, exception-extended). Uniform full-content 24-month retention is the **highest-risk** option for special-category conversation data under CPRA's storage-limitation rule, so v1.0 splits the long-lived **signal** from the short-lived **raw content**:
 > - **Strip identifiers at ingestion.** The pseudonym↔identity key is stored separately and access-controlled, and is deleted once linkage is no longer needed — converting the pseudonymized metadata tier to **effectively anonymized**. Prefer **true anonymization over indefinite pseudonymization** for the long-lived layer; because free-text transcripts resist anonymization, that layer is **structured fields, not prose**.
@@ -127,7 +126,7 @@ Requests must be tied to a verified, authenticated session or a verified email m
    (recoverable)    account locked out of app; 30-day grace begins
                     ↓  (grace elapses, no recovery)
 3. HARD-PURGE       anonymize users row (null PII, tombstone email)
-   (irreversible)   cascade-purge companions/messages/memories/device_tokens/auth_identities
+   (irreversible)   cascade-purge companions/messages/memories/device_tokens; delete the Clerk user
                     set-null on safety_events identity FKs
                     upsert banned_identities hashes if ban applies
                     write deletion audit record (content-free)
@@ -145,7 +144,8 @@ Requests must be tied to a verified, authenticated session or a verified email m
 
 - **Groq (LLM):** Aura does **not** persist conversation data with Groq beyond the inference request. Confirm and document Groq's zero-retention / no-training stance for the API tier in use; if any retention exists, file a deletion/propagation step here. [Confirm contractual retention terms.]
 - **RevenueCat / Apple:** system of record for subscriptions. On account deletion, conversation/PII purge does **not** delete the financial record (legal-obligation basis). Propagate any required RevenueCat subscriber deletion/anonymization via their API where applicable, while preserving the regulatory financial record. [Confirm RC deletion API behavior and what Apple retains.]
-- Maintain a short **data-processor inventory** (Groq, RevenueCat, Neon, APNs) so propagation targets are explicit.
+- **Clerk (auth):** Clerk stores authentication credentials + OAuth identifiers (no local `auth_identities` table). On account deletion, delete the Clerk user via the Clerk API (which also fires `user.deleted` → local mirror sever). [Confirm Clerk DPA + deletion/retention terms.]
+- Maintain a short **data-processor inventory** (Groq, RevenueCat, Neon, APNs, Clerk) so propagation targets are explicit.
 
 ---
 
@@ -156,7 +156,7 @@ Behavior on **account hard-purge**. FK on-delete semantics are defined in [v1-sc
 | Table | Behavior | Detail |
 |---|---|---|
 | `users` | **Anonymize (soft-delete row kept)** | null `first_name`, `last_name`, `date_of_birth`; **tombstone** `email` (frees it for re-registration); `status='deleted'`; `deleted_at` set. Row is retained as the anchor for the tombstone + audit. |
-| `auth_identities` | **Cascade purge** | `on delete cascade` — login methods and any password hash removed with the user. |
+| _Clerk (auth)_ | **Delete Clerk user** | Not a local table — credentials/OAuth identifiers live at Clerk. On hard-purge, delete the Clerk user via API (fires `user.deleted` → mirror sever). [Confirm Clerk retention/deletion terms.] |
 | `companions` | **Cascade purge** | `on delete cascade` — companions removed. |
 | `messages` | **Cascade purge** | `on delete cascade` — the intimate conversation bulk removed. |
 | `memories` | **Cascade purge** | `on delete cascade` — extracted personal facts removed. (`memories.source_message_id` is `set null`, but the rows themselves cascade with the user.) |

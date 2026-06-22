@@ -111,16 +111,30 @@ Monetized via subscription (free tier with daily message cap; premium unlimited)
   self-attestation is the common baseline but regulators are tightening on age assurance — revisit
   if expanding audience or regions.
 
-### D8 — Auth: email/password + Sign in with Apple + Google
-- **Decision:** Email/password (with a **real** password reset), **Sign in with Apple**, and
-  **Google** sign-in. No guest/anonymous accounts in v1.0.
-- **Why:** An account is required to age-gate, bill, and persist. Apple mandates Sign in with Apple
-  when any other social login (Google) is offered — so all three are consistent.
-- **Consequences:** Replace the current no-op forgot-password
-  ([app/(auth)/forgot-password.tsx](../artifacts/aura-ai/app/(auth)/forgot-password.tsx)) with a
-  real email reset. Add OAuth flows (Apple, Google) + account linking. Remove the silent local-user
-  auth fallback in [context/AppContext.tsx](../artifacts/aura-ai/context/AppContext.tsx) that
-  fabricates a user and hides failures.
+### D8 — Auth: Clerk-managed (email/password + Sign in with Apple + Google)
+- **Decision:** **Clerk** is the managed auth provider. It owns email/password, **Sign in with Apple**,
+  and **Google** sign-in, plus password reset, email verification, and provider account-linking. No
+  guest/anonymous accounts in v1.0. *(Reverses the original "build auth in-house" — a deliberate change
+  because the in-house path required hand-building reset + verification **and** a transactional-email
+  vendor + verified sending domain, which is out of v1.0 scope. Mirrors the `ai-humanizer-app` pattern.)*
+- **Why:** An account is required to age-gate, bill, and persist. Apple mandates Sign in with Apple when
+  any other social login (Google) is offered — Clerk provides all three. Clerk also absorbs the entire
+  password-reset / email-verification surface (including the email sender) and removes a chunk of
+  credential-handling attack surface — we never store password hashes.
+- **How:** Client uses `@clerk/clerk-expo` (UI wired via Clerk hooks; native Sign-in-with-Apple flow on
+  iOS). Server verifies the Clerk **session token** on every request (`@clerk/express` / `@clerk/backend`)
+  — there is **no app-minted JWT** (`JWT_SECRET` is gone). A **Clerk webhook** (svix-signed, idempotent on
+  `svix-id`) mirrors users into the local `users` table on `user.created` / `user.updated` /
+  `user.deleted`, keyed by `users.clerk_user_id`; the ban-evasion check runs on `user.created`.
+- **Consequences:** Replace the prototype's in-house auth — **no `auth_identities` table / `password_hash`**
+  (Clerk owns credentials + linking → `users` carries `clerk_user_id` only; the schema drops to **8 tables**).
+  Delete the no-op forgot-password screen and the silent local-user fallback in
+  [context/AppContext.tsx](../artifacts/aura-ai/context/AppContext.tsx). Add Clerk as a sub-processor in the
+  privacy/retention docs; on account deletion, propagate by deleting the Clerk user. Client-affecting →
+  tracked in [frontend-todo.md](frontend-todo.md).
+- **Risk:** Clerk's Expo/RN SDK is less battle-tested than its web SDK — **de-risk with a small Expo auth
+  spike early** (email/password + Apple + server-side session verification end-to-end) before the rest of
+  Phase 1.
 
 ### D9 — Production API hosting: Render
 - **Decision:** Run the Express API on **Render** (always-on/autoscale, streaming-capable HTTPS).

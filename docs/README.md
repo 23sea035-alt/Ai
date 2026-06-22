@@ -18,7 +18,7 @@ Monetized via a single **$9.99/month** premium subscription (free tier: **30 mes
 
 1. **[v1-architecture.md](v1-architecture.md)** — the 12 locked decisions (D1–D12) + moderation
    pipeline, chat turn model, cost & data-retention models, server structure, deferred work. The "why."
-2. **[v1-schema.md](v1-schema.md)** — the **9-table** Postgres/Drizzle schema + the `@aura/shared`
+2. **[v1-schema.md](v1-schema.md)** — the **8-table** Postgres/Drizzle schema (auth is Clerk-managed) + the `@aura/shared`
    enum/constant catalog + the deletion/retention model. Build the first migration from this.
 3. **[v1-tasklist.md](v1-tasklist.md)** — the phased, dependency-ordered build plan + the **"Open
    implementation decisions & gaps"** punch list + the **server structure** reference.
@@ -61,6 +61,8 @@ building moderation, memory, and chat (`v1-architecture.md` D1/D5/D6/D12 is the 
   turn model** with client-minted `turn_id` (idempotency + reconciliation).
 - **Layered server-side moderation** (deterministic → prompt-guard → OpenAI omni → gpt-oss-safeguard),
   **fail-closed**; **per-companion keyword memory** via an **async LLM consolidation** pass.
+- **Auth: Clerk-managed** (email/password + Sign in with Apple + Google; reset/verification handled by
+  Clerk), webhook-mirrored into `users.clerk_user_id` — no in-house credentials/JWT.
 - **Payments: RevenueCat + StoreKit**, $9.99/mo (Apple Small Business Program 15%).
 - **Hosting: Render** (`starter`/always-on so RevenueCat webhooks deliver).
 - **3×3×3 personas** (3 vetted base personas + structured traits; tuning + extra companions are premium).
@@ -75,7 +77,7 @@ building moderation, memory, and chat (`v1-architecture.md` D1/D5/D6/D12 is the 
 ## Recommended first steps (backend)
 
 1. **Phase 0:** restructure to `client/server/shared`; create `@aura/shared`; **author + commit the
-   initial Drizzle migration** (all 9 tables from `v1-schema.md`); Zod **env validation** at boot
+   initial Drizzle migration** (all 8 tables from `v1-schema.md`); Zod **env validation** at boot
    (fail-closed, no secret fallbacks); add `render.yaml`.
 2. Knock out the **P0 punch-list** items early (response/error envelope, `userId`→UUID, etc. — see
    `v1-tasklist.md` → "Open implementation decisions & gaps").

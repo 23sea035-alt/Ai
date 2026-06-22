@@ -9,7 +9,7 @@ prototype scaffolding from the Replit-Agent build.
 - **Backend / server — coworker (on Replit):** everything in the phases below except items tagged frontend. Express API, DB + migrations, moderation, memory, payments webhook, notifications, jobs, retention. **The coworker does NOT build the frontend.**
 - **Frontend / client — you (via Claude Code):** the Expo app, tracked in [frontend-todo.md](frontend-todo.md).
 - **Contract boundary:** `@aura/shared` (enums, Zod DTOs, constants). When the backend changes the contract, the client consumes the new shape; the coworker **appends any frontend implication to `frontend-todo.md`**.
-- Several items are [both] (e.g. input cap = server-enforce + client counter; Sign in with Apple = server-verify + client button) — coordinate via `@aura/shared`.
+- Several items are [both] (e.g. input cap = server-enforce + client counter; Clerk auth = client `@clerk/clerk-expo` + server session-verify) — coordinate via `@aura/shared`.
 
 ---
 
@@ -32,9 +32,9 @@ prototype scaffolding from the Replit-Agent build.
 ## Phase 1 — Auth (D7, D8)
 
 - [ ] Enforce **18+** self-attestation at registration; App Store age rating 17+
-- [ ] Email/password with bcrypt + JWT (keep), add **real password reset** via email **(cleanup: replace no-op `forgot-password.tsx`)**
-- [ ] **Sign in with Apple**
-- [ ] **Google** sign-in + account linking
+- [ ] **Integrate Clerk** (D8): client `@clerk/clerk-expo`; server verifies the Clerk **session token** per request (`@clerk/express`/`@clerk/backend`) — no app-minted JWT/bcrypt. Clerk owns email/password, password reset, and email verification **(cleanup: delete the no-op `forgot-password.tsx` + any local JWT/bcrypt code)**
+- [ ] **Sign in with Apple + Google via Clerk** — provider creds configured in the Clerk dashboard (not server env); native Apple flow on iOS; Clerk handles account linking
+- [ ] **Clerk webhook** (`/webhooks/clerk`, svix-signed, idempotent on `svix-id`) → mirror users into `users` (`clerk_user_id`) on `user.created`/`updated`/`deleted`; run the **ban-evasion check** on `user.created`
 - [ ] Remove silent local-user auth fallback in `AppContext.tsx` **(cleanup)**
 - [ ] Add a route guard so `(tabs)` is unreachable without a real session
 - [ ] Keep `isMinor` plumbing dormant (future minor support)
@@ -125,7 +125,7 @@ Layered: route → controller → service → db (repositories). Maps additively
   - `moderation/` — `moderator.ts` (interface + L0→L3 orchestrator, fail-closed + degradation ladder), `deterministic.ts`, `prompt-guard.ts`, `openai-omni.ts`, `safeguard.ts`, `crisis.ts`
   - `memory/` — `retrieval.ts`, `consolidation.ts` (async), `keywords.ts`
   - `llm/` — `provider.ts` (interface) + `groq.ts`
-  - `auth/` — `auth.service.ts`, `password.ts`, `oauth.ts` (apple/google), `tokens.ts`
+  - `auth/` — `clerk.middleware.ts` (verify Clerk session → `AuthRequest`), `auth.service.ts` (local user upsert/lookup + ban check); Clerk webhook under `webhooks/clerk.ts`. (No `password.ts`/`oauth.ts`/`tokens.ts` — Clerk owns credentials/OAuth/sessions.)
   - `payments/` — `revenuecat.ts` (webhook verify → upsert subs + flip `is_premium`), `entitlements.ts`
   - `notifications/apns.ts` · `account/` — `deletion.ts` (tiered purge), `export.ts`
   - `jobs/` — worker substrate + `memory-consolidation.job.ts` + `retention.job.ts`
@@ -144,7 +144,7 @@ Resolve in an implementation-kickoff session (a fresh session loading these docs
 - [x] **Async-job substrate — DECIDED: durable lightweight queue** (`memory_jobs` table polled by an in-process interval worker; pg-boss acceptable). Powers async memory consolidation (D12) + retention jobs. Lives in `server/src/services/jobs/`.
 
 **P0 — blockers / silently-wrong-if-guessed:**
-- [ ] Explicit Phase 0 task: **author + commit the initial Drizzle migration** for all 9 tables.
+- [ ] Explicit Phase 0 task: **author + commit the initial Drizzle migration** for all 8 tables.
 - [ ] **`userId` numeric → UUIDv7** breaking change across auth/chat/memory/safety/payments + JWT payload + `AuthRequest` — explicit early task.
 - [ ] **Response/error envelope** (`{success,data?,error?,meta?}`) + client-switchable error codes (`LIMIT_REACHED` 429, `BLOCKED`, `CRISIS`); centralize in `lib/response.ts` + `error-handler.ts`.
 
@@ -164,7 +164,7 @@ Resolve in an implementation-kickoff session (a fresh session loading these docs
 - [ ] Graceful shutdown (drain in-flight turns + jobs on SIGTERM — Render sends it on deploy).
 - [ ] Transactions: `turn_id` unique-violation handling; `companions.last_message`/`message_count` in one DB transaction.
 
-**Env vars to publish:** `DATABASE_URL`, `JWT_SECRET` (no fallback), `GROQ_API_KEY`, `OPENAI_API_KEY`, `REVENUECAT_WEBHOOK_SECRET`, `APNS_*`, `APPLE_OAUTH_*`, `GOOGLE_OAUTH_*`, `BANNED_IDENTITY_PEPPER`, `SENTRY_DSN`, `PORT`, `NODE_ENV`, `APNS_ENVIRONMENT`.
+**Env vars to publish:** `DATABASE_URL`, `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `CLERK_WEBHOOK_SECRET`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `REVENUECAT_WEBHOOK_SECRET`, `APNS_*`, `BANNED_IDENTITY_PEPPER`, `SENTRY_DSN`, `PORT`, `NODE_ENV`, `APNS_ENVIRONMENT`. *(Clerk replaces `JWT_SECRET`; Apple/Google OAuth creds live in the Clerk dashboard, not server env.)*
 
 **Ordering fixes:** Phase 2 (moderation) and Phase 3 (chat turn) are co-dependent — build the `Moderator` interface before the turn pipeline; secret-fallback removal (Phase 0) must land with/before Phase 1 auth.
 

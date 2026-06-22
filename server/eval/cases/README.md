@@ -99,9 +99,9 @@ need explicit sign-off before promotion into the regression gate:
 | File | Cases | Why safety-critical |
 |---|---|---|
 | `moderation/jailbreak.json` | all | jailbreak/adversarial labels (rephrased public taxonomies) |
-| `moderation/labeled.json` | `sexual/minors`, `self-harm*` cases | zero-tolerance + crisis-route labels |
+| `moderation/labeled.json` | `sexual/minors`, `self-harm*`, `illicit/violent` cases | zero-tolerance + crisis-route + hard-block labels |
 | `moderation/output-side.json` | `self-harm` draft | output-side self-harm = suppress (NOT crisis) — easy to mislabel |
-| `consolidation/consolidation.json` | `skip-flagged` cases | crisis/health skip-rule (storing it re-injects harm) |
+| `consolidation/consolidation.json` | `skip-flagged` cases + the allergy boundary (`con-009`) | crisis/health skip-rule (storing it re-injects harm) |
 | `generation/generation.json` | corner / crisis / sexual-minors / injection exemplars | safety-hold at the most-permissive corner |
 
 Non-safety cases (the `allow`/over-block/persona/dedup/retrieval data) and the easy-tier rubric can be
