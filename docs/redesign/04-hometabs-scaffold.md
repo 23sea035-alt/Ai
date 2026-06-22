@@ -40,12 +40,25 @@ One line per tab (stub placeholder text — NOT a design brief):
 - **you** — the account hub (profile, subscription, privacy & safety, support).
 
 ### Navpill & flow wiring
-A clean **3-tab navpill — NO center "+" FAB.** `Shell` tracks the active tab (`home` default); tapping a
-pill switches tabs (active pill uses the one warm accent — outline icon → filled when active). Chat and
-other pushed screens are **separate artifacts** (built from `05`) — from a stub, a primary CTA may
-deep-link by filename (e.g. `Chat.html`) or be inert. The dev rail jumps to any tab/state.
+A clean **3-tab navpill — NO center "+" FAB** — rendered as a **floating overlay, never a docked footer**:
+- `position: absolute` at the bottom, `z-index` above the screen; each tab screen fills the **full**
+  frame and its content scrolls **underneath** the bar (the bar floats on top, it owns no layout space).
+- **Warm surface, no gray:** the sheet/raised token (`#FFFCF6` light / `#2E2820` dark) + a soft **warm**
+  shadow (elevation e2/e3, `rgba(60,40,25,…)`) + optional hairline warm border — **never a gray or
+  system-default background.**
+- **Detached:** a small horizontal inset + a gap above the home indicator (Cash-App style) so it reads
+  as floating; respect the bottom safe area (don't overlap the home indicator).
+- **Content clearance:** each tab screen gets bottom padding = bar height + the home-indicator gap so
+  content is never hidden behind the floating bar.
+- Active pill uses the one warm accent (outline icon → filled when active).
+
+`Shell` tracks the active tab (`home` default); tapping a pill switches tabs. Chat and other pushed
+screens are **separate artifacts** (built from `05`) — from a stub, a primary CTA may deep-link by
+filename (e.g. `Chat.html`) or be inert. The dev rail jumps to any tab/state.
 
 ### Guardrails
 - **Stubs only** — do not design tab content here (that's `screens/hometabs.md`).
 - **3 tabs: Home · Companions · You. No FAB.** Chat is pushed, not a tab.
+- **Navpill = floating overlay** — warm token surface + soft warm shadow, content scrolls under it;
+  **never a solid gray footer band.**
 - **Frame scales to fit** via `DevStage` — no page scroll. **Both themes**, tokens only, dev rail wired.
