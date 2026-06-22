@@ -72,3 +72,22 @@ Monetized via a single **$9.99/month** premium subscription (free tier: **30 mes
   the existing `.replit` will need rewriting for the new layout.
 - Hosting in the plan is **Render**. If you'd rather stay on Replit, use an **always-on Reserved VM**
   (not a sleeping instance) so webhook delivery (RevenueCat) is reliable.
+
+## Replit setup (for the coworker)
+
+Three Replit levers reinforce the plan — set them up before building:
+
+1. **`replit.md`** (repo root) — the Agent reads it every session; it points here and states the build protocol.
+2. **Skills** (already in `.agents/skills/`) — Replit auto-applies these when relevant:
+   `incremental-backend-build` (the guardrail), `database-migrations`, `api-design`, `backend-patterns`,
+   `cost-aware-llm-pipeline`, `ai-regression-testing`.
+3. **Custom Instructions** (set once in Replit → workspace settings; auto-injected every session). Suggested:
+   > Work the task list in `docs/v1-tasklist.md` ONE phase at a time. Do not build the whole backend in
+   > one pass — each subsystem (moderation, chat turn pipeline, payments, memory) gets its own focused
+   > effort. After each task: typecheck + tests pass, no `console.*` or hardcoded secrets, then commit.
+   > Stop and confirm at the end of each phase. Backend/server only — do not build the frontend; append
+   > client-affecting changes to `docs/frontend-todo.md`. Don't guess the legal-review items.
+
+> **Why:** Replit Agent is designed to build whole apps in one pass; these three layers (plus the
+> `incremental-backend-build` skill) push it to give each subsystem real depth instead of a diluted
+> all-at-once scaffold.

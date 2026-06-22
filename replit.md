@@ -46,6 +46,25 @@ existing code as a sketch, not a foundation.
 - Build the **`Moderator` interface (Phase 2) before the chat turn pipeline (Phase 3)** — they're
   co-dependent.
 
+## Build protocol (work incrementally — do NOT build everything at once)
+
+Replit Agent defaults to building whole apps in one pass; for this backend, **don't.**
+
+- Work `docs/v1-tasklist.md` **in order, one phase (and one task) at a time.**
+- Each subsystem (moderation, chat turn pipeline, payments/webhook, memory consolidation, auth) is
+  substantial — give it **focused depth**, not a diluted all-at-once scaffold.
+- **One task ≈ one commit.** Definition of Done before the next: typecheck passes, tests for that unit
+  pass, no `console.*`/hardcoded secrets, committed.
+- **Stop and confirm at the end of each phase.** Full rules: the `incremental-backend-build` skill.
+
+## Skills & customization
+
+- Project skills live in **`.agents/skills/`** (Replit applies them when relevant):
+  `incremental-backend-build` (the guardrail), `database-migrations`, `api-design`, `backend-patterns`,
+  `cost-aware-llm-pipeline`, `ai-regression-testing`.
+- Also set **Custom Instructions** in your Replit workspace (always-on) — suggested text is in
+  `docs/README.md` → "Replit setup."
+
 ## Where things live (target)
 
 - `server/src/` — layered `route → controller → service → db (repositories)`; see the server-structure
