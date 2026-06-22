@@ -99,7 +99,7 @@ Monetized via subscription (free tier with daily message cap; premium unlimited)
   (not percentages) are testable and map predictably to behavior.
 - **Consequences:** Store selections on the existing `companions.traits` jsonb column. Assemble the
   prompt server-side as base persona + 3 modifier snippets wrapped by a **fixed, non-overridable
-  safety preamble**. Smoke-test the most permissive corner (high warmth + playful + expansive).
+  safety preamble**. Smoke-test the most permissive corner (affectionate warmth + playful + expansive).
 
 ### D7 — Minimum age: 18+ adults only
 - **Decision:** Self-attested **18+** (App Store 17+ rating). No under-18 support in v1.0.
@@ -273,7 +273,7 @@ on-failure.
 ## 5. Persona model
 
 - 3 personas (Aurora / Orion / Lyra) × 3 **orthogonal** axes × 3 discrete levels.
-  Suggested axes: `warmth` (low/med/high), `energy` (calm/balanced/playful),
+  Suggested axes: `warmth` (reserved/warm/affectionate), `energy` (calm/balanced/playful),
   `verbosity` (concise/balanced/expansive).
 - Stored on `companions.traits` (jsonb). Prompt assembled server-side: base persona + 3 modifier
   snippets, wrapped by the fixed safety preamble.

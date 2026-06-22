@@ -31,7 +31,7 @@
 ```ts
 // ── enums (text + CHECK) ──────────────────────────────────────────────
 USER_STATUS            = ['active', 'suspended', 'banned', 'deleted']
-AGE_ASSURANCE_METHOD   = ['self_declared', 'apple_declared_age_range', 'third_party']
+AGE_ASSURANCE_METHOD   = ['self_declared', 'apple_declared_age_range', 'third_party']  // apple_declared_age_range + third_party reserved for post-v1.0
 AUTH_PROVIDER          = ['password', 'apple', 'google']
 PERSONA_KEY            = ['aurora', 'orion', 'lyra']
 MESSAGE_ROLE           = ['user', 'assistant']
@@ -199,7 +199,7 @@ safety_events
   companion_id    uuid nullable FK -> companions.id (on delete set null)
   message_id      uuid nullable FK -> messages.id   (on delete set null)
   event_type      text notNull          -- SAFETY_EVENT_TYPE (CHECK)
-  source          text notNull          -- SAFETY_SOURCE (CHECK): input|output|injection
+  source          text notNull          -- SAFETY_SOURCE (CHECK): input|output|injection (crisis_detected → 'input')
   category        text nullable         -- MODERATION_CATEGORY (CHECK)
   model           text nullable         -- MODERATOR_MODEL
   severity        text notNull default 'info'   -- SAFETY_SEVERITY (CHECK)

@@ -102,6 +102,61 @@ prototype scaffolding from the Replit-Agent build.
 
 ---
 
+## Server structure (`server/src/`) — reference
+
+Layered: route → controller → service → db (repositories). Maps additively onto the prototype's `routes/` + `services/` + `middleware/`.
+
+- `config/` — Zod-validated env (`env.ts`, fail-closed at boot) + server-only constants
+- `routes/` — HTTP only (path + verb + middleware → controller)
+- `controllers/` — validate (Zod from `@aura/shared`) → call service → response envelope; thin
+- `services/`
+  - `chat/` — `turn-pipeline.ts` (server-authoritative turn), `prompt-assembler.ts` (persona+traits+safety+memory+history, trim-to-fit), `free-tier.ts`, `break-reminder.ts`
+  - `moderation/` — `moderator.ts` (interface + L0→L3 orchestrator, fail-closed + degradation ladder), `deterministic.ts`, `prompt-guard.ts`, `openai-omni.ts`, `safeguard.ts`, `crisis.ts`
+  - `memory/` — `retrieval.ts`, `consolidation.ts` (async), `keywords.ts`
+  - `llm/` — `provider.ts` (interface) + `groq.ts`
+  - `auth/` — `auth.service.ts`, `password.ts`, `oauth.ts` (apple/google), `tokens.ts`
+  - `payments/` — `revenuecat.ts` (webhook verify → upsert subs + flip `is_premium`), `entitlements.ts`
+  - `notifications/apns.ts` · `account/` — `deletion.ts` (tiered purge), `export.ts`
+  - `jobs/` — worker substrate + `memory-consolidation.job.ts` + `retention.job.ts`
+- `db/` — `client.ts` (Neon + drizzle casing), `schema/` (one file/table; import enums from `@aura/shared`), `repositories/` (keep Drizzle out of services), `migrations/`
+- `middleware/` — `auth.ts`, `validate.ts`, `rate-limit.ts`, `error-handler.ts` (Express 5, mounted last), `not-found.ts`, `request-context.ts`
+- `lib/` — `logger.ts` (pino), `errors.ts` (AppError hierarchy), `response.ts` (envelope), `crypto.ts` (banned-identity hashing)
+
+Principles: routes never touch db/services internals; services never see `req`/`res`; Drizzle behind repositories; `Moderator` + `LLMProvider` are interfaces (model/provider churn = config).
+
+## Open implementation decisions & gaps (from audit 2026-06-22)
+
+Resolve in an implementation-kickoff session (a fresh session loading these docs is sufficient — the docs carry the state).
+
+**Product decisions (your call):**
+- [ ] **Voice scope** — defer to post-v1.0 *(recommended)* OR spec now (needs STT/TTS provider, a `voice_usage` metering table, transcript moderation through L0–L3). Currently half-committed (D4 "voice metered" + prototype `voice.ts`, but no schema/pipeline/tasks).
+- [ ] **Async-job substrate** — fire-and-forget-with-documented-loss vs a durable lightweight queue (`memory_jobs` table polled by an in-process interval worker, or pg-boss). Needed for async memory consolidation (D12) + retention jobs since D9 is a single request/response service. *(Recommend the durable lightweight option.)*
+
+**P0 — blockers / silently-wrong-if-guessed:**
+- [ ] Explicit Phase 0 task: **author + commit the initial Drizzle migration** for all 9 tables.
+- [ ] **`userId` numeric → UUIDv7** breaking change across auth/chat/memory/safety/payments + JWT payload + `AuthRequest` — explicit early task.
+- [ ] **Response/error envelope** (`{success,data?,error?,meta?}`) + client-switchable error codes (`LIMIT_REACHED` 429, `BLOCKED`, `CRISIS`); centralize in `lib/response.ts` + `error-handler.ts`.
+
+**P1 — correctness/security:**
+- [ ] Zod request-validation middleware; turn/auth/companion DTO schemas in `@aura/shared`.
+- [ ] Boot-time env validation (`config/env.ts`, fail-closed) + published env-var list.
+- [ ] Moderation **degradation ladder** (behavior when OpenAI omni is down, given fail-closed).
+- [ ] pino everywhere (no `console.*`); never log `flagged_content`/message content; request-id correlation.
+- [ ] RevenueCat webhook: signature verify, idempotency on `original_transaction_id`, sandbox-vs-prod, out-of-order events.
+- [ ] Rate-limit topology: per-user chat limiter + per-minute anti-abuse ceiling + auth brute-force limiter + webhook exemption (replace coarse global 100/15min).
+- [ ] `is_premium` staleness reconciliation (scheduled RC poll or app-foreground refresh).
+- [ ] **Seed the 3 default companions** on registration/onboarding (no task does this today).
+- [ ] Crisis path: high-precision keyword tuning + eval; crisis reply is a fixed template (not LLM).
+
+**P2 — quality bar:**
+- [ ] vitest layout: moderation evasion suite, prompt-assembler trim-to-fit, retrieval scoring, deletion tiering, turn-pipeline integration, webhook idempotency; 80% target.
+- [ ] Graceful shutdown (drain in-flight turns + jobs on SIGTERM — Render sends it on deploy).
+- [ ] Transactions: `turn_id` unique-violation handling; `companions.last_message`/`message_count` in one DB transaction.
+
+**Env vars to publish:** `DATABASE_URL`, `JWT_SECRET` (no fallback), `GROQ_API_KEY`, `OPENAI_API_KEY`, `REVENUECAT_WEBHOOK_SECRET`, `APNS_*`, `APPLE_OAUTH_*`, `GOOGLE_OAUTH_*`, `BANNED_IDENTITY_PEPPER`, `SENTRY_DSN`, `PORT`, `NODE_ENV`, `APNS_ENVIRONMENT`.
+
+**Ordering fixes:** Phase 2 (moderation) and Phase 3 (chat turn) are co-dependent — build the `Moderator` interface before the turn pipeline; secret-fallback removal (Phase 0) must land with/before Phase 1 auth.
+
 ## Deferred (post-v1.0) — do NOT build in v1.0
 
 True SSE streaming · Next.js web · real embeddings · under-18 support · re-engagement notifications ·

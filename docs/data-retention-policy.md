@@ -149,11 +149,11 @@ Behavior on **account hard-purge**. FK on-delete semantics are defined in [v1-sc
 | `messages` | **Cascade purge** | `on delete cascade` — the intimate conversation bulk removed. |
 | `memories` | **Cascade purge** | `on delete cascade` — extracted personal facts removed. (`memories.source_message_id` is `set null`, but the rows themselves cascade with the user.) |
 | `safety_events` | **Retain, set-null identity** | `user_id` / `companion_id` / `message_id` → null. Evidence body retained; identity severed. Purged later by the 24-month retention-expiry job. |
-| `subscriptions` | **Retain (financial)** | Schema FK is `on delete cascade`, but the **policy overrides** this: do **not** hard-delete the `users` row while a financial-retention obligation is active. Anonymize/tombstone the user, keep the subscription mirror, and rely on RC/Apple as system of record. [Reconcile schema cascade vs financial retention with counsel — see §9.] |
+| `subscriptions` | **Retain (financial), identity severed** | FK is `on delete set null` — the subscription mirror survives with `user_id = null`, preserving the financial record (RC/Apple = system of record). |
 | `device_tokens` | **Cascade purge** | `on delete cascade` — push tokens removed. |
 | `banned_identities` | **Retain (hash only)** | Not deleted on account purge. `source_user_id` is `set null` (identity severed); `identifier_hash` retained. Purged by the 24-month / ban-lifted job. |
 
-> **Cascade vs. anonymize conflict (`subscriptions`):** the schema marks `subscriptions.user_id` as `on delete cascade`, but we never physically delete the `users` row during the financial-retention window — we anonymize it. So the cascade does not fire in practice. This is intentional but **must be confirmed**: either keep the user row anonymized for up to 7 years, or detach the subscription record from the user before deletion. Flagged in §9.
+> **`subscriptions` retention:** FK is `on delete set null` (not cascade) — so the financial mirror survives even if the `users` row is later hard-purged, with `user_id` set to null (identity severed). The only open question (for counsel) is whether to keep the user↔transaction link for chargeback/dispute handling rather than anonymizing — see §9.
 
 ---
 
@@ -224,7 +224,7 @@ These are **deliberately unresolved** — to be set by counsel, not invented her
 1. **Exact retention numbers** — every window in §3 is a recommended default (30-day grace, ≤ 90-day backups, 24-month safety/ban, up to 7-year financial). Confirm or adjust.
 2. **`safety_events.flagged_content`** — retain **in full** (verbatim flagged content + context) vs. **scrub to metadata** (categories/severity/timestamps only). This is the single biggest sensitivity decision; the column is marked SENSITIVE in the schema.
 3. **Served jurisdictions** — US-only vs. EEA/UK. Determines whether GDPR applies at all, which response deadline governs, and whether the GDPR Art. 17(3) bases are even in play. Drives much of this document.
-4. **`subscriptions` cascade vs. financial retention** — reconcile the schema's `on delete cascade` on `subscriptions.user_id` with the policy of retaining the financial mirror for up to 7 years while anonymizing (not deleting) the user row (see §5).
+4. **`subscriptions` financial link** — whether the retained financial mirror keeps the user↔transaction link (useful for chargebacks/disputes) or is fully anonymized (`user_id`→null) on purge.
 5. **Third-party retention terms** — confirm Groq's API-tier retention/no-training stance and RevenueCat/Apple deletion-propagation behavior, then lock the §4 propagation steps.
 6. **Pepper-rotation strategy** for `banned_identities` (§6).
 7. **Log retention + PII scrubbing** window (§7).
