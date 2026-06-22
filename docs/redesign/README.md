@@ -11,7 +11,8 @@ playbook successfully (same Expo/React Native stack).
 
 - **Direction:** "Warm Sanctuary" — warm, calm, human, trustworthy. Deliberately *off* the cold
   cosmic/purple/neon/glassmorphism default (that look reads as vibe-coded).
-- **Palette + type:** *guided reselect* — Claude Design proposes 2–3 options; we approve before screens.
+- **Palette + type:** **LOCKED — Option A "Reading Nook"**: Newsreader (display) × Hanken Grotesk (body),
+  terracotta accent on warm paper; warm-light + warm-dark. Full tokens in [`approved-tokens.md`](approved-tokens.md).
 - **Platform:** iOS, native (Expo / React Native). Frame = iPhone 16 Pro (402×874 pt).
 - **Navigation:** 3 tabs — **Home · Companions · You**. Chat is a pushed screen.
 - **Onboarding flow:** one-page Welcome (value prop) → auth (swappable) → **3-screen carousel
@@ -26,6 +27,7 @@ playbook successfully (same Expo/React Native stack).
 | File | Role |
 |---|---|
 | [`00-foundation.md`](00-foundation.md) | **Paste first.** Project + Warm Sanctuary mood + the palette/type proposal workflow + the technical scaffold conventions (ios-frame, dev rail, tokens). |
+| [`approved-tokens.md`](approved-tokens.md) | **LOCKED palette + type (Option A — Reading Nook)** — the concrete token set every screen builds from. Paste as the system; replaces `00`'s Step-1 proposal. |
 | [`01-doctrine.md`](01-doctrine.md) | Standing design rules — the anti-"vibe-coded" doctrine + the completeness/accessibility gate. Our grading rubric. |
 | [`02-demo-persona.md`](02-demo-persona.md) | The **one coherent demo persona** (user + companion + conversation + memories) that threads through every screen so the prototype tells one story. |
 | [`03-onboarding-scaffold.md`](03-onboarding-scaffold.md) | **Scaffold** (stubs + nav + dev rail) for `Onboarding.html`. |

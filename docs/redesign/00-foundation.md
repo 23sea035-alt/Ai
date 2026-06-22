@@ -8,6 +8,10 @@
 
 ---
 
+> **Palette/type is now LOCKED to Option A ("Reading Nook").** In new sessions, skip Step 1's
+> proposal and paste [`approved-tokens.md`](approved-tokens.md) as the system. Step 1 below is kept for
+> reference / provenance only.
+
 ## FOUNDATION PROMPT
 
 You are designing the complete visual identity and native iOS UI for **Aura AI**. Work in two steps:
