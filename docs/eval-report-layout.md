@@ -64,6 +64,7 @@ server/eval/
     generation/
     consolidation/
     moderation/
+    retrieval/     # deterministic Tier-1 scoring fixtures — feed the CI unit tests (test-harness.md §6), NOT the human report; co-located as the single synthetic-data home until Phase-0 adds server/src/__tests__/
   rubrics/       # rubric definitions per call type (MD)
   reports/       # generated per-run reports (MD) — gitignored (regenerable from cases + run output)
   verdicts/      # reviewer feedback sidecars (JSONL) — committed; the growing labeled corpus

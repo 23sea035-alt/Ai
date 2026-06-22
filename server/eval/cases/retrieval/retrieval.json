@@ -1,0 +1,116 @@
+{
+  "callType": "retrieval",
+  "description": "Deterministic scoring fixtures for memory retrieval (memory-pipeline §3/§5). TIER-1 deterministic data — they feed the CI unit tests (test-harness.md §6 'retrieval ranking'), NOT the Tier-3 human-review report; co-located here as the single synthetic-data home until the Phase-0 restructure adds server/src/__tests__/, where the coworker wires them as Vitest fixtures. Pure function of inputs. Scoring: score = 0.7·Jaccard(queryTokens, keywords) + 0.3·importance + 0.15·recency; recency = exp(-Δdays / 30) with Δ = days since (lastRecalledAt ?? createdAt). Eligible iff Jaccard > 0.08 OR importance >= 0.85 (identity bypass). Rank eligible by score → top-5; tie-break score → importance → id. 'now' is a fixed clock per case for reproducible recency. queryTokens are stopword-stripped. Synthetic only.",
+  "safetyReview": "not-required",
+  "cases": [
+    {
+      "id": "ret-001",
+      "description": "lexical-overlap beats importance-only — a relevant low-importance fact outranks an irrelevant high-importance one (floor is on the Jaccard component, not the blended score)",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m-hiking", "content": "loves hiking and mountain trails", "keywords": ["hiking", "mountains", "trails"], "category": "general", "importance": 0.4, "createdAt": "2026-05-01T00:00:00Z" },
+        { "id": "m-work",   "content": "works at Apple", "keywords": ["works", "apple"], "category": "work", "importance": 0.7, "createdAt": "2026-05-01T00:00:00Z" }
+      ],
+      "query": "know any good hiking trails near me?",
+      "expectedTopN": ["m-hiking"],
+      "note": "queryTokens ~ [good, hiking, trails]. m-hiking Jaccard = 2/4 = 0.5 (∩{hiking,trails}, ∪{good,hiking,trails,mountains}) → eligible. m-work Jaccard = 0 and importance 0.7 < 0.85 → NOT eligible. The higher-importance fact is excluded; relevance wins."
+    },
+    {
+      "id": "ret-002",
+      "description": "recency boosts an equally-relevant fresher memory — usage-recency (lastRecalledAt) breaks the tie between two identically-relevant, identically-important facts",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m-paris-fresh", "content": "took a trip to Paris", "keywords": ["paris", "trip"], "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-06-20T00:00:00Z" },
+        { "id": "m-paris-stale", "content": "took a trip to Paris years ago", "keywords": ["paris", "trip"], "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-03-22T00:00:00Z" }
+      ],
+      "query": "my Paris trip",
+      "expectedTopN": ["m-paris-fresh", "m-paris-stale"],
+      "note": "queryTokens ~ [paris, trip] → both Jaccard = 1.0 and importance 0.6; only recency differs (~2d vs ~92d), so the fresher ranks first regardless of tokenizer. Asserts the recency term is applied at all (net-new vs the prototype)."
+    },
+    {
+      "id": "ret-003",
+      "description": "identity surfaces on weak overlap (bypass) — importance >= 0.85 grants ELIGIBILITY (not a reserved slot); ranking still decides the order",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m-name", "content": "user's name is Sam", "keywords": ["name", "sam"], "category": "identity", "importance": 0.9, "createdAt": "2026-02-01T00:00:00Z", "lastRecalledAt": "2026-02-01T00:00:00Z" },
+        { "id": "m-cooking", "content": "enjoys cooking dinner from scratch", "keywords": ["cooking", "recipes", "dinner"], "category": "preference", "importance": 0.6, "createdAt": "2026-02-01T00:00:00Z", "lastRecalledAt": "2026-02-01T00:00:00Z" }
+      ],
+      "query": "what should I cook for dinner tonight?",
+      "expectedTopN": ["m-cooking", "m-name"],
+      "note": "queryTokens ~ [cook, dinner, tonight]. m-cooking Jaccard > 0.08 → eligible by relevance. m-name Jaccard = 0 but importance 0.9 >= 0.85 → eligible by BYPASS. m-cooking outranks m-name on score, so identity rides along but does NOT crowd out the relevant fact (§3.3 identity-crowding note)."
+    },
+    {
+      "id": "ret-004",
+      "description": "cold start → empty (no stored memories, no crash)",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [],
+      "query": "anything you remember about me?",
+      "expectedTopN": [],
+      "note": "Empty store returns empty, gracefully."
+    },
+    {
+      "id": "ret-005",
+      "description": "all-irrelevant → empty (floor) — a high-importance-but-irrelevant fact cannot sneak in on importance alone because the floor is on Jaccard",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m-work", "content": "works at Apple", "keywords": ["works", "apple"], "category": "work", "importance": 0.7, "createdAt": "2026-05-01T00:00:00Z" },
+        { "id": "m-paris", "content": "took a trip to Paris", "keywords": ["paris", "trip"], "category": "preference", "importance": 0.6, "createdAt": "2026-05-01T00:00:00Z" }
+      ],
+      "query": "how do I fix a leaky kitchen faucet?",
+      "expectedTopN": [],
+      "note": "queryTokens ~ [fix, leaky, kitchen, faucet]. Zero overlap with either; both importance < 0.85 → neither eligible. Floor holds; nothing irrelevant surfaces."
+    },
+    {
+      "id": "ret-006",
+      "description": ">N relevant → exactly N — 7 eligible memories, retrieval returns exactly the top-5 (MEMORY_RETRIEVAL_TOP_N)",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m1", "content": "loves mystery books",     "keywords": ["books", "reading", "mystery"],  "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-06-21T00:00:00Z" },
+        { "id": "m2", "content": "loves sci-fi books",       "keywords": ["books", "reading", "scifi"],    "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-06-17T00:00:00Z" },
+        { "id": "m3", "content": "loves fantasy books",      "keywords": ["books", "reading", "fantasy"],  "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-06-12T00:00:00Z" },
+        { "id": "m4", "content": "loves history books",      "keywords": ["books", "reading", "history"],  "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-06-02T00:00:00Z" },
+        { "id": "m5", "content": "loves poetry books",       "keywords": ["books", "reading", "poetry"],   "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-05-13T00:00:00Z" },
+        { "id": "m6", "content": "loves cookbook collections","keywords": ["books", "reading", "cookbooks"],"category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-04-03T00:00:00Z" },
+        { "id": "m7", "content": "loves travel books",       "keywords": ["books", "reading", "travel"],   "category": "preference", "importance": 0.6, "createdAt": "2026-01-01T00:00:00Z", "lastRecalledAt": "2026-01-13T00:00:00Z" }
+      ],
+      "query": "recommend me some books to read",
+      "expectedTopN": ["m1", "m2", "m3", "m4", "m5"],
+      "note": "queryTokens ~ [recommend, books, read]. All 7 share Jaccard and importance; only recency differs, so score strictly decreases m1→m7. Top-5 = the 5 most-recently-recalled. Asserts the cap and the recency ordering together."
+    },
+    {
+      "id": "ret-007",
+      "description": "ties broken deterministically — equal score and equal importance fall back to id ascending (required for testability)",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m-0012", "content": "enjoys jazz music", "keywords": ["jazz", "music"], "category": "preference", "importance": 0.6, "createdAt": "2026-03-01T00:00:00Z", "lastRecalledAt": "2026-03-01T00:00:00Z" },
+        { "id": "m-0005", "content": "enjoys jazz records", "keywords": ["jazz", "music"], "category": "preference", "importance": 0.6, "createdAt": "2026-03-01T00:00:00Z", "lastRecalledAt": "2026-03-01T00:00:00Z" }
+      ],
+      "query": "put on some jazz music",
+      "expectedTopN": ["m-0005", "m-0012"],
+      "note": "Identical keywords, importance, and recency → identical score. Tie-break (score → importance → id) resolves to id ascending: m-0005 before m-0012. Stable/deterministic ordering."
+    },
+    {
+      "id": "ret-008",
+      "description": "malformed legacy keywords → score 0, no throw — a memory with a null/empty keyword set scores 0 and is simply excluded, while a valid sibling still surfaces",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m-broken", "content": "legacy row with no usable keywords", "keywords": null, "category": "general", "importance": 0.4, "createdAt": "2025-12-01T00:00:00Z" },
+        { "id": "m-valid", "content": "plays tennis on weekends", "keywords": ["tennis", "weekends"], "category": "attribute", "importance": 0.6, "createdAt": "2026-05-01T00:00:00Z" }
+      ],
+      "query": "are we still on for tennis this weekend?",
+      "expectedTopN": ["m-valid"],
+      "note": "m-broken keywords = null → Jaccard treated as 0, importance 0.4 < 0.85 → excluded, NO throw. m-valid Jaccard > 0.08 → eligible. Asserts graceful handling of malformed legacy data."
+    },
+    {
+      "id": "ret-009",
+      "description": "semantic-only miss → empty gracefully (the accepted v1.0 keyword-Jaccard limitation, §3.5) — asserts it MISSES cleanly, not that it returns something wrong",
+      "now": "2026-06-22T12:00:00Z",
+      "storedMemories": [
+        { "id": "m-rex", "content": "has a dog named Rex", "keywords": ["dog", "rex"], "category": "attribute", "importance": 0.6, "createdAt": "2026-05-01T00:00:00Z" }
+      ],
+      "query": "how's my puppy doing?",
+      "expectedTopN": [],
+      "note": "queryTokens ~ [puppy]. No lexical overlap with [dog, rex] (Jaccard 0), importance 0.6 < 0.85 → not eligible → empty. The known semantic gap (embeddings deferred); the eval asserts it returns nothing, never a crash or a wrong hit."
+    }
+  ]
+}

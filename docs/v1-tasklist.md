@@ -66,7 +66,7 @@ prototype scaffolding from the Replit-Agent build.
 - [ ] Wire real companions into the chat list **(cleanup: `app/(tabs)/chat.tsx` hardcoded list + id mismatch with `chat/[id].tsx`)**
 - [ ] 3 personas × 3 orthogonal axes × 3 levels; store on `companions.traits`; server-assembled prompt with fixed safety preamble
 - [ ] Memory retrieval: keyword/Jaccard + `importance` + **recency decay**; inject top-N into the **system prompt** (not the user message) **(cleanup: rename `embedding`→`keywords`, now `text[]`)**
-- [ ] Memory writes: **async post-turn LLM consolidation** pass — extract durable facts + **dedup** + **light contradiction** (`ADD`/`UPDATE <id>`/`NONE`; `UPDATE` overwrites in place); guardrails (no hard deletes) + eval set
+- [ ] Memory writes: **async post-turn LLM consolidation** pass — extract durable facts + **dedup** + **light contradiction** (`ADD`/`UPDATE <id>`/`NONE`; `UPDATE` overwrites in place); guardrails (no hard deletes) + eval set **(design done — cards/rubric specced + seed corpus in `server/eval/cases/consolidation/`; just implement the harness on Replit)**
 - [ ] `MEMORY_CATEGORY` enum in `@aura/shared`; per-companion scope
 - [ ] Input length cap: `MAX_MESSAGE_CHARS` (~2000, `@aura/shared`) in the turn Zod schema — client live counter + block-send; **server rejects 400** (authoritative); check after trim; count code points not UTF-16 units
 - [ ] Prompt-assembly budget: cap injected memories at **top-N** + keep facts concise + cap history to last **K** msgs; **trim-to-fit** (drop lowest-scored memories / oldest history first) so a valid message never fails on context size
@@ -160,7 +160,7 @@ Resolve in an implementation-kickoff session (a fresh session loading these docs
 - [ ] Crisis path: high-precision keyword tuning + eval; crisis reply is a fixed template (not LLM).
 
 **P2 — quality bar:**
-- [ ] vitest layout: moderation evasion suite, prompt-assembler trim-to-fit, retrieval scoring, deletion tiering, turn-pipeline integration, webhook idempotency; 80% target.
+- [ ] vitest layout: moderation evasion suite, prompt-assembler trim-to-fit, retrieval scoring **(fixtures seeded: `server/eval/cases/retrieval/`)**, deletion tiering, turn-pipeline integration, webhook idempotency; 80% target.
 - [ ] Graceful shutdown (drain in-flight turns + jobs on SIGTERM — Render sends it on deploy).
 - [ ] Transactions: `turn_id` unique-violation handling; `companions.last_message`/`message_count` in one DB transaction.
 
