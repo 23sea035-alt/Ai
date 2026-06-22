@@ -15,7 +15,7 @@ prototype scaffolding from the Replit-Agent build.
 
 ## Phase 0 — Foundation & hygiene
 
-- [ ] **Restructure repo to `client/` + `server/` + `shared/`** (pnpm workspaces, scoped `@aura/*`), mirroring `ai-humanizer-app`: `artifacts/aura-ai`→`client/`, `artifacts/api-server`→`server/`, `lib/db`→`server/src/db/`, `lib/api-*`→`shared/`, `scripts/`→`tools/`; delete `artifacts/mockup-sandbox` **(cleanup)**
+- [ ] **Restructure repo to `client/` + `server/` + `shared/`** (pnpm workspaces, scoped `@aura/*`), mirroring `ai-humanizer-app`: `artifacts/aura-ai`→`client/`, `artifacts/api-server`→`server/`, `lib/db`→`server/src/db/`, `lib/api-*`→`shared/`, `scripts/`→`tools/`; delete `artifacts/mockup-sandbox` **(cleanup)** · **NOTE: `server/` already exists** (holds the committed `server/eval/` eval corpus) — merge `api-server` into `server/src/` etc. **around** it; do **NOT** delete/recreate `server/`, and preserve `server/eval/`
 - [ ] Create **`@aura/shared`** package (enums as `text + CHECK` unions, Zod schemas, DTOs, domain types); compiles to `dist/`, builds before server/client
 - [ ] Configure **Metro monorepo support** in `client` (`watchFolders` → repo root + `nodeModulesPaths`) to resolve `@aura/shared`
 - [ ] Add **`render.yaml`** (rootDir `server`, build `shared` first, `--include=dev`, **`starter` plan**, unauthenticated `/api/healthz`); keep Replit dev-only **(cleanup)**

@@ -70,6 +70,9 @@ Replit Agent defaults to building whole apps in one pass; for this backend, **do
 - `server/src/` — layered `route → controller → service → db (repositories)`; see the server-structure
   reference in `docs/v1-tasklist.md`. The chat turn pipeline + `Moderator`/`LLMProvider` interfaces
   live under `server/src/services/`.
+- `server/eval/` — **already on disk + committed:** the synthetic chat-pipeline eval corpus
+  (`cases/` + the to-be-compiled `rubrics/`). Read `server/eval/cases/README.md`. The eval *harness*
+  is still to be built (this workspace); the cases/labels are the seed it runs against.
 - `shared/` — `@aura/shared` enum/DTO/constant catalog (`docs/v1-schema.md`).
 - `docs/` — the plan of record (start at `docs/README.md`).
 
@@ -79,5 +82,9 @@ Replit Agent defaults to building whole apps in one pass; for this backend, **do
   workspace is the server; client work happens elsewhere.
 - The old `.replit` / `.replit-artifact/*` config targets the prototype's `artifacts/*` structure and
   **needs rewriting** for `client/server/shared`.
+- **`server/` already exists** (it holds the committed `server/eval/` corpus). The Phase 0 restructure
+  maps `artifacts/api-server`→`server/` — do that by adding `server/src/` + `server/package.json`
+  **around** the existing tree; do **NOT** `rm`/recreate `server/` or move `api-server` to *become*
+  `server/`, or you'll clobber `server/eval/`. Preserve it.
 - If hosting on Replit instead of Render, use an **always-on Reserved VM** (not a sleeping instance)
   so RevenueCat webhooks deliver within their retry window.
