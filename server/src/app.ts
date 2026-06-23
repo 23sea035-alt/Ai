@@ -83,6 +83,15 @@ try {
   logger.warn({ err }, "LLM provider failed to initialize — chat will use fallback responses");
 }
 
+// ── Start job worker ─────────────────────────────────────────────
+try {
+  const { startJobWorker } = await import("./services/jobs/worker.js");
+  startJobWorker();
+  logger.info("Memory consolidation worker started");
+} catch (err) {
+  logger.warn({ err }, "Job worker failed to start");
+}
+
 // WebSocket streaming is removed in v1.0 — Phase 3 of the rebuild.
 // Chat uses HTTP POST only. See docs/v1-tasklist.md Phase 3.
 

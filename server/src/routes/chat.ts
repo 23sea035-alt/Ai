@@ -1,8 +1,16 @@
 import { Router } from "express";
-import { eq, and, asc, gte, sql } from "drizzle-orm";
+import { eq, and, asc, gte, sql, ne } from "drizzle-orm";
+import { z } from "zod";
+import { randomUUID } from "crypto";
 import { db, messagesTable, companionsTable, usersTable, safetyEventsTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
-import { SAFE_FALLBACK_REPLY } from "@aura/shared";
+import {
+  SAFE_FALLBACK_REPLY,
+  FREE_DAILY_LIMIT,
+  MAX_MESSAGE_CHARS,
+  MEMORY_RETRIEVAL_TOP_N,
+  HISTORY_WINDOW,
+} from "@aura/shared";
 import {
   createModerator,
   buildCrisisResponse,
@@ -10,19 +18,22 @@ import {
 } from "../services/moderation/index.js";
 import {
   retrieveMemories,
-  storeMemory,
-  extractFacts,
+  enqueueMemoryJob,
 } from "../services/memory.js";
 import { getLLMProvider } from "../services/llm/index.js";
 import { logger } from "../lib/logger.js";
 
 const router = Router();
 
-const FREE_DAILY_LIMIT = 30;
+const ChatInputSchema = z.object({
+  content: z.string().min(1).max(MAX_MESSAGE_CHARS, `Message must be under ${MAX_MESSAGE_CHARS} characters`),
+  turnId: z.string().uuid().optional(),
+  sessionStartedAt: z.string().optional(),
+});
 
 async function checkFreeTierLimit(userId: string): Promise<{ allowed: boolean; used: number; limit: number }> {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   const [result] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(messagesTable)
@@ -58,6 +69,7 @@ async function logSafetyEvent(
 export interface ChatTurnResult {
   userMessage: typeof messagesTable.$inferSelect;
   aiMessage: typeof messagesTable.$inferSelect;
+  turnId: string;
   safetyFlagged?: boolean;
   memoriesUsed?: boolean;
   breakReminder?: string;
@@ -72,18 +84,25 @@ export async function processChatTurn(
   companionId: string,
   content: string,
   sessionStartedAt?: string,
+  providedTurnId?: string,
 ): Promise<ChatTurnResult> {
-  if (!content?.trim()) return { error: "Message content is required", userMessage: null as any, aiMessage: null as any };
+  if (!content?.trim()) return { error: "Message content is required", userMessage: null as any, aiMessage: null as any, turnId: "" };
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  if (!user) return { error: "User not found", userMessage: null as any, aiMessage: null as any };
+  if ([...content.trim()].length > MAX_MESSAGE_CHARS) {
+    return { error: `Message exceeds ${MAX_MESSAGE_CHARS} character limit`, userMessage: null as any, aiMessage: null as any, turnId: "", limit: MAX_MESSAGE_CHARS };
+  }
+
+  const turnId = providedTurnId ?? randomUUID();
+
+  const [user] = await db.select({ isPremium: usersTable.isPremium, isMinor: usersTable.isMinor }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) return { error: "User not found", userMessage: null as any, aiMessage: null as any, turnId };
 
   if (!user.isPremium) {
     const limitCheck = await checkFreeTierLimit(userId);
     if (!limitCheck.allowed) {
       return {
         error: "Daily message limit reached. Upgrade to premium for unlimited messages.",
-        userMessage: null as any, aiMessage: null as any,
+        userMessage: null as any, aiMessage: null as any, turnId,
         limitReached: true, used: limitCheck.used, limit: limitCheck.limit,
       };
     }
@@ -96,16 +115,16 @@ export async function processChatTurn(
     .from(companionsTable)
     .where(and(eq(companionsTable.id, companionId), eq(companionsTable.userId, userId)))
     .limit(1);
-  if (!companion) return { error: "Companion not found", userMessage: null as any, aiMessage: null as any };
+  if (!companion) return { error: "Companion not found", userMessage: null as any, aiMessage: null as any, turnId };
 
   const moderator = createModerator();
   const inputVerdict = await moderator.screenInput(content.trim(), { userId, isMinor });
 
   if (inputVerdict.action === "block") {
-    await logSafetyEvent(userId, "content_blocked", {
+    await logSafetyEvent(userId, "input_blocked", {
       severity: "warning", detail: inputVerdict.reason, content,
     });
-    return { error: inputVerdict.reason ?? "Message blocked by safety check", userMessage: null as any, aiMessage: null as any };
+    return { error: inputVerdict.reason ?? "Message blocked by safety check", userMessage: null as any, aiMessage: null as any, turnId };
   }
 
   if (inputVerdict.action === "crisis") {
@@ -113,31 +132,31 @@ export async function processChatTurn(
       severity: "critical", detail: inputVerdict.reason, content,
     });
     const [blockedMsg] = await db.insert(messagesTable).values({
-      companionId, userId, role: "user", content: content.trim(),
+      companionId, userId, turnId, role: "user", status: "complete", content: content.trim(),
     }).returning();
     const crisisReply = buildCrisisResponse();
     const [aiMsg] = await db.insert(messagesTable).values({
-      companionId, userId, role: "assistant", content: crisisReply,
+      companionId, userId, turnId, role: "assistant", status: "complete", content: crisisReply,
     }).returning();
     await db.update(companionsTable)
       .set({ lastMessage: content.trim().slice(0, 80), lastActive: "Just now" })
       .where(eq(companionsTable.id, companionId));
-    return { userMessage: blockedMsg, aiMessage: aiMsg, safetyFlagged: true };
+    return { userMessage: blockedMsg, aiMessage: aiMsg, turnId, safetyFlagged: true };
   }
 
   const [userMessage] = await db.insert(messagesTable).values({
-    companionId, userId, role: "user", content: content.trim(),
+    companionId, userId, turnId, role: "user", status: "complete", content: content.trim(),
   }).returning();
 
-  const relevantMemories = await retrieveMemories(userId, companionId, content.trim());
+  const relevantMemories = await retrieveMemories(userId, companionId, content.trim(), MEMORY_RETRIEVAL_TOP_N);
 
   const history = await db
     .select()
     .from(messagesTable)
-    .where(and(eq(messagesTable.companionId, companionId), eq(messagesTable.userId, userId)))
+    .where(and(eq(messagesTable.companionId, companionId), eq(messagesTable.userId, userId), ne(messagesTable.turnId, turnId)))
     .orderBy(asc(messagesTable.createdAt));
 
-  const recentHistory = history.slice(-10).map(m => ({ role: m.role, content: m.content }));
+  const recentHistory = history.slice(-HISTORY_WINDOW * 2).map(m => ({ role: m.role, content: m.content }));
 
   let memoryContext = "";
   if (relevantMemories.length > 0) {
@@ -155,20 +174,17 @@ export async function processChatTurn(
   const outputVerdict = await moderator.screenOutput(replyContent);
   let finalReply = replyContent;
   if (outputVerdict.action === "block") {
-    await logSafetyEvent(userId, "crisis_in_output", {
+    await logSafetyEvent(userId, "output_blocked", {
       severity: "warning", detail: "Output moderated", content: replyContent,
     });
     finalReply = outputVerdict.safeFallback ?? SAFE_FALLBACK_REPLY;
   }
 
   const [aiMessage] = await db.insert(messagesTable).values({
-    companionId, userId, role: "assistant", content: finalReply,
+    companionId, userId, turnId, role: "assistant", status: "complete", content: finalReply,
   }).returning();
 
-  const facts = extractFacts(content.trim());
-  for (const fact of facts) {
-    await storeMemory(userId, companionId, fact.content, fact.category, fact.importance, userMessage.id);
-  }
+  await enqueueMemoryJob(userId, companionId, content.trim());
 
   const msgCount = history.length + 1;
   await db.update(companionsTable)
@@ -179,7 +195,7 @@ export async function processChatTurn(
   const breakCheck = shouldShowBreakReminder(msgCount, sessionStart, isMinor);
 
   return {
-    userMessage, aiMessage,
+    userMessage, aiMessage, turnId,
     memoriesUsed: relevantMemories.length > 0,
     breakReminder: breakCheck.remind ? breakCheck.reason : undefined,
   };
@@ -288,7 +304,7 @@ async function generateAIReply(
     const reply = await llm.generateReply({
       systemPrompt,
       messages: [
-        ...recentHistory.slice(-6).map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+        ...recentHistory.slice(-HISTORY_WINDOW).map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
         { role: "user", content: userMessage },
       ],
     });
@@ -343,10 +359,14 @@ router.get("/companions/:companionId/messages", requireAuth, async (req: AuthReq
 router.post("/companions/:companionId/chat", requireAuth, async (req: AuthRequest, res) => {
   try {
     const companionId = req.params.companionId as string;
-    const { content, sessionStartedAt } = req.body as { content: string; sessionStartedAt?: string };
-    if (!content?.trim()) { res.status(400).json({ error: "Message content is required" }); return; }
+    const parsed = ChatInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues.map(i => i.message).join("; "), limit: MAX_MESSAGE_CHARS });
+      return;
+    }
 
-    const result = await processChatTurn(req.userId!, companionId, content, sessionStartedAt);
+    const { content, turnId, sessionStartedAt } = parsed.data;
+    const result = await processChatTurn(req.userId!, companionId, content, sessionStartedAt, turnId);
     if (result.error) {
       res.status(result.limitReached ? 429 : 400).json({
         error: result.error,
@@ -357,6 +377,7 @@ router.post("/companions/:companionId/chat", requireAuth, async (req: AuthReques
       return;
     }
     res.json({
+      turnId: result.turnId,
       userMessage: result.userMessage,
       aiMessage: result.aiMessage,
       safetyFlagged: result.safetyFlagged,
