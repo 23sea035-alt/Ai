@@ -6,6 +6,20 @@ import http from "http";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { getEnv } from "./config/env.js";
+
+const env = getEnv();
+
+// ── Sentry ──────────────────────────────────────────────────────────────
+if (env.SENTRY_DSN) {
+  const Sentry = await import("@sentry/node");
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === "production" ? 0.1 : 0,
+  });
+  logger.info("Sentry initialized");
+}
 
 const app: Express = express();
 
@@ -138,6 +152,12 @@ try {
   });
 } catch (err) {
   logger.warn({ err }, "WebSocket not available — streaming chat disabled");
+}
+
+// ── Sentry error handler (must be last) ──────────────────────────────
+if (env.SENTRY_DSN) {
+  const { errorHandler } = await import("@sentry/node");
+  app.use(errorHandler());
 }
 
 export { server };
