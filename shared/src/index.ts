@@ -128,5 +128,8 @@ export const FLAGGED_USER_WINDOW_DAYS = 30;
 export const SAFE_FALLBACK_REPLY = "I need to be careful with my response here. Let me think about how to respond thoughtfully to what you've shared.";
 
 // ── Health check DTO ───────────────────────────────────────────────────
-export const HealthCheckResponse = z.object({ status: z.literal("ok") });
+export const HealthCheckResponse = z.object({
+  status: z.enum(["ok", "degraded"]),
+  checks: z.record(z.string(), z.string()).optional(),
+});
 export type HealthCheckResponse = z.infer<typeof HealthCheckResponse>;
