@@ -17,6 +17,7 @@ import {
   buildCrisisResponse,
   shouldShowBreakReminder,
 } from "../services/moderation/index.js";
+import { sendSuccess, sendError } from "../lib/response.js";
 import {
   retrieveMemories,
   enqueueMemoryJob,
@@ -335,13 +336,13 @@ async function generateAIReply(
 router.get("/chat/usage", requireAuth, async (req: AuthRequest, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
-    if (!user) { res.status(404).json({ error: "User not found" }); return; }
-    if (user.isPremium) { res.json({ used: 0, limit: 0, isPremium: true }); return; }
+    if (!user) { sendError(res, "User not found", 404); return; }
+    if (user.isPremium) { sendSuccess(res, { used: 0, limit: 0, isPremium: true }); return; }
     const usage = await checkFreeTierLimit(req.userId!);
-    res.json({ used: usage.used, limit: usage.limit, isPremium: false });
+    sendSuccess(res, { used: usage.used, limit: usage.limit, isPremium: false });
   } catch (err) {
     logger.error({ err }, "Failed to check usage");
-    res.status(500).json({ error: "Failed to check usage" });
+    sendError(res, "Failed to check usage", 500);
   }
 });
 
@@ -353,10 +354,10 @@ router.get("/companions/:companionId/messages", requireAuth, async (req: AuthReq
       .from(messagesTable)
       .where(and(eq(messagesTable.companionId, companionId), eq(messagesTable.userId, req.userId!)))
       .orderBy(asc(messagesTable.createdAt));
-    res.json(messages);
+    sendSuccess(res, messages);
   } catch (err) {
     logger.error({ err }, "Failed to fetch messages");
-    res.status(500).json({ error: "Failed to fetch messages" });
+    sendError(res, "Failed to fetch messages", 500);
   }
 });
 
@@ -365,22 +366,17 @@ router.post("/companions/:companionId/chat", requireAuth, chatPerMinuteLimiter, 
     const companionId = req.params.companionId as string;
     const parsed = ChatInputSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.issues.map(i => i.message).join("; "), limit: MAX_MESSAGE_CHARS });
+      sendError(res, parsed.error.issues.map(i => i.message).join("; "), 400, "VALIDATION_ERROR");
       return;
     }
 
     const { content, turnId, sessionStartedAt } = parsed.data;
     const result = await processChatTurn(req.userId!, companionId, content, sessionStartedAt, turnId);
     if (result.error) {
-      res.status(result.limitReached ? 429 : 400).json({
-        error: result.error,
-        limitReached: result.limitReached ?? false,
-        used: result.used,
-        limit: result.limit,
-      });
+      sendError(res, result.error, result.limitReached ? 429 : 400, result.limitReached ? "LIMIT_REACHED" : undefined);
       return;
     }
-    res.json({
+    sendSuccess(res, {
       turnId: result.turnId,
       userMessage: result.userMessage,
       aiMessage: result.aiMessage,
@@ -390,7 +386,7 @@ router.post("/companions/:companionId/chat", requireAuth, chatPerMinuteLimiter, 
     });
   } catch (err) {
     logger.error({ err }, "Chat failed");
-    res.status(500).json({ error: "Chat failed" });
+    sendError(res, "Chat failed", 500);
   }
 });
 

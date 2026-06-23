@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, deviceTokensTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { logger } from "../lib/logger.js";
+import { sendSuccess, sendError } from "../lib/response.js";
 
 const router = Router();
 
@@ -12,12 +13,11 @@ const RegisterTokenSchema = z.object({
   platform: z.enum(["ios", "android"]).default("ios"),
 });
 
-// POST /api/notifications/register — Register a device push token
 router.post("/notifications/register", requireAuth, async (req: AuthRequest, res) => {
   try {
     const parsed = RegisterTokenSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.issues.map(i => i.message).join("; ") });
+      sendError(res, parsed.error.issues.map(i => i.message).join("; "), 400);
       return;
     }
 
@@ -31,19 +31,18 @@ router.post("/notifications/register", requireAuth, async (req: AuthRequest, res
     }).onConflictDoNothing();
 
     logger.info({ userId: req.userId!, platform }, "Device token registered");
-    res.json({ registered: true });
+    sendSuccess(res, { registered: true }, 201);
   } catch (err) {
     logger.error({ err }, "Failed to register device token");
-    res.status(500).json({ error: "Failed to register device token" });
+    sendError(res, "Failed to register device token", 500);
   }
 });
 
-// DELETE /api/notifications/register — Unregister a device push token
 router.delete("/notifications/register", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { token } = req.body as { token?: string };
     if (!token) {
-      res.status(400).json({ error: "token is required" });
+      sendError(res, "token is required", 400);
       return;
     }
 
@@ -51,10 +50,10 @@ router.delete("/notifications/register", requireAuth, async (req: AuthRequest, r
       .where(eq(deviceTokensTable.token, token));
 
     logger.info({ userId: req.userId! }, "Device token removed");
-    res.json({ removed: true });
+    sendSuccess(res, { removed: true });
   } catch (err) {
     logger.error({ err }, "Failed to remove device token");
-    res.status(500).json({ error: "Failed to remove device token" });
+    sendError(res, "Failed to remove device token", 500);
   }
 });
 

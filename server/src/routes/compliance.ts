@@ -5,6 +5,8 @@ import { db, usersTable, messagesTable, companionsTable, memoriesTable, subscrip
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { logger } from "../lib/logger.js";
 import { hashIdentifier } from "../lib/crypto.js";
+import { sendSuccess, sendError } from "../lib/response.js";
+import { AppError } from "../middleware/error-handler.js";
 
 const ReportSchema = z.object({
   reason: z.string().min(1).max(500),
@@ -19,10 +21,7 @@ router.delete("/account", requireAuth, async (req: AuthRequest, res) => {
     const userId = req.userId!;
 
     await db.transaction(async (tx) => {
-      // Purge device tokens immediately (no recovery needed)
       await tx.delete(deviceTokensTable).where(eq(deviceTokensTable.userId, userId));
-
-      // Soft-delete user: anonymize PII, tombstone email, set status
       await tx.update(usersTable).set({
         firstName: null,
         lastName: null,
@@ -37,10 +36,10 @@ router.delete("/account", requireAuth, async (req: AuthRequest, res) => {
     });
 
     logger.info({ userId }, "Account soft-deleted — 30-day grace period started");
-    res.json({ deleted: true, gracePeriodDays: 30 });
+    sendSuccess(res, { deleted: true, gracePeriodDays: 30 });
   } catch (err) {
     logger.error({ err }, "Account deletion failed");
-    res.status(500).json({ error: "Account deletion failed" });
+    sendError(res, "Account deletion failed", 500);
   }
 });
 
@@ -51,7 +50,7 @@ router.patch("/account/reactivate", requireAuth, async (req: AuthRequest, res) =
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (!user || user.status !== "deleted") {
-      res.status(400).json({ error: "Account is not deleted" });
+      sendError(res, "Account is not deleted", 400);
       return;
     }
 
@@ -63,10 +62,10 @@ router.patch("/account/reactivate", requireAuth, async (req: AuthRequest, res) =
     }).where(eq(usersTable.id, userId));
 
     logger.info({ userId }, "Account reactivated");
-    res.json({ reactivated: true });
+    sendSuccess(res, { reactivated: true });
   } catch (err) {
     logger.error({ err }, "Account reactivation failed");
-    res.status(500).json({ error: "Account reactivation failed" });
+    sendError(res, "Account reactivation failed", 500);
   }
 });
 
@@ -79,159 +78,122 @@ router.get("/account/export", requireAuth, async (req: AuthRequest, res) => {
     const allCompanions = await db.select().from(companionsTable).where(eq(companionsTable.userId, userId));
     const allMessages = await db.select().from(messagesTable).where(eq(messagesTable.userId, userId));
     const allMemories = await db.select().from(memoriesTable).where(eq(memoriesTable.userId, userId));
-    const [subscription] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, userId)).limit(1);
 
-    const exportData = {
-      exportedAt: new Date().toISOString(),
-      user,
-      companions: allCompanions,
-      messages: allMessages,
-      memories: allMemories,
-      subscription: subscription ?? null,
-    };
-
-    res.json(exportData);
+    sendSuccess(res, { user, companions: allCompanions, messages: allMessages, memories: allMemories });
   } catch (err) {
     logger.error({ err }, "Data export failed");
-    res.status(500).json({ error: "Data export failed" });
+    sendError(res, "Data export failed", 500);
   }
 });
 
-// POST /api/messages/:id/report — Flag/report an AI message (UGC, Apple Guideline 1.2)
+// POST /api/messages/:id/report — Flag an AI message (Apple Guideline 1.2 / UGC)
 router.post("/messages/:id/report", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = req.userId!;
+    const messageId = req.params.id as string;
+
     const parsed = ReportSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.issues.map(i => i.message).join("; ") });
+      sendError(res, parsed.error.issues.map(i => i.message).join("; "), 400);
       return;
     }
 
-    const messageId = req.params.id as string;
-    const [msg] = await db
-      .select()
-      .from(messagesTable)
-      .where(eq(messagesTable.id, messageId))
-      .limit(1);
-
-    if (!msg || msg.userId !== req.userId!) {
-      res.status(404).json({ error: "Message not found" });
+    const [message] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId)).limit(1);
+    if (!message) {
+      sendError(res, "Message not found", 404);
       return;
     }
 
-    const { reason, detail } = parsed.data;
     await db.insert(safetyEventsTable).values({
-      userId: req.userId!,
+      userId,
       messageId,
-      companionId: msg.companionId,
       eventType: "user_reported",
       source: "user_report",
-      severity: "info",
-      detail: reason,
-      flaggedContent: msg.content,
+      detail: parsed.data.reason,
+      flaggedContent: parsed.data.detail ?? null,
     });
 
-    logger.info({ messageId, reason }, "Message reported by user");
-    res.json({ reported: true });
+    logger.info({ userId, messageId }, "Message reported");
+    sendSuccess(res, { reported: true }, 201);
   } catch (err) {
     logger.error({ err }, "Failed to report message");
-    res.status(500).json({ error: "Failed to report message" });
+    sendError(res, "Failed to report message", 500);
   }
 });
 
-// GET /api/admin/safety-events — Safety events review queue (admin)
+// GET /api/admin/safety-events — Review safety events queue (admin only)
 router.get("/admin/safety-events", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+    const userId = req.userId!;
+    const [user] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     if (!user?.isAdmin) {
-      res.status(403).json({ error: "Admin access required" });
+      sendError(res, "Admin access required", 403);
       return;
     }
 
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const offset = (page - 1) * limit;
+    const events = await db.select().from(safetyEventsTable).orderBy(desc(safetyEventsTable.createdAt)).limit(50);
 
-    const { safetyEventsTable } = await import("../db/src/index.js");
-
-    const events = await db
-      .select()
-      .from(safetyEventsTable)
-      .orderBy(desc(safetyEventsTable.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    res.json({ events, page, limit });
+    sendSuccess(res, events);
   } catch (err) {
     logger.error({ err }, "Failed to fetch safety events");
-    res.status(500).json({ error: "Failed to fetch safety events" });
+    sendError(res, "Failed to fetch safety events", 500);
   }
 });
 
-// POST /api/admin/ban — Ban a user by email
+// POST /api/admin/ban — Ban a user by email (admin only)
 router.post("/admin/ban", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [admin] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
-    if (!admin?.isAdmin) {
-      res.status(403).json({ error: "Admin access required" });
+    const userId = req.userId!;
+    const [user] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user?.isAdmin) {
+      sendError(res, "Admin access required", 403);
       return;
     }
 
-    const { email, reason } = req.body as { email?: string; reason?: string };
+    const { email } = req.body;
     if (!email) {
-      res.status(400).json({ error: "email is required" });
+      sendError(res, "email is required", 400);
       return;
     }
 
-    const emailHash = hashIdentifier(email.toLowerCase());
     await db.insert(bannedIdentitiesTable).values({
+      identifierHash: hashIdentifier(email.toLowerCase()),
       identifierType: "email",
-      identifierHash: emailHash,
-      reason: reason ?? null,
-      sourceUserId: req.userId!,
-    }).onConflictDoNothing();
+      reason: req.body.reason ?? "Violation of terms",
+    });
 
-    // Also disable the user account if it exists
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1);
-    if (user) {
-      await db.update(usersTable).set({ status: "banned" }).where(eq(usersTable.id, user.id));
-    }
-
-    logger.info({ email, reason }, "User banned");
-    res.json({ banned: true });
+    logger.info({ adminId: userId, bannedEmail: email }, "User banned");
+    sendSuccess(res, { banned: true }, 201);
   } catch (err) {
     logger.error({ err }, "Ban failed");
-    res.status(500).json({ error: "Ban failed" });
+    sendError(res, "Ban failed", 500);
   }
 });
 
-// POST /api/admin/unban — Unban a user by email
+// POST /api/admin/unban — Unban a user by email (admin only)
 router.post("/admin/unban", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const [admin] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
-    if (!admin?.isAdmin) {
-      res.status(403).json({ error: "Admin access required" });
+    const userId = req.userId!;
+    const [user] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user?.isAdmin) {
+      sendError(res, "Admin access required", 403);
       return;
     }
 
-    const { email } = req.body as { email?: string };
+    const { email } = req.body;
     if (!email) {
-      res.status(400).json({ error: "email is required" });
+      sendError(res, "email is required", 400);
       return;
     }
 
-    const emailHash = hashIdentifier(email.toLowerCase());
-    await db.delete(bannedIdentitiesTable).where(eq(bannedIdentitiesTable.identifierHash, emailHash));
+    const hash = hashIdentifier(email.toLowerCase());
+    await db.delete(bannedIdentitiesTable).where(eq(bannedIdentitiesTable.identifierHash, hash));
 
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1);
-    if (user) {
-      await db.update(usersTable).set({ status: "active" }).where(eq(usersTable.id, user.id));
-    }
-
-    logger.info({ email }, "User unbanned");
-    res.json({ unbanned: true });
+    logger.info({ adminId: userId, unbannedEmail: email }, "User unbanned");
+    sendSuccess(res, { unbanned: true });
   } catch (err) {
     logger.error({ err }, "Unban failed");
-    res.status(500).json({ error: "Unban failed" });
+    sendError(res, "Unban failed", 500);
   }
 });
 

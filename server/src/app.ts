@@ -7,6 +7,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger.js";
 import { getEnv } from "./config/env.js";
+import { errorHandler } from "./middleware/error-handler.js";
 
 const env = getEnv();
 
@@ -115,9 +116,8 @@ try {
 // WebSocket streaming is removed in v1.0 — Phase 3 of the rebuild.
 // Chat uses HTTP POST only. See docs/v1-tasklist.md Phase 3.
 
-// ── Sentry error handler (must be last) ──────────────────────────────
-// Sentry auto-instruments Express in v9 — no explicit handler needed.
-// Errors bubble to the generic error handler below.
+// ── Centralized error handler (must be last) ─────────────────────────
+app.use(errorHandler);
 
 export { server };
 export default app;
