@@ -4,6 +4,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { db, messagesTable, companionsTable, usersTable, safetyEventsTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { chatPerMinuteLimiter, chatDailyHardCap } from "../middleware/rate-limit.js";
 import {
   SAFE_FALLBACK_REPLY,
   FREE_DAILY_LIMIT,
@@ -356,7 +357,7 @@ router.get("/companions/:companionId/messages", requireAuth, async (req: AuthReq
   }
 });
 
-router.post("/companions/:companionId/chat", requireAuth, async (req: AuthRequest, res) => {
+router.post("/companions/:companionId/chat", requireAuth, chatPerMinuteLimiter, chatDailyHardCap, async (req: AuthRequest, res) => {
   try {
     const companionId = req.params.companionId as string;
     const parsed = ChatInputSchema.safeParse(req.body);

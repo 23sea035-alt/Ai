@@ -92,6 +92,24 @@ try {
   logger.warn({ err }, "Job worker failed to start");
 }
 
+// ── Start retention enforcement ─────────────────────────────────
+try {
+  const { enforceRetention, enforceSafetyEventRetention, markInactiveUsers } = await import("./services/retention.js");
+  const runRetention = async () => {
+    try {
+      await enforceRetention();
+      await enforceSafetyEventRetention();
+      await markInactiveUsers();
+    } catch (err) {
+      logger.error({ err }, "Retention enforcement cycle failed");
+    }
+  };
+  setInterval(runRetention, 60 * 60 * 1000); // hourly
+  runRetention(); // first run immediately
+} catch (err) {
+  logger.warn({ err }, "Retention enforcement failed to start");
+}
+
 // WebSocket streaming is removed in v1.0 — Phase 3 of the rebuild.
 // Chat uses HTTP POST only. See docs/v1-tasklist.md Phase 3.
 
