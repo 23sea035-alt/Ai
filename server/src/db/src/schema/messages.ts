@@ -1,22 +1,20 @@
-import { pgTable, text, timestamp, serial, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
-import { companionsTable } from "./companions";
-import { usersTable } from "./users";
+import { pgTable, text, boolean, timestamp, uuid } from "drizzle-orm/pg-core";
+import { usersTable } from "./users.js";
+import { companionsTable } from "./companions.js";
 
 export const messagesTable = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  companionId: text("companion_id").notNull().references(() => companionsTable.id, { onDelete: "cascade" }),
-  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  role: text("role", { enum: ["user", "assistant"] }).notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  turnId: uuid("turn_id").notNull(),
+  companionId: uuid("companion_id").notNull().references(() => companionsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  status: text("status").notNull().default("complete"),
   content: text("content").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+  flagged: boolean("flagged").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  turnIdRoleUnique: { name: "uq_turn_id_role", columns: [table.turnId, table.role] },
+}));
 
-export const insertMessageSchema = createInsertSchema(messagesTable).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messagesTable.$inferSelect;
+export type NewMessage = typeof messagesTable.$inferInsert;

@@ -1,26 +1,21 @@
-import { pgTable, text, boolean, timestamp, serial, integer, real } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
-import { usersTable } from "./users";
-import { companionsTable } from "./companions";
+import { pgTable, text, real, timestamp, uuid } from "drizzle-orm/pg-core";
+import { usersTable } from "./users.js";
+import { companionsTable } from "./companions.js";
+import { messagesTable } from "./messages.js";
 
 export const memoriesTable = pgTable("memories", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  companionId: text("companion_id").notNull().references(() => companionsTable.id, { onDelete: "cascade" }),
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  companionId: uuid("companion_id").notNull().references(() => companionsTable.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   category: text("category").notNull().default("general"),
   importance: real("importance").notNull().default(0.5),
-  embedding: text("embedding"),
-  sourceMessageId: integer("source_message_id"),
-  lastRecalledAt: timestamp("last_recalled_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  keywords: text("keywords").array().notNull().default([]),
+  sourceMessageId: uuid("source_message_id").references(() => messagesTable.id, { onDelete: "set null" }),
+  lastRecalledAt: timestamp("last_recalled_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const insertMemorySchema = createInsertSchema(memoriesTable).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertMemory = z.infer<typeof insertMemorySchema>;
 export type Memory = typeof memoriesTable.$inferSelect;
+export type NewMemory = typeof memoriesTable.$inferInsert;

@@ -103,6 +103,7 @@ async function buildAll() {
       "playwright",
       "puppeteer",
       "puppeteer-core",
+      "svix",
       "electron",
     ],
     sourcemap: "linked",

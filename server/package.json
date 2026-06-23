@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@aura/shared": "workspace:*",
+    "@clerk/backend": "^1.30.0",
+    "svix": "^1.60.0",
     "cors": "^2.8.6",
     "drizzle-orm": "catalog:",
     "express": "^5.2.1",

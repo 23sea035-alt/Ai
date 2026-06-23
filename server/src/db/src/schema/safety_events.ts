@@ -1,23 +1,27 @@
-import { pgTable, text, boolean, timestamp, serial, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
-import { usersTable } from "./users";
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { usersTable } from "./users.js";
+import { companionsTable } from "./companions.js";
+import { messagesTable } from "./messages.js";
 
 export const safetyEventsTable = pgTable("safety_events", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  companionId: uuid("companion_id").references(() => companionsTable.id, { onDelete: "set null" }),
+  messageId: uuid("message_id").references(() => messagesTable.id, { onDelete: "set null" }),
   eventType: text("event_type").notNull(),
+  source: text("source").notNull(),
+  category: text("category"),
+  model: text("model"),
+  severity: text("severity").notNull().default("info"),
   detail: text("detail"),
   flaggedContent: text("flagged_content"),
-  severity: text("severity").notNull().default("info"),
-  resolved: boolean("resolved").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  status: text("status").notNull().default("open"),
+  action: text("action"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewedBy: text("reviewed_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const insertSafetyEventSchema = createInsertSchema(safetyEventsTable).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertSafetyEvent = z.infer<typeof insertSafetyEventSchema>;
 export type SafetyEvent = typeof safetyEventsTable.$inferSelect;
+export type NewSafetyEvent = typeof safetyEventsTable.$inferInsert;

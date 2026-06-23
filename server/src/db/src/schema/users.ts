@@ -1,26 +1,26 @@
-import { pgTable, text, boolean, timestamp, serial, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { pgTable, text, boolean, timestamp, integer, uuid } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  clerkUserId: text("clerk_user_id").notNull().unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  birthYear: integer("birth_year"),
-  isPremium: boolean("is_premium").notNull().default(false),
-  isMinor: boolean("is_minor").notNull().default(false),
+  dateOfBirth: text("date_of_birth"),
+  ageAssuranceMethod: text("age_assurance_method").notNull().default("self_declared"),
   ageVerified: boolean("age_verified").notNull().default(false),
+  ageVerifiedAt: timestamp("age_verified_at", { withTimezone: true }),
+  isMinor: boolean("is_minor").notNull().default(false),
+  isPremium: boolean("is_premium").notNull().default(false),
+  status: text("status").notNull().default("active"),
   onboardingDone: boolean("onboarding_done").notNull().default(false),
   aiDisclosureAccepted: boolean("ai_disclosure_accepted").notNull().default(false),
-  stripeCustomerId: text("stripe_customer_id"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  tosAcceptedVersion: text("tos_accepted_version"),
+  tosAcceptedAt: timestamp("tos_accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-export const insertUserSchema = createInsertSchema(usersTable).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
+export type NewUser = typeof usersTable.$inferInsert;
