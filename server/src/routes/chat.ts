@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, and, asc, gte, sql, ne } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { db, messagesTable, companionsTable, usersTable, safetyEventsTable } from "../db/src/index.js";
+import { db, messagesTable, companionsTable, usersTable, deviceTokensTable, safetyEventsTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { chatPerMinuteLimiter, chatDailyHardCap } from "../middleware/rate-limit.js";
 import {
@@ -194,6 +194,9 @@ export async function processChatTurn(
 
   const sessionStart = sessionStartedAt ? new Date(sessionStartedAt) : (history.length > 0 ? new Date(history[0].createdAt) : new Date());
   const breakCheck = shouldShowBreakReminder(msgCount, sessionStart, isMinor);
+
+  // Fire-and-forget transactional push
+  sendReplyPush(userId, companion.name).catch(() => {});
 
   return {
     userMessage, aiMessage, turnId,
@@ -390,5 +393,27 @@ router.post("/companions/:companionId/chat", requireAuth, chatPerMinuteLimiter, 
     res.status(500).json({ error: "Chat failed" });
   }
 });
+
+async function sendReplyPush(userId: string, companionName: string): Promise<void> {
+  try {
+    const tokens = await db
+      .select()
+      .from(deviceTokensTable)
+      .where(eq(deviceTokensTable.userId, userId));
+
+    if (tokens.length === 0) return;
+
+    const { sendPushNotification } = await import("../services/notifications/apns.js");
+    for (const t of tokens) {
+      await sendPushNotification(t.token, {
+        alert: { title: companionName, body: "Sent you a reply" },
+        badge: 1,
+        data: { userId, companionName },
+      });
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to send reply push");
+  }
+}
 
 export default router;
