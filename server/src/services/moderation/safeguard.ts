@@ -1,4 +1,4 @@
-import { InputVerdict, ModerationAction } from "./moderator.js";
+import type { ModerationAction } from "./moderator.js";
 
 export interface SafeguardVerdict {
   action: ModerationAction;
@@ -47,9 +47,9 @@ Return JSON: { "flagged": bool, "category": "<rule-id or null>", "confidence": "
       messages: [{ role: "user", content: `CONTENT: "${text}"\n\nL1 hint: ${l1Category ?? "none"}\nL2 categories: ${l2Categories.join(", ") || "none"}` }],
     });
 
-    let parsed: { flagged: boolean; category: string | null; confidence: string; rationale: string[] } | null = null;
+    let parsed: { flagged: boolean; category: string | null; confidence: string; rationale: string[] };
     try {
-      parsed = JSON.parse(response);
+      parsed = JSON.parse(response) as typeof parsed;
     } catch {
       const flagged = /"flagged"\s*:\s*true/i.test(response);
       parsed = { flagged, category: flagged ? "escalated" : null, confidence: flagged ? "med" : "low", rationale: [response] };

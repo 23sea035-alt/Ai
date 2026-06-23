@@ -20,12 +20,11 @@ const PREMIUM_PRICE_ID = process.env.STRIPE_PREMIUM_PRICE_ID ?? "price_premium_m
 
 // ── Create Stripe Checkout session ─────────────────────────────────────
 export async function createCheckoutSession(
-  userId: number,
+  userId: string,
   userEmail: string,
 ): Promise<{ url: string | null; sessionId: string }> {
   const stripe = getStripe();
 
-  // Get or create Stripe customer
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) throw new Error("User not found");
 
@@ -34,7 +33,7 @@ export async function createCheckoutSession(
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: userEmail,
-      metadata: { userId: String(userId) },
+      metadata: { userId },
     });
     customerId = customer.id;
     await db.update(usersTable)
@@ -48,7 +47,7 @@ export async function createCheckoutSession(
     line_items: [{ price: PREMIUM_PRICE_ID, quantity: 1 }],
     success_url: `${process.env.APP_URL ?? "http://localhost:8081"}/premium/success`,
     cancel_url: `${process.env.APP_URL ?? "http://localhost:8081"}/premium`,
-    metadata: { userId: String(userId) },
+    metadata: { userId },
   });
 
   return { url: session.url, sessionId: session.id };
@@ -73,7 +72,7 @@ export async function handleWebhook(
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object;
-      const userId = Number(session.metadata.userId);
+      const userId: string = session.metadata.userId;
       const subscriptionId = session.subscription;
       const customerId = session.customer;
 
@@ -84,7 +83,8 @@ export async function handleWebhook(
           stripeCustomerId: customerId,
           tier: "premium",
           status: "active",
-          currentPeriodEnd: new Date(session.expires_at * 1000),
+          store: "stripe",
+          expiresAt: new Date(session.expires_at * 1000),
         }).onConflictDoUpdate({
           target: subscriptionsTable.userId,
           set: {
@@ -92,7 +92,7 @@ export async function handleWebhook(
             stripeCustomerId: customerId,
             tier: "premium",
             status: "active",
-            currentPeriodEnd: new Date(session.expires_at * 1000),
+            expiresAt: new Date(session.expires_at * 1000),
           },
         });
 
@@ -109,7 +109,6 @@ export async function handleWebhook(
       const subCustomerId = subscription.customer;
       const status = subscription.status;
 
-      // Find user by stripeCustomerId
       const [subUser] = await db.select()
         .from(usersTable)
         .where(eq(usersTable.stripeCustomerId!, subCustomerId))
@@ -120,7 +119,7 @@ export async function handleWebhook(
         await db.update(subscriptionsTable)
           .set({
             status,
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            expiresAt: new Date(subscription.current_period_end * 1000),
           })
           .where(eq(subscriptionsTable.userId, subUser.id));
 

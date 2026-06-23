@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const USER_STATUS = ['active', 'suspended', 'banned', 'deleted'] as const;
 export type UserStatus = (typeof USER_STATUS)[number];
 
@@ -124,3 +126,7 @@ export const MODERATION_TIMEOUTS = {
 export const FLAGGED_USER_WINDOW_DAYS = 30;
 
 export const SAFE_FALLBACK_REPLY = "I need to be careful with my response here. Let me think about how to respond thoughtfully to what you've shared.";
+
+// ── Health check DTO ───────────────────────────────────────────────────
+export const HealthCheckResponse = z.object({ status: z.literal("ok") });
+export type HealthCheckResponse = z.infer<typeof HealthCheckResponse>;

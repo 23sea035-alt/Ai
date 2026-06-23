@@ -21,6 +21,7 @@ export interface OutputVerdict {
   escalated: boolean;
   layer: string;
   policyVersion: string;
+  reason?: string;
   safeFallback?: string;
 }
 

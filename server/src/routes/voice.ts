@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { transcribeAudio, synthesizeSpeech } from "../services/voice.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -14,8 +15,7 @@ router.post("/voice/stt", requireAuth, async (req: AuthRequest, res) => {
     const text = await transcribeAudio(buffer);
     res.json({ text });
   } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: err?.message ?? "STT failed" });
+    logger.error({ err }, "STT failed");
   }
 });
 
@@ -30,8 +30,7 @@ router.post("/voice/tts", requireAuth, async (req: AuthRequest, res) => {
     res.set("Content-Length", String(audio.length));
     res.send(audio);
   } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: err?.message ?? "TTS failed" });
+    logger.error({ err }, "TTS failed");
   }
 });
 

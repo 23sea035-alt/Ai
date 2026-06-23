@@ -30,8 +30,8 @@ export async function runL2Input(text: string): Promise<OmniResult> {
     }
 
     const categories: OmniCategoryScore[] = [];
-    const cats = result.categories as Record<string, boolean>;
-    const scores = result.category_scores as Record<string, number>;
+    const cats = result.categories as unknown as Record<string, boolean>;
+    const scores = result.category_scores as unknown as Record<string, number>;
     for (const [key, flagged] of Object.entries(cats)) {
       if (flagged) {
         categories.push({ category: key, score: scores[key] ?? 0 });
@@ -63,8 +63,8 @@ export async function runL3Output(text: string): Promise<OmniResult> {
     }
 
     const categories: OmniCategoryScore[] = [];
-    const cats = result.categories as Record<string, boolean>;
-    const scores = result.category_scores as Record<string, number>;
+    const cats = result.categories as unknown as Record<string, boolean>;
+    const scores = result.category_scores as unknown as Record<string, number>;
     for (const [key, flagged] of Object.entries(cats)) {
       if (flagged && (scores[key] ?? 0) >= (MODERATION_OUTPUT_THRESHOLDS[key] ?? 0.5)) {
         categories.push({ category: key, score: scores[key] ?? 0 });

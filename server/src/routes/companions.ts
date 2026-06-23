@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, companionsTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -15,39 +16,31 @@ router.get("/companions", requireAuth, async (req: AuthRequest, res) => {
       .orderBy(companionsTable.createdAt);
     res.json(companions);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch companions" });
+    logger.error({ err }, "Failed to fetch companions");
   }
 });
 
 // POST /api/companions
 router.post("/companions", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { name, persona, traits, colorFrom, colorTo } = req.body as {
-      name: string; persona: string; traits: string[];
-      colorFrom: string; colorTo: string;
+    const { name, personaKey, traits } = req.body as {
+      name: string; personaKey: string; traits: Record<string, unknown>;
     };
     if (!name) { res.status(400).json({ error: "Name is required" }); return; }
 
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const [companion] = await db.insert(companionsTable).values({
-      id,
       userId: req.userId!,
+      personaKey: personaKey ?? "aurora",
       name: name.trim(),
-      persona: persona ?? "",
-      traits: traits ?? [],
-      colorFrom: colorFrom ?? "#c9bfff",
-      colorTo: colorTo ?? "#8fd8ff",
+      traits: traits ?? {},
       lastMessage: "Ready to chat with you!",
-      lastActive: "Just now",
       messageCount: 0,
       isDefault: false,
     }).returning();
 
     res.status(201).json(companion);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to create companion" });
+    logger.error({ err }, "Failed to create companion");
   }
 });
 
@@ -56,9 +49,8 @@ router.put("/companions/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const id = req.params.id as string;
     const updates = req.body as Partial<{
-      name: string; persona: string; traits: string[];
-      colorFrom: string; colorTo: string; lastMessage: string;
-      lastActive: string; messageCount: number;
+      name: string; personaKey: string; traits: Record<string, unknown>;
+      lastMessage: string; lastActiveAt: Date; messageCount: number;
     }>;
 
     const [companion] = await db
@@ -70,8 +62,7 @@ router.put("/companions/:id", requireAuth, async (req: AuthRequest, res) => {
     if (!companion) { res.status(404).json({ error: "Companion not found" }); return; }
     res.json(companion);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to update companion" });
+    logger.error({ err }, "Failed to update companion");
   }
 });
 
@@ -84,8 +75,7 @@ router.delete("/companions/:id", requireAuth, async (req: AuthRequest, res) => {
       .where(and(eq(companionsTable.id, id), eq(companionsTable.userId, req.userId!)));
     res.json({ ok: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to delete companion" });
+    logger.error({ err }, "Failed to delete companion");
   }
 });
 

@@ -6,7 +6,7 @@ import { extractKeywords } from "./keywords.js";
 
 interface ConsolidationDecision {
   action: "ADD" | "UPDATE" | "NONE";
-  memoryId?: string;
+  memoryId?: string | null;
   content: string;
   category: string;
   importance: number;

@@ -1,7 +1,9 @@
-import { Moderator, InputVerdict, OutputVerdict, UserContext } from "./moderator.js";
+import type { Moderator, InputVerdict, OutputVerdict, UserContext } from "./moderator.js";
 import { runL0 } from "./deterministic.js";
 import { runL1 } from "./prompt-guard.js";
 import { runL2Input, runL3Output } from "./openai-omni.js";
+import type { OmniCategoryScore, OmniResult } from "./openai-omni.js";
+import type { PromptGuardResult } from "./prompt-guard.js";
 import { adjudicate } from "./safeguard.js";
 import { SAFE_FALLBACK_REPLY } from "@aura/shared";
 import { buildCrisisResponse } from "./crisis.js";
@@ -31,8 +33,8 @@ export class ModerationEngine implements Moderator {
     let l2Categories: string[] = [];
 
     const [l1Result, l2Result] = await Promise.all([
-      runL1(text).catch(() => ({ injectionProb: 1, action: "block" as const, error: "L1 failed" })),
-      runL2Input(text).catch(() => ({ flagged: true, categories: [], error: "L2 failed" })),
+      runL1(text).catch((): PromptGuardResult => ({ injectionProb: 1, action: "block", error: "L1 failed" })),
+      runL2Input(text).catch((): OmniResult => ({ flagged: true, categories: [], error: "L2 failed" })),
     ]);
 
     if (l1Result.action === "block") {

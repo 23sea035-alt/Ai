@@ -55,10 +55,10 @@ async function logSafetyEvent(
     await db.insert(safetyEventsTable).values({
       userId,
       eventType,
+      source: "input",
       detail: details.detail ?? null,
       flaggedContent: details.content ?? null,
       severity: details.severity,
-      resolved: false,
     });
     logger.warn({ userId, eventType, severity: details.severity }, "Safety event logged");
   } catch (err) {
@@ -139,7 +139,7 @@ export async function processChatTurn(
       companionId, userId, turnId, role: "assistant", status: "complete", content: crisisReply,
     }).returning();
     await db.update(companionsTable)
-      .set({ lastMessage: content.trim().slice(0, 80), lastActive: "Just now" })
+      .set({ lastMessage: content.trim().slice(0, 80), lastActiveAt: new Date() })
       .where(eq(companionsTable.id, companionId));
     return { userMessage: blockedMsg, aiMessage: aiMsg, turnId, safetyFlagged: true };
   }
@@ -166,7 +166,7 @@ export async function processChatTurn(
 
   const replyContent = await generateAIReply(
     companion.name,
-    companion.persona,
+    companion.personaKey,
     content.trim() + memoryContext,
     recentHistory,
   );
@@ -188,7 +188,7 @@ export async function processChatTurn(
 
   const msgCount = history.length + 1;
   await db.update(companionsTable)
-    .set({ lastMessage: content.trim().slice(0, 80), lastActive: "Just now", messageCount: msgCount })
+    .set({ lastMessage: content.trim().slice(0, 80), lastActiveAt: new Date(), messageCount: msgCount })
     .where(eq(companionsTable.id, companionId));
 
   const sessionStart = sessionStartedAt ? new Date(sessionStartedAt) : (history.length > 0 ? new Date(history[0].createdAt) : new Date());

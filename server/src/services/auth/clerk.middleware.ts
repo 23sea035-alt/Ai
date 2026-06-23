@@ -1,16 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { createClerkClient } from "@clerk/backend";
+import { createClerkClient, verifyToken as clerkVerifyToken } from "@clerk/backend";
 import { getEnv } from "../../config/env.js";
 import { lookupLocalUser } from "./auth.service.js";
-
-let clerk: ReturnType<typeof createClerkClient> | null = null;
-
-function getClerk() {
-  if (!clerk) {
-    clerk = createClerkClient({ secretKey: getEnv().CLERK_SECRET_KEY });
-  }
-  return clerk;
-}
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -26,18 +17,16 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
 
   try {
     const token = header.slice(7);
-    const session = await getClerk().sessions.verifySession({
-      sessionToken: token,
-    });
+    const jwtPayload = await clerkVerifyToken(token, {});
 
-    if (!session) {
+    if (!jwtPayload.sub) {
       res.status(401).json({ error: "Invalid session" });
       return;
     }
 
-    req.clerkUserId = session.userId;
+    req.clerkUserId = jwtPayload.sub;
 
-    const localUser = await lookupLocalUser(session.userId);
+    const localUser = await lookupLocalUser(jwtPayload.sub);
     if (!localUser) {
       res.status(404).json({ error: "User not found. Complete registration first." });
       return;
@@ -59,19 +48,17 @@ export async function optionalAuth(req: AuthRequest, _res: Response, next: NextF
 
   try {
     const token = header.slice(7);
-    const session = await getClerk().sessions.verifySession({
-      sessionToken: token,
-    });
+    const jwtPayload = await clerkVerifyToken(token, {});
 
-    if (session) {
-      req.clerkUserId = session.userId;
-      const localUser = await lookupLocalUser(session.userId);
+    if (jwtPayload.sub) {
+      req.clerkUserId = jwtPayload.sub;
+      const localUser = await lookupLocalUser(jwtPayload.sub);
       if (localUser) {
         req.userId = localUser.id;
       }
     }
   } catch {
-    // Session verification failed — continue as unauthenticated
+    // Token verification failed — continue as unauthenticated
   }
 
   next();

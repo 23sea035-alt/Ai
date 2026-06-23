@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, integer, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -17,6 +17,7 @@ export const usersTable = pgTable("users", {
   aiDisclosureAccepted: boolean("ai_disclosure_accepted").notNull().default(false),
   tosAcceptedVersion: text("tos_accepted_version"),
   tosAcceptedAt: timestamp("tos_accepted_at", { withTimezone: true }),
+  stripeCustomerId: text("stripe_customer_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

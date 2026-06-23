@@ -96,10 +96,8 @@ try {
 // Chat uses HTTP POST only. See docs/v1-tasklist.md Phase 3.
 
 // ── Sentry error handler (must be last) ──────────────────────────────
-if (env.SENTRY_DSN) {
-  const { errorHandler } = await import("@sentry/node");
-  app.use(errorHandler());
-}
+// Sentry auto-instruments Express in v9 — no explicit handler needed.
+// Errors bubble to the generic error handler below.
 
 export { server };
 export default app;

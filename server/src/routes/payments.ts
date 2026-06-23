@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { logger } from "../lib/logger.js";
 import { createCheckoutSession, handleWebhook } from "../services/payment.js";
 
 const router = Router();
@@ -15,8 +16,7 @@ router.post("/payments/create-checkout-session", requireAuth, async (req: AuthRe
     const { url, sessionId } = await createCheckoutSession(req.userId!, user.email);
     res.json({ url, sessionId });
   } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: err?.message ?? "Failed to create checkout session" });
+    logger.error({ err }, "Failed to create checkout session");
   }
 });
 
@@ -30,8 +30,7 @@ router.post("/payments/webhook", async (req, res) => {
     const result = await handleWebhook(rawBody, signature);
     res.json(result);
   } catch (err: any) {
-    console.error(err);
-    res.status(400).json({ error: err?.message ?? "Webhook error" });
+    logger.error({ err }, "Payment webhook error");
   }
 });
 
