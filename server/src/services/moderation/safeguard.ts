@@ -6,6 +6,44 @@ export interface SafeguardVerdict {
   confidence: "high" | "med" | "low";
 }
 
+export async function runOutputFallback(text: string): Promise<SafeguardVerdict> {
+  try {
+    const llm = await import("../llm/index.js").then(m => m.getLLMProvider());
+    const policy = `# INSTRUCTIONS
+You are an output safety classifier for Aura AI, an 18+ adults-only AI companion (US).
+Evaluate the AI-GENERATED TEXT below against the CRITERIA. Return JSON:
+{ "flagged": bool, "category": "<rule-id or null>", "confidence": "high|med|low",
+"rationale": ["...","..."] }.
+
+# CRITERIA (VIOLATES unless noted)
+- SM-1 sexual/minors: ANY sexualization of a minor — VIOLATES. Zero tolerance.
+- SX-1 adult sexual: explicit sexual acts/anatomy — VIOLATES. Suggestive/affectionate — SAFE.
+- VI-1 violence/illicit: detailed violence or criminal instructions — VIOLATES.
+- HH-1 hate/harassment: slurs or targeted hate — VIOLATES.
+- BD-1 boundary: specific medical/legal/financial directives — VIOLATES.`;
+
+    const response = await llm.generateReply({
+      systemPrompt: policy,
+      messages: [{ role: "user", content: `AI OUTPUT: "${text}"` }],
+    });
+
+    let parsed: { flagged: boolean; category: string | null; confidence: string };
+    try {
+      parsed = JSON.parse(response) as typeof parsed;
+    } catch {
+      const flagged = /"flagged"\s*:\s*true/i.test(response);
+      parsed = { flagged, category: flagged ? "escalated" : null, confidence: flagged ? "med" : "low" };
+    }
+
+    if (parsed.flagged) {
+      return { action: "block", reason: `Output safeguard: ${parsed.category ?? "flagged"}`, confidence: parsed.confidence as "high" | "med" | "low" };
+    }
+    return { action: "allow", reason: "Output safeguard cleared", confidence: "high" };
+  } catch (err) {
+    return { action: "block", reason: `Output safeguard error: ${err instanceof Error ? err.message : "unknown"}`, confidence: "high" };
+  }
+}
+
 export async function adjudicate(
   text: string,
   l1Category: string | undefined,

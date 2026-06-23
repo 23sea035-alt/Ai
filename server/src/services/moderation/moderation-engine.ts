@@ -4,7 +4,7 @@ import { runL1 } from "./prompt-guard.js";
 import { runL2Input, runL3Output } from "./openai-omni.js";
 import type { OmniCategoryScore, OmniResult } from "./openai-omni.js";
 import type { PromptGuardResult } from "./prompt-guard.js";
-import { adjudicate } from "./safeguard.js";
+import { adjudicate, runOutputFallback } from "./safeguard.js";
 import { SAFE_FALLBACK_REPLY } from "@aura/shared";
 import { buildCrisisResponse } from "./crisis.js";
 
@@ -46,9 +46,20 @@ export class ModerationEngine implements Moderator {
     l1Category = l1Result.action === "escalate" ? "injection" : undefined;
 
     if (l2Result.error) {
+      // Degradation: L2 via OpenAI omni unavailable → fall back to Groq safeguard
+      const fallback = await adjudicate(text, l1Category, []).catch(() => null);
+      if (!fallback || fallback.action === "block") {
+        return {
+          action: "block", categories: [],
+          escalated: false, layer: "safeguard", policyVersion: POLICY_VERSION,
+          reason: `L2 degraded (${l2Result.error}) — safeguard fallback: ${fallback?.reason ?? "unavailable"}`,
+        };
+      }
+      // Safeguard fallback cleared it — continue as allow
       return {
-        action: "block", categories: [],
-        escalated: false, layer: "L2", policyVersion: POLICY_VERSION, reason: `L2 error: ${l2Result.error}`,
+        action: "allow", categories: [],
+        escalated: true, layer: "safeguard", policyVersion: POLICY_VERSION,
+        reason: `L2 degraded (${l2Result.error}) — cleared by safeguard fallback`,
       };
     }
 
@@ -100,10 +111,20 @@ export class ModerationEngine implements Moderator {
   async screenOutput(text: string): Promise<OutputVerdict> {
     const l3 = await runL3Output(text);
     if (l3.error) {
+      // Degradation: L3 via OpenAI omni unavailable → fall back to output safeguard
+      const fallback = await runOutputFallback(text).catch(() => null);
+      if (fallback?.action === "allow") {
+        return {
+          action: "allow", categories: [], escalated: true,
+          layer: "safeguard", policyVersion: POLICY_VERSION,
+          reason: `L3 degraded (${l3.error}) — cleared by output safeguard fallback`,
+        };
+      }
       return {
         action: "block", categories: [], escalated: false,
-        layer: "L3", policyVersion: POLICY_VERSION,
-        safeFallback: SAFE_FALLBACK_REPLY, reason: `L3 error: ${l3.error}`,
+        layer: "safeguard", policyVersion: POLICY_VERSION,
+        safeFallback: SAFE_FALLBACK_REPLY,
+        reason: `L3 degraded (${l3.error}) — safeguard fallback: ${fallback?.reason ?? "unavailable"}`,
       };
     }
     if (l3.flagged) {
