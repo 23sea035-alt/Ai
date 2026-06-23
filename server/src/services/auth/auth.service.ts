@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "../../db/src/index.js";
+import { db, usersTable, bannedIdentitiesTable } from "../../db/src/index.js";
+import { hashIdentifier } from "../../lib/crypto.js";
 
 export async function lookupLocalUser(clerkUserId: string) {
   const [user] = await db
@@ -40,4 +41,14 @@ export async function deleteUserByClerkId(clerkUserId: string) {
   await db
     .delete(usersTable)
     .where(eq(usersTable.clerkUserId, clerkUserId));
+}
+
+export async function checkBan(email: string): Promise<boolean> {
+  const emailHash = hashIdentifier(email.toLowerCase());
+  const [match] = await db
+    .select()
+    .from(bannedIdentitiesTable)
+    .where(eq(bannedIdentitiesTable.identifierHash, emailHash))
+    .limit(1);
+  return !!match;
 }

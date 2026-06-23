@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Webhook } from "svix";
 import { getEnv } from "../config/env.js";
-import { upsertUserFromClerk, deleteUserByClerkId } from "../services/auth/auth.service.js";
+import { upsertUserFromClerk, deleteUserByClerkId, checkBan } from "../services/auth/auth.service.js";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -60,12 +60,28 @@ router.post("/clerk", async (req, res) => {
 
   try {
     switch (type) {
-      case "user.created":
-      case "user.updated": {
+      case "user.created": {
         const email = data.email_addresses?.[0]?.email_address ?? "";
+        const banned = await checkBan(email);
+        if (banned) {
+          logger.warn({ clerkUserId: data.id, email }, "Banned user attempted registration — blocking");
+          res.json({ success: true, action: "blocked_ban_evasion" });
+          return;
+        }
         await upsertUserFromClerk({
           clerkUserId: data.id,
           email,
+          firstName: data.first_name,
+          lastName: data.last_name,
+        });
+        logger.info({ clerkUserId: data.id, type }, "User mirrored from Clerk");
+        break;
+      }
+      case "user.updated": {
+        const updEmail = data.email_addresses?.[0]?.email_address ?? "";
+        await upsertUserFromClerk({
+          clerkUserId: data.id,
+          email: updEmail,
           firstName: data.first_name,
           lastName: data.last_name,
         });
