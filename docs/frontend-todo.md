@@ -43,3 +43,6 @@
 - [ ] **Auth endpoints removed** — `POST /api/auth/register` and `POST /api/auth/login` are gone. Sign-up/Login is handled entirely by Clerk on the client side. After Clerk auth, call `POST /api/auth/seed-companions` to create default companions.
 - [ ] **User profile shape changed** — `name` → `firstName`/`lastName`, `birthYear` → `dateOfBirth` (ISO string). Update any local user state or profile forms accordingly.
 - [ ] **forgot-password.tsx deleted** — Clerk handles password reset via its own UI; remove any custom forgot-password screen from the client.
+- [ ] **Sign in with Apple + Google via Clerk** — configure provider creds in Clerk dashboard (not server env); native Apple flow on iOS; Clerk handles account linking. No server changes.
+- [ ] **Remove silent local-user auth fallback in AppContext.tsx** — Clerk session is the single source of truth; remove the old JWT fallback check.
+- [ ] **Route guard for (tabs)** — protect the main tab navigator with `useAuth()` from Clerk; redirect to sign-in if no session.
