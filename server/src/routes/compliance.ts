@@ -13,26 +13,60 @@ const ReportSchema = z.object({
 
 const router = Router();
 
-// DELETE /api/account — Full account deletion
+// DELETE /api/account — Soft-delete account (30-day grace, recoverable)
 router.delete("/account", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
 
     await db.transaction(async (tx) => {
-      await tx.delete(memoryJobsTable).where(eq(memoryJobsTable.userId, userId));
+      // Purge device tokens immediately (no recovery needed)
       await tx.delete(deviceTokensTable).where(eq(deviceTokensTable.userId, userId));
-      await tx.delete(messagesTable).where(eq(messagesTable.userId, userId));
-      await tx.delete(memoriesTable).where(eq(memoriesTable.userId, userId));
-      await tx.delete(companionsTable).where(eq(companionsTable.userId, userId));
-      await tx.delete(subscriptionsTable).where(eq(subscriptionsTable.userId, userId));
-      await tx.delete(usersTable).where(eq(usersTable.id, userId));
+
+      // Soft-delete user: anonymize PII, tombstone email, set status
+      await tx.update(usersTable).set({
+        firstName: null,
+        lastName: null,
+        dateOfBirth: null,
+        ageVerified: false,
+        email: `deleted-${userId}@aura.ai`,
+        status: "deleted",
+        deletedAt: new Date(),
+        isPremium: false,
+        updatedAt: new Date(),
+      }).where(eq(usersTable.id, userId));
     });
 
-    logger.info({ userId }, "Account fully deleted");
-    res.json({ deleted: true });
+    logger.info({ userId }, "Account soft-deleted — 30-day grace period started");
+    res.json({ deleted: true, gracePeriodDays: 30 });
   } catch (err) {
     logger.error({ err }, "Account deletion failed");
     res.status(500).json({ error: "Account deletion failed" });
+  }
+});
+
+// PATCH /api/account/reactivate — Restore soft-deleted account within grace period
+router.patch("/account/reactivate", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user || user.status !== "deleted") {
+      res.status(400).json({ error: "Account is not deleted" });
+      return;
+    }
+
+    await db.update(usersTable).set({
+      status: "active",
+      deletedAt: null,
+      email: `reactivated-${userId}@aura.ai`,
+      updatedAt: new Date(),
+    }).where(eq(usersTable.id, userId));
+
+    logger.info({ userId }, "Account reactivated");
+    res.json({ reactivated: true });
+  } catch (err) {
+    logger.error({ err }, "Account reactivation failed");
+    res.status(500).json({ error: "Account reactivation failed" });
   }
 });
 

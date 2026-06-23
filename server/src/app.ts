@@ -94,11 +94,13 @@ try {
 
 // ── Start retention enforcement ─────────────────────────────────
 try {
-  const { enforceRetention, enforceSafetyEventRetention, markInactiveUsers } = await import("./services/retention.js");
+  const { enforceRetention, enforceSafetyEventRetention, enforceGraceExpiry, enforceBannedIdentitiesRetention, markInactiveUsers } = await import("./services/retention.js");
   const runRetention = async () => {
     try {
       await enforceRetention();
       await enforceSafetyEventRetention();
+      await enforceGraceExpiry();
+      await enforceBannedIdentitiesRetention();
       await markInactiveUsers();
     } catch (err) {
       logger.error({ err }, "Retention enforcement cycle failed");

@@ -46,3 +46,5 @@
 - [ ] **Sign in with Apple + Google via Clerk** — configure provider creds in Clerk dashboard (not server env); native Apple flow on iOS; Clerk handles account linking. No server changes.
 - [ ] **Remove silent local-user auth fallback in AppContext.tsx** — Clerk session is the single source of truth; remove the old JWT fallback check.
 - [ ] **Route guard for (tabs)** — protect the main tab navigator with `useAuth()` from Clerk; redirect to sign-in if no session.
+- [ ] **Account deletion soft-delete (30d grace)** — `DELETE /api/account` now soft-deletes (anonymizes PII, toggles `status` to `"deleted"`). Show a confirmation: "Your account will be deactivated for 30 days before permanent deletion. You can reactivate by signing in." Add a **Reactivate Account** flow (re-enables account if within 30-day window; client calls `PATCH /api/account/reactivate`).
+- [ ] **Reactivate Account endpoint** — frontend needs to call `PATCH /api/account/reactivate` to restore a soft-deleted account. The endpoint sets `status = "active"`, `deletedAt = null`, and clears the tombstoned email.
