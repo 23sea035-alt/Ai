@@ -55,10 +55,19 @@ prompts can be put under measurement fastest. Minimum unblock:
   cases assert `expectedOutcome`.
 - **T3-3 — Consolidation + retrieval runners** — consolidation: op-match vs `expectedOps` (needs the
   `MemoryConsolidator` seam, `fixlist P2-5`); retrieval is deterministic — fold into Tier-1 (T2-4).
-- **T3-4 — Reports/verdicts plumbing** — create `server/eval/reports/` (gitignored, regenerable) and
-  `server/eval/verdicts/` (kept) per `eval-report-layout.md` §0; runner writes both.
+- **T3-4 — Reports/verdicts plumbing** — per `eval-report-layout.md` §0: `server/eval/reports/` (per-run
+  Markdown report — transcripts + auto-judge verdicts; **gitignored**, regenerable) + `server/eval/verdicts/`
+  (JSONL human verdicts — **committed**, the kept labeled corpus). Each report records run-id, timestamp,
+  model-under-test+version, judge model+version. Add `server/eval/reports/` to `.gitignore`.
 - **T3-5 — Eval entrypoint + keys + cost guard** — a `pnpm eval` script (real OpenAI/Groq keys),
   **excluded from CI**, run pre-release/scheduled; batch/limit to control cost.
+- **T3-6 — Persist + SHARE run results (so Jason and the coworker can both view them without re-running)** —
+  the raw report is gitignored and, for LLM evals, not cheaply/identically regenerable. So the runner ALSO
+  writes a small **committed scorecard** per run at `server/eval/runs/<date>-<run-id>.md` — aggregate metrics
+  only (moderation confusion matrix; generation pass-rate + judge-disagreement counts; consolidation op-match;
+  retrieval topN accuracy) plus the run header — and appends a one-line row to a committed
+  `server/eval/runs/INDEX.md` so metric drift/regressions are visible run-over-run. Net: raw transcripts stay
+  local (gitignored); **metrics + human verdicts live in git** for both of you to read.
 
 ### T2 — Tier-2 contract tests (trust the pipeline the prompts run inside)
 - **T2-1 — Install + wire PGlite** (`@electric-sql/pglite`); fresh instance per file + `TRUNCATE … RESTART IDENTITY CASCADE` per test; programmatic `migrate()` (T0-2); pin PG17.
@@ -80,6 +89,10 @@ prompts can be put under measurement fastest. Minimum unblock:
 - **T4-1** — add `@vitest/coverage-v8`; set the 80% line/branch threshold on business logic.
 - **T4-2** — CI gates Tier 1+2 only (build shared → typecheck → lint → tier1/2 + coverage); **Tier 3
   excluded** from CI (needs keys + cost).
+- **T4-3 — Persist CI test + coverage results** — upload the vitest results + coverage report (lcov/HTML)
+  as a GitHub Actions artifact (`actions/upload-artifact`) and write a coverage + pass/fail summary to the
+  run's job summary (`$GITHUB_STEP_SUMMARY`). So Tier-1/2 results are viewable from each CI run, not just
+  ephemeral console logs.
 
 ## Dependencies & ownership
 - **Prompt iteration depends on fixes:** moderation-prompt iteration needs **T0-1** (+ `fixlist P2-3`
