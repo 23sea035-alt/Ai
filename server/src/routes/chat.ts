@@ -18,6 +18,7 @@ import {
   shouldShowBreakReminder,
 } from "../services/moderation/index.js";
 import { sendSuccess, sendError } from "../lib/response.js";
+import { validate } from "../middleware/validate.js";
 import {
   retrieveMemories,
   enqueueMemoryJob,
@@ -361,16 +362,10 @@ router.get("/companions/:companionId/messages", requireAuth, async (req: AuthReq
   }
 });
 
-router.post("/companions/:companionId/chat", requireAuth, chatPerMinuteLimiter, chatDailyHardCap, async (req: AuthRequest, res) => {
+router.post("/companions/:companionId/chat", requireAuth, chatPerMinuteLimiter, chatDailyHardCap, validate(ChatInputSchema), async (req: AuthRequest, res) => {
   try {
     const companionId = req.params.companionId as string;
-    const parsed = ChatInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      sendError(res, parsed.error.issues.map(i => i.message).join("; "), 400, "VALIDATION_ERROR");
-      return;
-    }
-
-    const { content, turnId, sessionStartedAt } = parsed.data;
+    const { content, turnId, sessionStartedAt } = req.body as z.infer<typeof ChatInputSchema>;
     const result = await processChatTurn(req.userId!, companionId, content, sessionStartedAt, turnId);
     if (result.error) {
       sendError(res, result.error, result.limitReached ? 429 : 400, result.limitReached ? "LIMIT_REACHED" : undefined);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, deviceTokensTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
 import { logger } from "../lib/logger.js";
 import { sendSuccess, sendError } from "../lib/response.js";
 
@@ -13,15 +14,9 @@ const RegisterTokenSchema = z.object({
   platform: z.enum(["ios", "android"]).default("ios"),
 });
 
-router.post("/notifications/register", requireAuth, async (req: AuthRequest, res) => {
+router.post("/notifications/register", requireAuth, validate(RegisterTokenSchema), async (req: AuthRequest, res) => {
   try {
-    const parsed = RegisterTokenSchema.safeParse(req.body);
-    if (!parsed.success) {
-      sendError(res, parsed.error.issues.map(i => i.message).join("; "), 400);
-      return;
-    }
-
-    const { token, platform } = parsed.data;
+    const { token, platform } = req.body as z.infer<typeof RegisterTokenSchema>;
 
     await db.insert(deviceTokensTable).values({
       userId: req.userId!,
