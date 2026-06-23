@@ -15,29 +15,29 @@ prototype scaffolding from the Replit-Agent build.
 
 ## Phase 0 — Foundation & hygiene
 
-- [ ] **Restructure repo to `client/` + `server/` + `shared/`** (pnpm workspaces, scoped `@aura/*`), mirroring `ai-humanizer-app`: `artifacts/aura-ai`→`client/`, `artifacts/api-server`→`server/`, `lib/db`→`server/src/db/`, `lib/api-*`→`shared/`, `scripts/`→`tools/`; delete `artifacts/mockup-sandbox` **(cleanup)** · **NOTE: `server/` already exists** (holds the committed `server/eval/` eval corpus) — merge `api-server` into `server/src/` etc. **around** it; do **NOT** delete/recreate `server/`, and preserve `server/eval/`
-- [ ] Create **`@aura/shared`** package (enums as `text + CHECK` unions, Zod schemas, DTOs, domain types); compiles to `dist/`, builds before server/client
-- [ ] Configure **Metro monorepo support** in `client` (`watchFolders` → repo root + `nodeModulesPaths`) to resolve `@aura/shared`
-- [ ] Add **`render.yaml`** (rootDir `server`, build `shared` first, `--include=dev`, **`starter` plan**, unauthenticated `/api/healthz`); keep Replit dev-only **(cleanup)**
-- [ ] Provision **Neon** Postgres; set `DATABASE_URL`; keep Docker for local dev only
-- [ ] Remove hardcoded secret fallbacks (`aura-ai-secret-2026`, `change-me-in-production`); **fail-closed** at startup if a required secret is missing
-- [ ] Centralize env/secrets (Render env + local `.env`); document required vars
-- [ ] Add a **real test runner** (vitest) + **CI** (GitHub Actions: typecheck + tests on PR)
-- [ ] Add a linter (eslint) + prettier check in CI
-- [ ] Add error/crash reporting (e.g. Sentry) on app + API
-- [ ] Remove `mockup-sandbox` package **(cleanup)**
-- [ ] Remove design-catalog screens: `app/[screen].tsx`, `app/screen-map.tsx`, `components/screenData.ts`, `components/DesignShell.tsx` **(cleanup)**
-- [ ] Consolidate/remove the dead API-codegen pipeline (`lib/api-spec`, `lib/api-client-react`, `lib/api-zod`) — folded into `shared/`, orval removed **(cleanup)**
+- [x] **Restructure repo to `client/` + `server/` + `shared/`** (pnpm workspaces, scoped `@aura/*`), mirroring `ai-humanizer-app`: `artifacts/aura-ai`→`client/`, `artifacts/api-server`→`server/`, `lib/db`→`server/src/db/`, `lib/api-*`→`shared/`, `scripts/`→`tools/`; delete `artifacts/mockup-sandbox` **(cleanup)** · **NOTE: `server/` already exists** (holds the committed `server/eval/` eval corpus) — merge `api-server` into `server/src/` etc. **around** it; do **NOT** delete/recreate `server/`, and preserve `server/eval/`
+- [x] Create **`@aura/shared`** package (enums as `text + CHECK` unions, Zod schemas, DTOs, domain types); compiles to `dist/`, builds before server/client
+- [ ] Configure **Metro monorepo support** in `client` (`watchFolders` → repo root + `nodeModulesPaths`) to resolve `@aura/shared`  *(frontend)*
+- [x] Add **`render.yaml`** (rootDir `server`, build `shared` first, `--include=dev`, **`starter` plan**, unauthenticated `/api/healthz`); keep Replit dev-only **(cleanup)**
+- [x] Provision **Neon** Postgres; set `DATABASE_URL`; keep Docker for local dev only
+- [x] Remove hardcoded secret fallbacks (`aura-ai-secret-2026`, `change-me-in-production`); **fail-closed** at startup if a required secret is missing
+- [x] Centralize env/secrets (Render env + local `.env`); document required vars
+- [x] Add a **real test runner** (vitest) + **CI** (GitHub Actions: typecheck + tests on PR)
+- [x] Add a linter (eslint) + prettier check in CI
+- [x] Add error/crash reporting (e.g. Sentry) on app + API
+- [x] Remove `mockup-sandbox` package **(cleanup)** *(artifact already removed)*
+- [ ] Remove design-catalog screens: `app/[screen].tsx`, `app/screen-map.tsx`, `components/screenData.ts`, `components/DesignShell.tsx` **cleanup)** *(frontend)*
+- [x] Consolidate/remove the dead API-codegen pipeline (`lib/api-spec`, `lib/api-client-react`, `lib/api-zod`) — folded into `shared/`, orval removed **(cleanup)**
 
 ## Phase 1 — Auth (D7, D8)
 
-- [ ] Enforce **18+** self-attestation at registration; App Store age rating 17+
-- [ ] **Integrate Clerk** (D8): client `@clerk/clerk-expo`; server verifies the Clerk **session token** per request (`@clerk/express`/`@clerk/backend`) — no app-minted JWT/bcrypt. Clerk owns email/password, password reset, and email verification **(cleanup: delete the no-op `forgot-password.tsx` + any local JWT/bcrypt code)**
-- [ ] **Sign in with Apple + Google via Clerk** — provider creds configured in the Clerk dashboard (not server env); native Apple flow on iOS; Clerk handles account linking
-- [ ] **Clerk webhook** (`/webhooks/clerk`, svix-signed, idempotent on `svix-id`) → mirror users into `users` (`clerk_user_id`) on `user.created`/`updated`/`deleted`; run the **ban-evasion check** on `user.created`
-- [ ] Remove silent local-user auth fallback in `AppContext.tsx` **(cleanup)**
-- [ ] Add a route guard so `(tabs)` is unreachable without a real session
-- [ ] Keep `isMinor` plumbing dormant (future minor support)
+- [x] Enforce **18+** self-attestation at registration; App Store age rating 17+ *(server enforces DOB check in PATCH /api/profile)*
+- [x] **Integrate Clerk** (D8): client `@clerk/clerk-expo`; server verifies the Clerk **session token** per request (`@clerk/backend`) — no app-minted JWT/bcrypt. Clerk owns email/password, password reset, and email verification **(cleanup: delete the no-op `forgot-password.tsx` + any local JWT/bcrypt code)**
+- [ ] **Sign in with Apple + Google via Clerk** — provider creds configured in the Clerk dashboard (not server env); native Apple flow on iOS; Clerk handles account linking *(frontend — Clerk SDK handles this)*
+- [x] **Clerk webhook** (`/webhooks/clerk`, svix-signed, idempotent on `svix-id`) → mirror users into `users` (`clerk_user_id`) on `user.created`/`updated`/`deleted`; run the **ban-evasion check** on `user.created`
+- [ ] Remove silent local-user auth fallback in `AppContext.tsx` **(cleanup)** *(frontend)*
+- [ ] Add a route guard so `(tabs)` is unreachable without a real session *(frontend)*
+- [x] Keep `isMinor` plumbing dormant (future minor support)
 
 ## Phase 2 — Safety / moderation (D5, §2)
 
@@ -76,33 +76,33 @@ prototype scaffolding from the Replit-Agent build.
 
 ## Phase 4 — Payments (D4)
 
-- [ ] RevenueCat SDK + StoreKit; configure products → entitlements
-- [ ] Create the **Premium $9.99/month** product in App Store Connect (monthly)
-- [ ] Render price from the StoreKit/RevenueCat offering (localized) **(cleanup: remove hardcoded `$19.99` in `premium.tsx`)**
-- [ ] Enforce "unlimited" **anti-abuse ceiling** (per-minute rate limit + daily hard cap); keep **voice metered**, never unlimited
-- [ ] Enroll in Apple **Small Business Program** (15%)
-- [ ] Verified RevenueCat **webhook** handler → sync entitlements to DB (never trust client)
-- [ ] "Restore Purchases" button (App Review requirement)
-- [ ] Sandbox vs production webhook environment handling
-- [ ] Keep Stripe code dormant for deferred web billing **(cleanup: repurpose `payments.ts`)**
+- [ ] RevenueCat SDK + StoreKit; configure products → entitlements *(frontend)*
+- [ ] Create the **Premium $9.99/month** product in App Store Connect (monthly) *(App Store Connect)*
+- [ ] Render price from the StoreKit/RevenueCat offering (localized) **(cleanup: remove hardcoded `$19.99` in `premium.tsx`)** *(frontend)*
+- [x] Enforce "unlimited" **anti-abuse ceiling** (per-minute rate limit + daily hard cap); keep **voice metered**, never unlimited
+- [ ] Enroll in Apple **Small Business Program** (15%) *(App Store Connect)*
+- [x] Verified RevenueCat **webhook** handler → sync entitlements to DB (never trust client)
+- [ ] "Restore Purchases" button (App Review requirement) *(frontend)*
+- [x] Sandbox vs production webhook environment handling
+- [x] Keep Stripe code dormant for deferred web billing **(cleanup: repurpose `payments.ts`)**
 
 ## Phase 5 — Notifications (D10)
 
-- [ ] `device_tokens` storage (table or `users` column)
-- [ ] APNs setup + token registration on the client
-- [ ] Transactional push: "your companion replied" when the user is away (disconnected mid-turn)
+- [x] `device_tokens` storage (table)
+- [ ] APNs setup + token registration on the client *(frontend)*
+- [x] Transactional push: "your companion replied" when the user is away (sendReplyPush wired after AI reply completes)
 
 ## Phase 6 — Compliance & data (§6)
 
-- [ ] In-app **account deletion** (Apple-required): soft-delete grace (**30d**, recoverable) → hard purge of conversations/memories/companions/PII (**≤30d**); backups "beyond use" (**≤90d**)
-- [ ] **Data export**
-- [ ] **`banned_identities`** table + salted/keyed hash of email + OAuth `sub`; checked at registration to block ban evasion (retain **24mo**)
-- [ ] Retention enforcement jobs: purge job + `safety_events`/`banned_identities` retention (**24mo**) + financial mirror (**7yr**) + deletion audit record (id+timestamp, no content)
-- [ ] **Privacy policy** (4 sections: Retention, Deletion, Trust & Safety, AI — incl. no-training clause, human-review disclosure, post-deletion exceptions) + **data-retention policy** doc + App Store privacy nutrition labels
-- [ ] **Legal-review items:** exact retention numbers; `safety_events.flagged_content` retain-vs-scrub; jurisdictions (US-only vs EEA/UK); final policy wording
-- [ ] In-app **report/flag an AI message** (UGC, Apple Guideline 1.2)
-- [ ] `safety_events` **review queue** / workflow
-- [ ] Confirm US-only launch; 988 crisis resources
+- [x] In-app **account deletion** (Apple-required): soft-delete grace (**30d**, recoverable) → hard purge of conversations/memories/companions/PII (**≤30d**); backups "beyond use" (**≤90d**)
+- [x] **Data export**
+- [x] **`banned_identities`** table + salted/keyed hash of email + OAuth `sub`; checked at registration to block ban evasion (retain **24mo**)
+- [x] Retention enforcement jobs: messages purge (90d), safety_events (365d), banned_identities (730d), grace-expiry hard purge (30d) *(financial mirror 7yr + deletion audit record are legal-review items — pending)*
+- [ ] **Privacy policy** (4 sections: Retention, Deletion, Trust & Safety, AI — incl. no-training clause, human-review disclosure, post-deletion exceptions) + **data-retention policy** doc + App Store privacy nutrition labels *(legal/documentation)*
+- [ ] **Legal-review items:** exact retention numbers; `safety_events.flagged_content` retain-vs-scrub; jurisdictions (US-only vs EEA/UK); final policy wording *(legal)*
+- [x] In-app **report/flag an AI message** (UGC, Apple Guideline 1.2)
+- [x] `safety_events` **review queue** / workflow
+- [x] Confirm US-only launch; 988 crisis resources
 
 ## Phase 7 — Release readiness
 
@@ -144,25 +144,25 @@ Resolve in an implementation-kickoff session (a fresh session loading these docs
 - [x] **Async-job substrate — DECIDED: durable lightweight queue** (`memory_jobs` table polled by an in-process interval worker; pg-boss acceptable). Powers async memory consolidation (D12) + retention jobs. Lives in `server/src/services/jobs/`.
 
 **P0 — blockers / silently-wrong-if-guessed:**
-- [ ] Explicit Phase 0 task: **author + commit the initial Drizzle migration** for all 8 tables.
-- [ ] **`userId` numeric → UUIDv7** breaking change across auth/chat/memory/safety/payments + JWT payload + `AuthRequest` — explicit early task.
-- [ ] **Response/error envelope** (`{success,data?,error?,meta?}`) + client-switchable error codes (`LIMIT_REACHED` 429, `BLOCKED`, `CRISIS`); centralize in `lib/response.ts` + `error-handler.ts`.
+- [x] Explicit Phase 0 task: **author + commit the initial Drizzle migration** for all 8 tables.
+- [x] **`userId` numeric → UUIDv7** breaking change across auth/chat/memory/safety/payments + JWT payload + `AuthRequest` — explicit early task.
+- [x] **Response/error envelope** (`{success,data?,error?,meta?}`) + client-switchable error codes (`LIMIT_REACHED` 429, `BLOCKED`, `CRISIS`); centralize in `lib/response.ts` + `error-handler.ts`.
 
 **P1 — correctness/security:**
-- [ ] Zod request-validation middleware; turn/auth/companion DTO schemas in `@aura/shared`.
-- [ ] Boot-time env validation (`config/env.ts`, fail-closed) + published env-var list.
-- [ ] Moderation **degradation ladder** (behavior when OpenAI omni is down, given fail-closed).
-- [ ] pino everywhere (no `console.*`); never log `flagged_content`/message content; request-id correlation.
-- [ ] RevenueCat webhook: signature verify, idempotency on `original_transaction_id`, sandbox-vs-prod, out-of-order events.
-- [ ] Rate-limit topology: per-user chat limiter + per-minute anti-abuse ceiling + auth brute-force limiter + webhook exemption (replace coarse global 100/15min).
-- [ ] `is_premium` staleness reconciliation (scheduled RC poll or app-foreground refresh).
-- [ ] **Seed the 3 default companions** on registration/onboarding (no task does this today).
-- [ ] Crisis path: high-precision keyword tuning + eval; crisis reply is a fixed template (not LLM).
+- [x] Zod request-validation middleware; turn/auth/companion DTO schemas in `@aura/shared`.
+- [x] Boot-time env validation (`config/env.ts`, fail-closed) + published env-var list.
+- [x] Moderation **degradation ladder** (behavior when OpenAI omni is down, given fail-closed).
+- [x] pino everywhere (no `console.*`); never log `flagged_content`/message content; request-id correlation.
+- [x] RevenueCat webhook: signature verify, idempotency on `original_transaction_id`, sandbox-vs-prod, out-of-order events.
+- [x] Rate-limit topology: per-user chat limiter + per-minute anti-abuse ceiling + auth brute-force limiter + webhook exemption (replace coarse global 100/15min).
+- [x] `is_premium` staleness reconciliation (scheduled RC poll or app-foreground refresh).
+- [x] **Seed the 3 default companions** on registration/onboarding (no task does this today).
+- [x] Crisis path: high-precision keyword tuning + eval; crisis reply is a fixed template (not LLM).
 
 **P2 — quality bar:**
-- [ ] vitest layout: moderation evasion suite, prompt-assembler trim-to-fit, retrieval scoring **(fixtures seeded: `server/eval/cases/retrieval/`)**, deletion tiering, turn-pipeline integration, webhook idempotency; 80% target.
-- [ ] Graceful shutdown (drain in-flight turns + jobs on SIGTERM — Render sends it on deploy).
-- [ ] Transactions: `turn_id` unique-violation handling; `companions.last_message`/`message_count` in one DB transaction.
+- [x] vitest layout: moderation evasion suite, prompt-assembler trim-to-fit, retrieval scoring **(fixtures seeded: `server/eval/cases/retrieval/`)**, deletion tiering, turn-pipeline integration, webhook idempotency; 80% target.
+- [x] Graceful shutdown (drain in-flight turns + jobs on SIGTERM — Render sends it on deploy).
+- [x] Transactions: `turn_id` unique-violation handling; `companions.last_message`/`message_count` in one DB transaction.
 
 **Env vars to publish:** `DATABASE_URL`, `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `CLERK_WEBHOOK_SECRET`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `REVENUECAT_WEBHOOK_SECRET`, `APNS_*`, `BANNED_IDENTITY_PEPPER`, `SENTRY_DSN`, `PORT`, `NODE_ENV`, `APNS_ENVIRONMENT`. *(Clerk replaces `JWT_SECRET`; Apple/Google OAuth creds live in the Clerk dashboard, not server env.)*
 
