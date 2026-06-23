@@ -3,6 +3,13 @@ import { eq } from "drizzle-orm";
 import { db, usersTable, companionsTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 
+const EIGHTEEN_YEARS_MS = 18 * 365.25 * 24 * 60 * 60 * 1000;
+const AGE_GUARD_ERROR = { error: "Age verification required. Complete onboarding before using this endpoint." };
+
+function isAdult(dateOfBirth: string): boolean {
+  return Date.now() - new Date(dateOfBirth).getTime() >= EIGHTEEN_YEARS_MS;
+}
+
 const router = Router();
 
 const DEFAULT_COMPANIONS = [
@@ -14,6 +21,10 @@ const DEFAULT_COMPANIONS = [
 // POST /api/auth/seed-companions — seed default companions for newly registered users
 router.post("/auth/seed-companions", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const [user] = await db.select({ ageVerified: usersTable.ageVerified, onboardingDone: usersTable.onboardingDone }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    if (!user.ageVerified || !user.onboardingDone) { res.status(403).json(AGE_GUARD_ERROR); return; }
+
     const existing = await db.select().from(companionsTable).where(eq(companionsTable.userId, req.userId!)).limit(1);
     if (existing.length > 0) {
       res.json({ seeded: false, message: "Companions already exist" });
@@ -72,7 +83,9 @@ router.put("/auth/me", requireAuth, async (req: AuthRequest, res) => {
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
     if (dateOfBirth !== undefined) {
+      if (!isAdult(dateOfBirth)) { res.status(403).json({ error: "You must be 18 or older to use Aura." }); return; }
       updates.dateOfBirth = dateOfBirth;
+      updates.isMinor = false;
       updates.ageVerified = true;
     }
     if (onboardingDone !== undefined) updates.onboardingDone = onboardingDone;
