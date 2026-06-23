@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: aura-api
+    env: node
+    region: oregon
+    plan: starter
+    rootDir: server
+    buildCommand: pnpm --filter @aura/shared run build && pnpm install --include=dev && pnpm --filter @aura/server run build
+    startCommand: pnpm --filter @aura/server run start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: REVENUECAT_WEBHOOK_SECRET
+        sync: false
+      - key: APNS_KEY_ID
+        sync: false
+      - key: APNS_TEAM_ID
+        sync: false
+      - key: APNS_KEY_FILE
+        sync: false
+      - key: APNS_ENVIRONMENT
+        sync: false
+      - key: BANNED_IDENTITY_PEPPER
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
