@@ -20,15 +20,15 @@
 
 ## The companions
 
-Three vetted personas. Maya's primary is **Aurora**. Each has a default 3×3×3 trait tune
-(warmth / energy / verbosity) and a warm theme derived from its `persona_key` (the palette owner
-decides exact hues within Warm Sanctuary — keep them distinct + warm).
+Three vetted personas, all **warm emotional companions** differentiated by relational **stance** (not
+by function). Canonical definitions live in [`docs/specs/personas.md`](../specs/personas.md); keep
+this table in sync with it. Maya's primary is **Aurora**.
 
-| Persona | Voice in one line | Default traits | Theme feel |
-|---|---|---|---|
-| **Aurora** *(primary)* | Warm, gentle, emotionally attuned — a soft place to land | affectionate · balanced · balanced | dawn / amber-rose warm |
-| **Orion** | Steady, grounded, thoughtful — a calm anchor | warm · calm · balanced | dusk / deep-clay warm |
-| **Lyra** | Bright, playful, curious — lifts the mood | warm · playful · concise | sunlit / honey warm |
+| Persona | Stance | Voice in one line | Default traits | Theme feel |
+|---|---|---|---|---|
+| **Aurora** *(primary)* | sits with you (be heard) | Warm and gentle, a soft place to land. | affectionate · calm · balanced | dawn / amber-rose warm |
+| **Orion** | steadies you (be anchored) | Steady and grounded, a calm anchor. | warm · calm · concise | dusk / deep-clay warm |
+| **Lyra** | lifts you (be lifted) | Bright and playful, lifts the mood. | warm · playful · expansive | sunlit / honey warm |
 
 Avatars are **warm, hand-crafted marks** (soft tonal/illustrative), never glowing orbs or stock circles.
 

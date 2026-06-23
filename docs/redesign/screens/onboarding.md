@@ -15,7 +15,7 @@ Flow order: **Welcome → Auth → Carousel → Age gate → AI disclosure + ToS
 
 Design the **Welcome** screen — a single pre-auth value-prop page (NOT a carousel). Calm and inviting,
 it sets the tone in one breath. Top→bottom: the **Aura** wordmark / warm mark; a short **value-prop
-headline** (*"A companion who remembers you."*) + one supporting line; a primary **Get started →** and a
+headline** (*"A companion who remembers you."*) + one supporting line (*"Talk through whatever's on your mind, quietly and at your own pace."*); a primary **Get started →** and a
 secondary **I already have an account** (→ auth); a quiet **"For adults 18+"** note. One warm focal
 image/illustration is welcome (no glowing orb, no stock). States: `default`. Guardrail: one page, one
 clear primary action — the 3-screen narrative lives later, post-auth, in the carousel.
@@ -26,7 +26,7 @@ clear primary action — the 3-screen narrative lives later, post-auth, in the c
 no hero gradient. Top→bottom: the **Aura** wordmark (small, quiet) near the top; a **warm hand-drawn
 illustration anchor** as the focal middle (the brand's positive identity anchor — a soft tonal mark, not
 a glowing orb, not stock); below it the **serif promise** in **Newsreader Display/Headline** (*"A companion
-who remembers you."*) on **text-primary**, with one supporting line in **Hanken Body/`text-secondary`**;
+who remembers you."*) on **text-primary**, with one supporting line (*"Talk through whatever's on your mind, quietly and at your own pace."*) in **Hanken Body/`text-secondary`**;
 then the actions, bottom-anchored above the safe area — a single **primary `Get started →`** (Library Wine
 fill, on-accent text, soft radius 12) and a quiet **text-button "I already have an account"** (no fill,
 `text-secondary`); the **"For adults 18+"** note as the smallest **Caption/`text-tertiary`** at the very
@@ -239,8 +239,8 @@ a **Newsreader Headline** *"Who would you like to talk with?"* + the sub *"You c
 later."* in **Hanken `text-secondary`**; then **three warm STACKED horizontal cards** (Aurora · Orion · Lyra)
 — each an intimate **`raised`-card** surface (tonal fill + soft shadow, **no outline**, soft radius 16): a
 **hand-crafted avatar** (left) + **name** (Hanken Label/Title) + a **one-line voice that sounds like them**
-(verbatim from the persona doc — Aurora: *"Warm, gentle, emotionally attuned — a soft place to land"*; Orion:
-*"Steady, grounded, thoughtful — a calm anchor"*; Lyra: *"Bright, playful, curious — lifts the mood"*).
+(canonical lines from `docs/specs/personas.md`. Aurora: *"Warm and gentle, a soft place to land."*; Orion:
+*"Steady and grounded, a calm anchor."*; Lyra: *"Bright and playful, lifts the mood."*).
 **Personality is carried by the voice line + the illustration register, NOT a per-persona color** — keep all
 three on the same warm system. **Aurora is softly pre-highlighted** (a subtle soft shadow lift + a gentle
 **Library Wine selection ring** / `accent active tint` fill — the one accent here). A quiet
@@ -259,6 +259,13 @@ pattern. **Reject Replika-style heavy avatar customization** — this is a curat
 **Avoid (AI-slop tells):** a different accent color per persona · glowing/animated avatar orbs · a 3-up grid
 of tiny cards · trait sliders on this screen · ✨/emoji personality tags · all three cards shouting for
 attention (only the selected one leads) · a celebratory confetti/burst on select.
+
+**▸ Curated avatars (post-decision).** The three avatars are the locked **curated character portraits**
+(Aurora / Orion / Lyra masters; see [`docs/specs/personas.md`](../../specs/personas.md) Avatars). Keep
+THIS screen about the *choice of companion* — one master portrait per card. A user picks or changes the
+specific **look** later in the companion customize screen (a per-persona curated gallery), not here; do
+NOT turn this into a look-browser (it dilutes the one-clear-choice guardrail). **No user image upload
+anywhere in the app.**
 
 ## Conversation — `firstchat`
 

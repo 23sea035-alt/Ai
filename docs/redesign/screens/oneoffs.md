@@ -173,6 +173,15 @@ disabled = lowered opacity, no haptic.
 
 *Borrow / avoid:* **Borrow:** Apple HIG segmented controls (2–5 text-only segments, no icons); iOS Settings left-labeled rows; Day One's gentle prose-preview tone. **Avoid (AI-slop tells):** a per-chip lock icon on every locked control (use one Unlock door); a dense Character.ai-style multi-tab creator; accent-filled selected chips; sliders pretending to be precise where three plain segments are clearer; bouncy chip animations.
 
+**▸ Look gallery (curated avatar, swap-not-upload).** Add a **look selector** to this screen: the
+companion's **avatar** near the top with a **Change look** affordance that opens a **small curated
+gallery of looks for this persona** (the master + its variation set from
+[`docs/specs/personas.md`](../../specs/personas.md) Avatars: alternate outfits / moods / presence-states).
+Selecting a look updates the avatar. **Curated picks only — NO image upload.** Together with the editable
+**name** already on this screen, rename + swap-look is the full "make this companion yours." Free tier =
+the base look; **extra looks can be a Premium unlock** alongside trait tuning. A selected look is a
+**neutral** raised/checked thumbnail, never a per-look accent.
+
 ---
 
 ## Memory — `memory`
@@ -310,7 +319,7 @@ no motion.
 Edit profile.
 
 *Layout top→bottom:*
-- **Avatar** (with a change affordance).
+- **Avatar** (with a change affordance) — **curated or default only, NO free image upload** (keeps the no-UGC stance: a warm monogram/initial or a small curated set, not a photo picker).
 - **First name** / **last name** fields (first name is what the companion uses).
 - Primary **Save**.
 
