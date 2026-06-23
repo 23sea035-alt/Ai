@@ -27,5 +27,14 @@ Aura AI — an iOS AI-companion chat app (**18+, US-first**). The current code i
 
 ---
 
+## Build protocol (always-on custom instructions)
+
+Work `docs/v1-tasklist.md` **ONE phase + ONE task at a time** — never the whole backend in one pass.
+After each task: typecheck + that unit's tests pass, no `console.*`/hardcoded secrets, commit.
+Stop + confirm at each phase boundary. Backend ONLY — don't build frontend (append client changes
+to `docs/frontend-todo.md`). Don't guess the legal-review items.
+
+---
+
 _This file intentionally defers to `docs/` + `replit.md` to avoid drift. The previous contents
 (a prototype build log) are in git history._

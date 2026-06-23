@@ -1,0 +1,81 @@
+export const USER_STATUS = ['active', 'suspended', 'banned', 'deleted'] as const;
+export type UserStatus = (typeof USER_STATUS)[number];
+
+export const AGE_ASSURANCE_METHOD = ['self_declared', 'apple_declared_age_range', 'third_party'] as const;
+export type AgeAssuranceMethod = (typeof AGE_ASSURANCE_METHOD)[number];
+
+export const PERSONA_KEY = ['aurora', 'orion', 'lyra'] as const;
+export type PersonaKey = (typeof PERSONA_KEY)[number];
+
+export const MESSAGE_ROLE = ['user', 'assistant'] as const;
+export type MessageRole = (typeof MESSAGE_ROLE)[number];
+
+export const MESSAGE_STATUS = ['pending', 'complete', 'failed', 'blocked'] as const;
+export type MessageStatus = (typeof MESSAGE_STATUS)[number];
+
+export const MEMORY_CATEGORY = ['identity', 'preference', 'attribute', 'relationship', 'work', 'location', 'general'] as const;
+export type MemoryCategory = (typeof MEMORY_CATEGORY)[number];
+
+export const SUBSCRIPTION_TIER = ['free', 'premium'] as const;
+export type SubscriptionTier = (typeof SUBSCRIPTION_TIER)[number];
+
+export const SUBSCRIPTION_STATUS = ['active', 'trialing', 'grace_period', 'billing_retry', 'expired', 'revoked'] as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUS)[number];
+
+export const SUBSCRIPTION_STORE = ['app_store', 'play_store', 'stripe'] as const;
+export type SubscriptionStore = (typeof SUBSCRIPTION_STORE)[number];
+
+export const SUBSCRIPTION_PERIOD = ['normal', 'trial', 'intro'] as const;
+export type SubscriptionPeriod = (typeof SUBSCRIPTION_PERIOD)[number];
+
+export const DEVICE_PLATFORM = ['ios'] as const;
+export type DevicePlatform = (typeof DEVICE_PLATFORM)[number];
+
+export const DEVICE_ENVIRONMENT = ['production', 'sandbox'] as const;
+export type DeviceEnvironment = (typeof DEVICE_ENVIRONMENT)[number];
+
+export const SAFETY_EVENT_TYPE = ['input_blocked', 'output_blocked', 'crisis_detected', 'injection_detected'] as const;
+export type SafetyEventType = (typeof SAFETY_EVENT_TYPE)[number];
+
+export const SAFETY_SOURCE = ['input', 'output', 'injection'] as const;
+export type SafetySource = (typeof SAFETY_SOURCE)[number];
+
+export const SAFETY_SEVERITY = ['info', 'warning', 'critical'] as const;
+export type SafetySeverity = (typeof SAFETY_SEVERITY)[number];
+
+export const SAFETY_STATUS = ['open', 'reviewed', 'actioned', 'dismissed'] as const;
+export type SafetyStatus = (typeof SAFETY_STATUS)[number];
+
+export const SAFETY_ACTION = ['none', 'warned', 'suspended', 'banned'] as const;
+export type SafetyAction = (typeof SAFETY_ACTION)[number];
+
+export const MODERATION_CATEGORY = ['self_harm', 'sexual', 'sexual_minors', 'violence', 'hate', 'harassment', 'illicit', 'prohibited', 'other'] as const;
+export type ModerationCategory = (typeof MODERATION_CATEGORY)[number];
+
+export const MODERATOR_MODEL = ['deterministic', 'openai_omni', 'gpt_oss_safeguard', 'prompt_guard'] as const;
+export type ModeratorModel = (typeof MODERATOR_MODEL)[number];
+
+export const BANNED_IDENTIFIER_TYPE = ['email_hash', 'apple_sub_hash', 'google_sub_hash'] as const;
+export type BannedIdentifierType = (typeof BANNED_IDENTIFIER_TYPE)[number];
+
+export interface PersonaTraits {
+  warmth: 'reserved' | 'warm' | 'affectionate';
+  energy: 'calm' | 'balanced' | 'playful';
+  verbosity: 'concise' | 'balanced' | 'expansive';
+}
+
+export const FREE_DAILY_LIMIT = 30;
+export const MAX_MESSAGE_CHARS = 2000;
+export const MEMORY_RETRIEVAL_TOP_N = 5;
+export const MEMORY_SCORE_WEIGHTS = { jaccard: 0.7, importance: 0.3, recency: 0.15 };
+export const MEMORY_RECENCY_HALFLIFE_DAYS = 30;
+export const MEMORY_RELEVANCE_FLOOR = 0.08;
+export const MEMORY_IDENTITY_BAR = 0.85;
+export const MEMORY_DEDUP_CANDIDATE_CAP = 50;
+export const MEMORY_IMPORTANCE_BY_CATEGORY = {
+  identity: 0.9, relationship: 0.9, work: 0.7, location: 0.7,
+  attribute: 0.6, preference: 0.6, general: 0.4,
+};
+export const HISTORY_WINDOW = 8;
+export const GENERATION_TEMPERATURE = 0.7;
+export const GENERATION_MAX_TOKENS = 512;

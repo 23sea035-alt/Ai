@@ -1,8 +1,7 @@
 modules = ["nodejs-24", "python-3.11"]
 
 [deployment]
-router = "application"
-deploymentTarget = "autoscale"
+run = ["pnpm", "--filter", "@aura/server", "run", "dev"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
@@ -16,7 +15,7 @@ stack = "PNPM_WORKSPACE"
 expertMode = true
 
 [postMerge]
-path = "scripts/post-merge.sh"
+path = "tools/post-merge.sh"
 timeoutMs = 20000
 
 [[ports]]
