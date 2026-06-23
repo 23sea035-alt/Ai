@@ -36,10 +36,10 @@ export type DevicePlatform = (typeof DEVICE_PLATFORM)[number];
 export const DEVICE_ENVIRONMENT = ['production', 'sandbox'] as const;
 export type DeviceEnvironment = (typeof DEVICE_ENVIRONMENT)[number];
 
-export const SAFETY_EVENT_TYPE = ['input_blocked', 'output_blocked', 'crisis_detected', 'injection_detected'] as const;
+export const SAFETY_EVENT_TYPE = ['input_blocked', 'output_blocked', 'crisis_detected', 'injection_detected', 'user_reported'] as const;
 export type SafetyEventType = (typeof SAFETY_EVENT_TYPE)[number];
 
-export const SAFETY_SOURCE = ['input', 'output', 'injection'] as const;
+export const SAFETY_SOURCE = ['input', 'output', 'injection', 'user_report'] as const;
 export type SafetySource = (typeof SAFETY_SOURCE)[number];
 
 export const SAFETY_SEVERITY = ['info', 'warning', 'critical'] as const;

@@ -1,9 +1,15 @@
 import { Router } from "express";
+import { z } from "zod";
 import { eq, and, desc, isNotNull } from "drizzle-orm";
-import { db, usersTable, messagesTable, companionsTable, memoriesTable, subscriptionsTable, deviceTokensTable, memoryJobsTable, bannedIdentitiesTable } from "../db/src/index.js";
+import { db, usersTable, messagesTable, companionsTable, memoriesTable, subscriptionsTable, deviceTokensTable, memoryJobsTable, bannedIdentitiesTable, safetyEventsTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { logger } from "../lib/logger.js";
 import { hashIdentifier } from "../lib/crypto.js";
+
+const ReportSchema = z.object({
+  reason: z.string().min(1).max(500),
+  detail: z.string().max(2000).optional(),
+});
 
 const router = Router();
 
@@ -54,6 +60,47 @@ router.get("/account/export", requireAuth, async (req: AuthRequest, res) => {
   } catch (err) {
     logger.error({ err }, "Data export failed");
     res.status(500).json({ error: "Data export failed" });
+  }
+});
+
+// POST /api/messages/:id/report — Flag/report an AI message (UGC, Apple Guideline 1.2)
+router.post("/messages/:id/report", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const parsed = ReportSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues.map(i => i.message).join("; ") });
+      return;
+    }
+
+    const messageId = req.params.id as string;
+    const [msg] = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.id, messageId))
+      .limit(1);
+
+    if (!msg || msg.userId !== req.userId!) {
+      res.status(404).json({ error: "Message not found" });
+      return;
+    }
+
+    const { reason, detail } = parsed.data;
+    await db.insert(safetyEventsTable).values({
+      userId: req.userId!,
+      messageId,
+      companionId: msg.companionId,
+      eventType: "user_reported",
+      source: "user_report",
+      severity: "info",
+      detail: reason,
+      flaggedContent: msg.content,
+    });
+
+    logger.info({ messageId, reason }, "Message reported by user");
+    res.json({ reported: true });
+  } catch (err) {
+    logger.error({ err }, "Failed to report message");
+    res.status(500).json({ error: "Failed to report message" });
   }
 });
 
