@@ -24,8 +24,6 @@ const envSchema = z.object({
 
   SENTRY_DSN: z.string().optional(),
 
-  SESSION_SECRET: z.string().optional(),
-
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 
