@@ -59,9 +59,10 @@ const server = http.createServer(app);
 
 // ── Initialize LLM provider ──────────────────────────────────────────
 try {
+  const { getEnv } = await import("./config/env.js");
   const { setLLMProvider } = await import("./services/llm/index.js");
   const { createGroqProvider } = await import("./services/llm/groq.js");
-  const groqProvider = createGroqProvider(process.env.GROQ_API_KEY ?? "");
+  const groqProvider = createGroqProvider(getEnv().GROQ_API_KEY);
   setLLMProvider(groqProvider);
   logger.info("Groq LLM provider initialized");
 } catch (err) {
@@ -74,7 +75,8 @@ try {
   const jwt = await import("jsonwebtoken");
   const wss = new WebSocketServer({ server, path: "/ws/chat" });
 
-  const JWT_SECRET = process.env.SESSION_SECRET ?? "aura-ai-secret-2026";
+  const { getEnv } = await import("./config/env.js");
+  const JWT_SECRET = getEnv().SESSION_SECRET;
 
   wss.on("connection", (ws, req) => {
     logger.info("WebSocket connected");

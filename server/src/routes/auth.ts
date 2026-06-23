@@ -163,7 +163,8 @@ router.get("/auth/me", async (req, res) => {
   try {
     const jwt = await import("jsonwebtoken");
     const token = header.slice(7);
-    const payload = jwt.default.verify(token, process.env.SESSION_SECRET ?? "aura-ai-secret-2026") as { userId: number };
+    const { getEnv } = await import("../config/env.js");
+    const payload = jwt.default.verify(token, getEnv().SESSION_SECRET!) as { userId: number };
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
     res.json({
@@ -189,7 +190,8 @@ router.put("/auth/me", async (req, res) => {
   try {
     const jwt = await import("jsonwebtoken");
     const token = header.slice(7);
-    const payload = jwt.default.verify(token, process.env.SESSION_SECRET ?? "aura-ai-secret-2026") as { userId: number };
+    const { getEnv } = await import("../config/env.js");
+    const payload = jwt.default.verify(token, getEnv().SESSION_SECRET!) as { userId: number };
     const { name, email, birthYear, isPremium, isMinor, ageVerified, onboardingDone, aiDisclosureAccepted } = req.body as Partial<{
       name: string; email: string; birthYear: number; isPremium: boolean; isMinor: boolean;
       ageVerified: boolean; onboardingDone: boolean; aiDisclosureAccepted: boolean;

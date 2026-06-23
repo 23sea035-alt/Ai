@@ -1,7 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { getEnv } from "../config/env.js";
 
-const JWT_SECRET = process.env.SESSION_SECRET ?? "aura-ai-secret-2026";
+let JWT_SECRET: string;
+try {
+  JWT_SECRET = getEnv().SESSION_SECRET ?? "";
+  if (!JWT_SECRET) throw new Error("SESSION_SECRET not configured");
+} catch {
+  throw new Error(
+    "SESSION_SECRET is required for prototype auth. Set it in your .env file. " +
+    "(This will be replaced by Clerk in Phase 1.)",
+  );
+}
 
 export interface AuthRequest extends Request {
   userId?: number;
