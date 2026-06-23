@@ -96,9 +96,8 @@ minimal seed per test; truncate between (§3).
 
 ## 9. Prototype delta (for the coworker)
 
-- **Replace** the standalone `tsx` [safety.test.ts](../artifacts/api-server/src/__tests__/safety.test.ts)
-  (with its private `CRISIS_KEYWORDS`/`detectCrisis` copy) with Vitest tests against the **single**
-  `Moderator`/safety module.
+- **Replace** the prototype's standalone `tsx` `safety.test.ts` (since removed; it had a private
+  `CRISIS_KEYWORDS`/`detectCrisis` copy) with Vitest tests against the **single** `Moderator`/safety module.
 - **Add devDeps:** `vitest`, `@electric-sql/pglite`, `@vitest/coverage-v8` (+ `testcontainers` only if/when
   the concurrency tier is needed).
 - **Add** the three DI fakes + the factories + a `test` script.

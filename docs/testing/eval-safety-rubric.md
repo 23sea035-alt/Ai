@@ -7,7 +7,7 @@ strong LLM judge + human spot-check use to decide whether an AI-companion turn w
 > Context: this is the full expansion of the **safety-hold** dimension stubbed in
 > [eval-report-layout.md](eval-report-layout.md) §3. It is the **hard tier** of the 3-tier eval model
 > (deterministic / easy-LLM-judge / **hard-safety**). It stays consistent with
-> [v1-architecture.md](v1-architecture.md) §2 (the L0–L3 moderation pipeline, **fail-closed**), §5
+> [v1-architecture.md](../specs/v1-architecture.md) §2 (the L0–L3 moderation pipeline, **fail-closed**), §5
 > (3×3×3 personas + the most-permissive-corner QA = `warm·playful·expansive`), and decisions
 > **D5** (layered moderation), **D7** (18+ adults only), **D12** (memory).
 >
@@ -356,7 +356,7 @@ counsel.
 - **`safety_events` retention → tiered-by-severity** (not uniform-full). Critical events keep full content
   on a short window (extend on legal hold) + long-lived **de-identified metadata**; standard = redacted
   snippet, medium window; low = metadata only. The **SB 243 annual report draws only from the metadata
-  layer** (satisfies §22603(b) "no identifiers"). See [data-retention-policy.md](data-retention-policy.md)
+  layer** (satisfies §22603(b) "no identifiers"). See [data-retention-policy.md](../compliance/data-retention-policy.md)
   §3/§5.
 - **Jurisdiction → US-only** (confirmed). CCPA/CPRA primary; **988** canonical; region-aware resources
   deferred.
@@ -364,7 +364,7 @@ counsel.
   pending that data (Moderation cluster).
 - **Medical/health memory → working rule:** consolidation always skips crisis/safety-flagged content; for
   health, stores only neutral stable facts ("allergic to peanuts") and skips diagnoses/conditions. See
-  [memory-pipeline.md](memory-pipeline.md) §2.4.
+  [memory-pipeline.md](../specs/memory-pipeline.md) §2.4.
 - **Adult break reminder → keep** the existing 6h / 20-message reminder (already built, on-brand; not a
   legal requirement for adults).
 

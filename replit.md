@@ -1,9 +1,10 @@
 # Aura AI — Companion Chat (Backend / Server)
 
-> **Read [`docs/README.md`](docs/README.md) first**, then [`docs/v1-architecture.md`](docs/v1-architecture.md),
-> [`docs/v1-schema.md`](docs/v1-schema.md), and [`docs/v1-tasklist.md`](docs/v1-tasklist.md).
-> Those docs are the **plan of record** for the v1.0 rebuild — follow them; don't relitigate the
-> decisions without a real reason.
+> **Read [`docs/README.md`](docs/README.md) first.** Specs live in [`docs/specs/`](docs/specs/)
+> ([v1-architecture](docs/specs/v1-architecture.md), [v1-schema](docs/specs/v1-schema.md)).
+> **The backend is built but audited NO-GO — current work is [`docs/planning/backend-fixlist-v1.md`](docs/planning/backend-fixlist-v1.md)**
+> (fix per the audit; don't rebuild), then the test/eval loop in [`docs/testing/testing-readiness-v1.md`](docs/testing/testing-readiness-v1.md).
+> Those docs are the **plan of record** — follow them; don't relitigate decisions without a real reason.
 
 ## What this is
 
@@ -14,7 +15,7 @@ existing code as a sketch, not a foundation.
 
 **This workspace owns the BACKEND / SERVER.** The frontend (Expo app) is owned separately —
 **do NOT build frontend here.** Backend changes that affect the client get appended to
-[`docs/frontend-todo.md`](docs/frontend-todo.md) → "Backend-driven items."
+[`docs/planning/frontend-todo.md`](docs/planning/frontend-todo.md) → "Backend-driven items."
 
 ## Stack (v1.0 target)
 
@@ -33,13 +34,13 @@ existing code as a sketch, not a foundation.
 - `pnpm --filter @aura/shared run build` — build `shared` first (server depends on it)
 - `pnpm --filter @aura/server run dev` — run the API server
 - `pnpm --filter @aura/server run typecheck`
-- DB: `drizzle-kit generate` → commit the SQL → `migrate` (see `docs/v1-schema.md`)
-- Required env: see the env-var list in `docs/v1-tasklist.md` (validated at boot, fail-closed)
+- DB: `drizzle-kit generate` → commit the SQL → `migrate` (see `docs/specs/v1-schema.md`)
+- Required env: see the env-var list in `docs/planning/v1-tasklist.md` (validated at boot, fail-closed)
 
 ## Critical rules
 
 - **Follow `docs/`** — the architecture, schema, and task list are deliberate decisions.
-- **Don't build the frontend.** Append client-affecting changes to `docs/frontend-todo.md`.
+- **Don't build the frontend.** Append client-affecting changes to `docs/planning/frontend-todo.md`.
 - **No hardcoded secrets** — Zod-validate env at boot and fail closed (replace the prototype's
   `process.env.X ?? "fallback"` patterns). **Auth is Clerk-managed (D8):** verify the Clerk session
   token server-side; there is **no app-minted JWT** — delete the prototype's `SESSION_SECRET`/JWT
@@ -54,7 +55,7 @@ existing code as a sketch, not a foundation.
 
 Replit Agent defaults to building whole apps in one pass; for this backend, **don't.**
 
-- Work `docs/v1-tasklist.md` **in order, one phase (and one task) at a time.**
+- The backend is built but audited **NO-GO**: work `docs/planning/backend-fixlist-v1.md` **in order (P0→P4), one item at a time** (fix per the audit, don't rebuild), then the test/eval loop in `docs/testing/testing-readiness-v1.md`.
 - Each subsystem (moderation, chat turn pipeline, payments/webhook, memory consolidation, auth) is
   substantial — give it **focused depth**, not a diluted all-at-once scaffold.
 - **One task ≈ one commit.** Definition of Done before the next: typecheck passes, tests for that unit
@@ -72,14 +73,14 @@ Replit Agent defaults to building whole apps in one pass; for this backend, **do
 ## Where things live (target)
 
 - `server/src/` — layered `route → controller → service → db (repositories)`; see the server-structure
-  reference in `docs/v1-tasklist.md`. The chat turn pipeline + `Moderator`/`LLMProvider` interfaces
+  reference in `docs/planning/v1-tasklist.md`. The chat turn pipeline + `Moderator`/`LLMProvider` interfaces
   live under `server/src/services/`.
 - `server/eval/` — **already on disk + committed:** the synthetic chat-pipeline eval corpus
   (`cases/` + the to-be-compiled `rubrics/`). Read `server/eval/cases/README.md`. The eval *harness*
   is still to be built (this workspace); the cases/labels are the seed it runs against. Note:
   `cases/retrieval/` holds **Tier-1 deterministic** fixtures (consumed by the CI unit tests, not the
   human report).
-- `shared/` — `@aura/shared` enum/DTO/constant catalog (`docs/v1-schema.md`).
+- `shared/` — `@aura/shared` enum/DTO/constant catalog (`docs/specs/v1-schema.md`).
 - `docs/` — the plan of record (start at `docs/README.md`).
 
 ## Gotchas

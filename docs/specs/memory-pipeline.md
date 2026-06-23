@@ -72,7 +72,7 @@ consolidate_memory({
 - **Safety skip rule (hard):** **never memorize crisis / self-harm / safety-flagged content** — it would
   be re-injected into future prompts, which is actively harmful. For **health**: store only **neutral,
   stable facts** ("allergic to peanuts"); **skip diagnoses / conditions** ("has anxiety"). *(Working rule;
-  pending final product/privacy sign-off — see [eval-safety-rubric.md](eval-safety-rubric.md) §6.)*
+  pending final product/privacy sign-off — see [eval-safety-rubric.md](../testing/eval-safety-rubric.md) §6.)*
 - Stay within the category enum; keep `content` a concise, normalized statement ("works at Apple").
 
 ### 2.5 Importance (category-driven, not model-chosen)
@@ -167,7 +167,7 @@ asserts this **misses gracefully** (returns nothing, no crash), not that it retu
 ephemera ignored), dedup correctness, contradiction → correct `UPDATE` (not spurious overwrite of an
 unrelated fact), **skip-rule adherence** (no crisis/flagged stored; health rule honored), category/importance
 correctness. Report card = turn → existing memories → proposed ops in plain language
-([eval-report-layout.md](eval-report-layout.md) §5 stub).
+([eval-report-layout.md](../testing/eval-report-layout.md) §5 stub).
 
 **Retrieval eval (deterministic — tier-1 unit tests, gates CI):** the scoring is a pure function of inputs,
 so it's unit-testable. Cases: lexical-overlap beats importance-only; recency boosts an equally-relevant
@@ -179,7 +179,7 @@ the semantic-only miss (§3.5) returns nothing gracefully.
 
 ## 6. Prototype delta (for the coworker)
 
-Current code is in [memory.ts](../artifacts/api-server/src/services/memory.ts) / [chat.ts](../artifacts/api-server/src/routes/chat.ts). The v1.0 build:
+Current code is in [memory.ts](../../server/src/services/memory.ts) / [chat.ts](../../server/src/routes/chat.ts). The v1.0 build:
 - **Replaces** regex `extractFacts` + naive `storeMemory` (which dedups nothing → store fills with noise)
   with the **LLM consolidation pass** + dedup.
 - **Adds the recency term** (current `retrieveMemories` never applies it).

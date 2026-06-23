@@ -115,7 +115,7 @@ try {
 }
 
 // WebSocket streaming is removed in v1.0 — Phase 3 of the rebuild.
-// Chat uses HTTP POST only. See docs/v1-tasklist.md Phase 3.
+// Chat uses HTTP POST only. See docs/planning/v1-tasklist.md Phase 3.
 
 // ── Centralized error handler (must be last) ─────────────────────────
 app.use(errorHandler);

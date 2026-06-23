@@ -29,7 +29,7 @@ Monetized via subscription (free tier with daily message cap; premium unlimited)
 - **Why:** A 1:1 user↔AI chat is request/response, not realtime multiplayer. Output moderation
   requires the *complete* reply before display, which conflicts with live token streaming. At
   Groq's sub-second latency for short replies, a client-side typing animation is perceptually
-  identical to streaming. The WebSocket in the current repo ([artifacts/api-server/src/app.ts](../artifacts/api-server/src/app.ts))
+  identical to streaming. The WebSocket in the current repo ([server/src/app.ts](../../server/src/app.ts))
   is scaffolding that only fake-streams a fully-generated reply anyway.
 - **Consequences:** Delete the WebSocket server + client. iOS cannot hold a socket alive in the
   background regardless (use APNs for away-delivery — see D10). True SSE is a fast-follow (see §4).
@@ -53,7 +53,7 @@ Monetized via subscription (free tier with daily message cap; premium unlimited)
   strength: SSR/SEO (Expo is SSG-only; SSR needs custom infra), bundle size, accessibility, and
   web-native UX. The industry pattern (e.g. Discord) is *share logic, not the view layer*.
 - **Consequences:** To keep the later Next.js path cheap, **keep business logic out of RN
-  components now** (current code violates this — e.g. [app/index.tsx](../artifacts/aura-ai/app/index.tsx)
+  components now** (current code violates this — e.g. [app/index.tsx](../../client/app/index.tsx)
   is ~1,067 lines). A thin standalone marketing/landing site can be built independently if needed.
 
 ### D4 — Payments: RevenueCat + StoreKit (iOS); Stripe under RevenueCat for web later
@@ -73,11 +73,11 @@ Monetized via subscription (free tier with daily message cap; premium unlimited)
 - **Consequences:** New iOS purchase flow (RevenueCat SDK + StoreKit). Backend syncs entitlements
   from **verified RevenueCat webhooks** — never trust client purchase state. Include a "Restore
   Purchases" button (App Review requirement). The existing Stripe code
-  ([artifacts/api-server/src/routes/payments.ts](../artifacts/api-server/src/routes/payments.ts))
+  ([server/src/routes/payments.ts](../../server/src/routes/payments.ts))
   becomes the deferred web path. Handle the sandbox-vs-production webhook environment flag. The
   **price must be rendered from the StoreKit/RevenueCat offering** (Apple requires the localized
   price; currency varies by region) — remove the hardcoded `$19.99` string in
-  [app/(tabs)/premium.tsx](../artifacts/aura-ai/app/(tabs)/premium.tsx); set the $9.99 product in
+  `client/app/(tabs)/premium.tsx`; set the $9.99 product in
   App Store Connect.
 
 ### D5 — Content moderation: layered, tiered, server-side (see §2)
@@ -129,9 +129,9 @@ Monetized via subscription (free tier with daily message cap; premium unlimited)
 - **Consequences:** Replace the prototype's in-house auth — **no `auth_identities` table / `password_hash`**
   (Clerk owns credentials + linking → `users` carries `clerk_user_id` only; the schema drops to **8 tables**).
   Delete the no-op forgot-password screen and the silent local-user fallback in
-  [context/AppContext.tsx](../artifacts/aura-ai/context/AppContext.tsx). Add Clerk as a sub-processor in the
+  [context/AppContext.tsx](../../client/context/AppContext.tsx). Add Clerk as a sub-processor in the
   privacy/retention docs; on account deletion, propagate by deleting the Clerk user. Client-affecting →
-  tracked in [frontend-todo.md](frontend-todo.md).
+  tracked in [frontend-todo.md](../planning/frontend-todo.md).
 - **Risk:** Clerk's Expo/RN SDK is less battle-tested than its web SDK — **de-risk with a small Expo auth
   spike early** (email/password + Apple + server-side session verification end-to-end) before the rest of
   Phase 1.
@@ -263,7 +263,7 @@ and future SSE.
 5. Client renders an optimistic bubble keyed by `turnId`; on re-fetch it **replaces** that bubble
    by `turnId` (never appends → no duplicates).
 
-The existing [processChatTurn](../artifacts/api-server/src/routes/chat.ts) already inserts the user
+The existing [processChatTurn](../../server/src/routes/chat.ts) already inserts the user
 message before generation and the AI reply after — extend it with `turnId` idempotency + fallback-
 on-failure.
 
@@ -401,17 +401,17 @@ inference cost at any real conversion rate.
 ## Appendix — current-state cleanup (from the repo audit)
 
 These prototype artifacts should be removed/fixed during the v1.0 build (tracked in
-[v1-tasklist.md](v1-tasklist.md)):
+[v1-tasklist.md](../planning/v1-tasklist.md)):
 
-- WebSocket server/client ([app.ts](../artifacts/api-server/src/app.ts),
-  [lib/websocket.ts](../artifacts/aura-ai/lib/websocket.ts)).
+- WebSocket server/client ([app.ts](../../server/src/app.ts),
+  [lib/websocket.ts](../../client/lib/websocket.ts)).
 - `mockup-sandbox` package and the design-catalog screens
   (`app/[screen].tsx`, `app/screen-map.tsx`, `components/screenData.ts`, `components/DesignShell.tsx`).
-- Hardcoded fake chat list ([app/(tabs)/chat.tsx](../artifacts/aura-ai/app/(tabs)/chat.tsx)) — wire
+- Hardcoded fake chat list (`client/app/(tabs)/chat.tsx`) — wire
   to real companions; fix the id mismatch with `chat/[id].tsx`.
-- Silent auth fallback + fake stats ([context/AppContext.tsx](../artifacts/aura-ai/context/AppContext.tsx)).
+- Silent auth fallback + fake stats ([context/AppContext.tsx](../../client/context/AppContext.tsx)).
 - Triplicated/divergent safety logic (consolidate into one module; the unused `detectSafetyIssue`
-  in [chat.ts](../artifacts/api-server/src/routes/chat.ts) and the test's private copies).
+  in [chat.ts](../../server/src/routes/chat.ts) and the test's private copies).
 - Dead API-codegen pipeline (`lib/api-spec`, `lib/api-client-react`, `lib/api-zod`) — either
   regenerate the OpenAPI spec to match real endpoints, or remove.
 - `@tanstack/react-query` is installed/provided but unused — adopt or drop.

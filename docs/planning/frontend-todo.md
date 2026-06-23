@@ -5,7 +5,7 @@
 > (new/changed endpoints, DTOs, error codes, flows), the coworker **appends an item under
 > "Backend-driven items"** below so the frontend side is captured.
 >
-> Companion docs: [v1-architecture.md](v1-architecture.md), [v1-schema.md](v1-schema.md),
+> Companion docs: [v1-architecture.md](../specs/v1-architecture.md), [v1-schema.md](../specs/v1-schema.md),
 > [v1-tasklist.md](v1-tasklist.md) (backend build).
 
 ## Coordination

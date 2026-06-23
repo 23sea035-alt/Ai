@@ -5,7 +5,7 @@ reviewer can peruse model outputs and record verdicts. Backend/eval concern.
 **Last updated:** 2026-06-22
 
 > Context: v1.0 evals run as a **human-in-the-loop** loop during development (see
-> [v1-architecture.md](v1-architecture.md) D5/D12 for what's being judged). This doc specifies the
+> [v1-architecture.md](../specs/v1-architecture.md) D5/D12 for what's being judged). This doc specifies the
 > *report* the harness produces — not the harness code. It leads with the **generation** call type
 > (the one reviewed most), then specs the **consolidation** and **moderation** cards (§5).
 
@@ -209,7 +209,7 @@ shape: **generation** quality-judges prose, **consolidation** judges a structure
 ### 5.1 Consolidation case card
 
 The detailed layout for a **consolidation** (post-turn memory write) eval case. Source contract:
-[memory-pipeline.md](memory-pipeline.md) §2 (tool-call ADD/UPDATE/NONE, category-driven importance, the
+[memory-pipeline.md](../specs/memory-pipeline.md) §2 (tool-call ADD/UPDATE/NONE, category-driven importance, the
 safety skip-rule) and §5 (consolidation eval approach).
 
 **Fields, in display order:**
@@ -286,7 +286,7 @@ the safety-tier treatment + human spot-check, not the cheap judge.
 
 ### 5.2 Moderation case card
 
-The detailed layout for a **moderation** (L0–L3 pipeline) eval case. Source: [moderation-pipeline.md](moderation-pipeline.md)
+The detailed layout for a **moderation** (L0–L3 pipeline) eval case. Source: [moderation-pipeline.md](../specs/moderation-pipeline.md)
 §10 (label-matching, the 4 corpus sets) and §1/§4 (the L0–L3 verdict shape), plus the judge schema in
 [eval-safety-rubric.md](eval-safety-rubric.md) §3/§4. **This card is different in kind** — see the note below.
 

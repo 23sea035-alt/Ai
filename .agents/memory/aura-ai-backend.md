@@ -5,7 +5,7 @@ description: How the Expo app connects to the Express API server with PostgreSQL
 
 > ⚠️ **This documents the Replit-Agent PROTOTYPE, which the v1.0 plan supersedes.** Treat `docs/`
 > (start at [`docs/README.md`](../../docs/README.md)) as authoritative. Notably, the v1.0 build replaces
-> this auth (JWT + bcrypt + `SESSION_SECRET`) with **Clerk-managed auth** ([D8](../../docs/v1-architecture.md)),
+> this auth (JWT + bcrypt + `SESSION_SECRET`) with **Clerk-managed auth** ([D8](../../docs/specs/v1-architecture.md)),
 > the "smart AI engine" response pools with real Groq generation, and the 50/day free tier with 30/day —
 > among other changes. Use this only as a map of the *existing* code, not a build target.
 

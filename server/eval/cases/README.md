@@ -2,8 +2,8 @@
 
 Synthetic, hand-authored eval cases for the chat-pipeline eval harness. This is the **source of
 truth to keep** (alongside `../verdicts/`); per-run reports under `../reports/` are regenerable and
-gitignored. See [eval-report-layout.md](../../../docs/eval-report-layout.md) §0 for the directory
-contract and [eval-safety-rubric.md](../../../docs/eval-safety-rubric.md) for the safety tier.
+gitignored. See [eval-report-layout.md](../../../docs/testing/eval-report-layout.md) §0 for the directory
+contract and [eval-safety-rubric.md](../../../docs/testing/eval-safety-rubric.md) for the safety tier.
 
 > **Status — initial validated batch (schema-lock).** This is the small per-call-type batch authored
 > first to lock the JSON shapes and get the safety labels reviewed *before* scaling to a full corpus.

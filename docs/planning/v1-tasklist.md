@@ -1,8 +1,12 @@
 # Aura AI — v1.0 Task List
 
-Scoped to the decisions in [v1-architecture.md](v1-architecture.md). Ordered by dependency:
+Scoped to the decisions in [v1-architecture.md](../specs/v1-architecture.md). Ordered by dependency:
 foundation → safety → chat → payments → compliance → polish. Items marked **(cleanup)** remove
 prototype scaffolding from the Replit-Agent build.
+
+> ⚠️ **Backend status moved.** This is the original build plan; several checkboxes here over-claim "done."
+> The **authoritative backend status + remaining work is [`backend-fixlist-v1.md`](backend-fixlist-v1.md)**
+> (post-audit, 2026-06-23). Keep this file as the phase/dependency history + the frontend-tagged items.
 
 ## Ownership & coordination
 
@@ -41,7 +45,7 @@ prototype scaffolding from the Replit-Agent build.
 
 ## Phase 2 — Safety / moderation (D5, §2)
 
-> **Specs:** [moderation-pipeline.md](moderation-pipeline.md) · [eval-safety-rubric.md](eval-safety-rubric.md) · [test-harness.md](test-harness.md)
+> **Specs:** [moderation-pipeline.md](../specs/moderation-pipeline.md) · [eval-safety-rubric.md](../testing/eval-safety-rubric.md) · [test-harness.md](../testing/test-harness.md)
 
 - [ ] Define a `Moderator` interface (swappable backends)
 - [ ] L0 deterministic pre-filter: crisis keywords, hard-block terms, encoding detect/normalize
@@ -57,7 +61,7 @@ prototype scaffolding from the Replit-Agent build.
 
 ## Phase 3 — Chat & personas (D1, D6, §3, §5)
 
-> **Specs:** [generation-pipeline.md](generation-pipeline.md) · [memory-pipeline.md](memory-pipeline.md) · [test-harness.md](test-harness.md)
+> **Specs:** [generation-pipeline.md](../specs/generation-pipeline.md) · [memory-pipeline.md](../specs/memory-pipeline.md) · [test-harness.md](../testing/test-harness.md)
 
 - [ ] Remove WebSocket server + client **(cleanup: `app.ts` WS block, `lib/websocket.ts`)**
 - [ ] Implement request/response turn: generate → moderate → return; **client-side typing animation**

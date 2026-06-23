@@ -1,8 +1,10 @@
 # Aura AI — Agent Guide
 
-> **Plan of record:** read [`docs/README.md`](docs/README.md) first, then
-> [`docs/v1-architecture.md`](docs/v1-architecture.md), [`docs/v1-schema.md`](docs/v1-schema.md),
-> [`docs/v1-tasklist.md`](docs/v1-tasklist.md). For backend/server work also see [`replit.md`](replit.md).
+> **Plan of record:** read [`docs/README.md`](docs/README.md) first, then the specs in
+> [`docs/specs/`](docs/specs/) ([v1-architecture](docs/specs/v1-architecture.md), [v1-schema](docs/specs/v1-schema.md)).
+> **The backend is built but audited NO-GO — current work is [`docs/planning/backend-fixlist-v1.md`](docs/planning/backend-fixlist-v1.md)**
+> (fix per the audit; don't rebuild), then the test/eval loop in [`docs/testing/testing-readiness-v1.md`](docs/testing/testing-readiness-v1.md).
+> For backend/server work also see [`replit.md`](replit.md).
 > Those docs are authoritative — follow them; don't relitigate decisions without a real reason.
 
 ## What this is
@@ -15,7 +17,7 @@ Aura AI — an iOS AI-companion chat app (**18+, US-first**). The current code i
 - **Backend / server** (Express + Drizzle + Neon, moderation, memory, payments, jobs) — coworker, on
   Replit. See [`replit.md`](replit.md).
 - **Frontend / client** (Expo app) — owned separately; tracked in
-  [`docs/frontend-todo.md`](docs/frontend-todo.md). **Do not build frontend from the server side.**
+  [`docs/planning/frontend-todo.md`](docs/planning/frontend-todo.md). **Do not build frontend from the server side.**
 - **Contract = `@aura/shared`** (Zod DTOs, enums, constants).
 
 ## Critical rules
@@ -29,11 +31,12 @@ Aura AI — an iOS AI-companion chat app (**18+, US-first**). The current code i
 
 ## Replit Custom Instructions (workspace settings, always-on)
 
-Work the task list in `docs/v1-tasklist.md` ONE phase at a time. Do not build the whole backend in one
-pass — each subsystem (moderation, chat turn pipeline, payments/webhook, memory consolidation, auth)
-gets its own focused effort. After each task: typecheck + tests pass, no `console.*` or hardcoded
-secrets, then commit. Stop and confirm at the end of each phase. Backend/server only — do not build the
-frontend; append client-affecting changes to `docs/frontend-todo.md`. Don't guess the legal-review items.
+The backend is built but audited **NO-GO**. Work `docs/planning/backend-fixlist-v1.md` in order
+(P0 blockers → P4), ONE item at a time — do not rebuild from scratch and do not batch unrelated fixes.
+Then build the test/eval loop in `docs/testing/testing-readiness-v1.md` and iterate the prompts. After
+each item: `pnpm build && typecheck && lint && test` pass (add/keep tests), no `console.*` or hardcoded
+secrets, then commit. Backend/server only — do not build the frontend; append client-affecting changes
+to `docs/planning/frontend-todo.md`. Don't guess the legal-review items.
 
 ---
 

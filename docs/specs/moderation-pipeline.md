@@ -2,7 +2,7 @@
 
 **Status:** Build spec · **Scope:** the layered, server-side, fail-closed moderation pipeline — the
 *mechanism* (layers, models, thresholds, orchestration). The safety *criteria* it enforces live in
-[eval-safety-rubric.md](eval-safety-rubric.md). Implements [v1-architecture.md](v1-architecture.md) **D5 / §2**.
+[eval-safety-rubric.md](../testing/eval-safety-rubric.md). Implements [v1-architecture.md](v1-architecture.md) **D5 / §2**.
 **Last updated:** 2026-06-22
 
 > Defense-in-depth: no single layer is trusted. Deterministic pre-filter → injection classifier →
@@ -117,7 +117,7 @@ suggestive ceiling + memory block + history). Full spec in the **Generation clus
 - **Latency budget:** hot path ≈ `max(prompt-guard, omni)` ≈ sub-second (parallel); escalation adds the
   safeguard call only for gray-band turns.
 - **Every action → a `safety_event`** logged with severity, which maps to the **tiered retention** model
-  (critical → T1, etc. — see [data-retention-policy.md](data-retention-policy.md) §3).
+  (critical → T1, etc. — see [data-retention-policy.md](../compliance/data-retention-policy.md) §3).
 
 ## 9. `Moderator` DI seam (F)
 
@@ -143,7 +143,7 @@ a human sets the label, scoring is a mechanical confusion matrix. Four **synthet
 4. **Over-block** — benign content naive keywords would flag ("crisis-management exam", "I love my therapist").
 
 Jason owns the safety-critical labels; the coworker collects/tunes thresholds against set 1. Report card =
-input → verdict → expected label ([eval-report-layout.md](eval-report-layout.md) §5 stub).
+input → verdict → expected label ([eval-report-layout.md](../testing/eval-report-layout.md) §5 stub).
 
 ## 11. Constants (`@aura/shared`, all tunable)
 
@@ -153,8 +153,8 @@ now (coworker's tuning data).
 
 ## 12. Prototype delta (for the coworker)
 
-- **Replaces** the triplicated keyword safety logic ([safety.ts](../artifacts/api-server/src/services/safety.ts)
-  + the dead `detectSafetyIssue` in [chat.ts](../artifacts/api-server/src/routes/chat.ts)) with the single
+- **Replaces** the triplicated keyword safety logic (the prototype's `safety.ts`, now [services/moderation/](../../server/src/services/moderation/)
+  + the dead `detectSafetyIssue` in [chat.ts](../../server/src/routes/chat.ts)) with the single
   layered `Moderator`.
 - **Adds** prompt-guard, omni, and safeguard (the prototype is keyword-regex only).
 - **Fail-closed** (the prototype fails open / swallows moderation errors).
@@ -164,7 +164,7 @@ now (coworker's tuning data).
 
 ## Appendix A — first-pass safeguard policy (compiled from the rubric)
 
-Runtime system prompt for `gpt-oss-safeguard-20b`. Derived from [eval-safety-rubric.md](eval-safety-rubric.md)
+Runtime system prompt for `gpt-oss-safeguard-20b`. Derived from [eval-safety-rubric.md](../testing/eval-safety-rubric.md)
 — **when the rubric changes, recompile this.** ~Keep to 400–600 tokens.
 
 ```

@@ -5,12 +5,13 @@ description: Build the Aura AI backend incrementally — one task/phase at a tim
 
 # Incremental Backend Build (Aura AI)
 
-The plan of record is `docs/` (start at `docs/README.md`; build order in `docs/v1-tasklist.md`).
-Build the backend the way a careful engineer would — **depth per subsystem, not one sweeping pass.**
+The plan of record is `docs/` (start at `docs/README.md`). The backend is built but audited **NO-GO** —
+current work is `docs/planning/backend-fixlist-v1.md` (fix per the audit); the original build order is
+`docs/planning/v1-tasklist.md`. Work the way a careful engineer would — **depth per item, not one sweeping pass.**
 
 ## The rule: one thing at a time, verified
 
-- **Work `docs/v1-tasklist.md` in order, one phase at a time.** Within a phase, do one task at a time.
+- **Work `docs/planning/backend-fixlist-v1.md` in order (P0→P4), one item at a time** (the backend is built; fix per the audit, don't rebuild). The original build order is in `docs/planning/v1-tasklist.md`.
 - **Do NOT scaffold the whole backend in one pass.** Each of moderation, the chat turn pipeline,
   payments/webhooks, memory consolidation, and auth is a substantial subsystem that deserves its own
   focused effort — a diluted all-at-once build produces shallow, buggy code.
@@ -35,7 +36,7 @@ A task isn't done until ALL of:
 ## Scope guardrails
 
 - **Backend/server only.** Do NOT build the frontend (Expo app) — append client-affecting changes to
-  `docs/frontend-todo.md` → "Backend-driven items."
-- Don't relitigate locked decisions in `docs/v1-architecture.md` without a real reason.
+  `docs/planning/frontend-todo.md` → "Backend-driven items."
+- Don't relitigate locked decisions in `docs/specs/v1-architecture.md` without a real reason.
 - **Legal-review items** (retention numbers, `safety_events.flagged_content`, jurisdictions, policy
   wording) are NOT to be guessed — leave the defaults + flags.
