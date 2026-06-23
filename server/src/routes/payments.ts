@@ -1,6 +1,11 @@
 import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { db, subscriptionsTable, usersTable } from "../db/src/index.js";
+import { requireAuth, AuthRequest } from "../middleware/auth.js";
 import { logger } from "../lib/logger.js";
+import { sendSuccess, sendError } from "../lib/response.js";
 import { handleRevenueCatWebhook } from "../services/payments/revenuecat.js";
+import { reconcilePremiumStaleness } from "../services/retention.js";
 
 const router = Router();
 
@@ -23,6 +28,29 @@ router.post("/payments/webhook", async (req, res) => {
   } catch (err: any) {
     logger.error({ err }, "RevenueCat webhook error");
     res.status(400).json({ error: err?.message ?? "Webhook error" });
+  }
+});
+
+// GET /api/payments/entitlements — App-foreground premium staleness refresh
+router.get("/payments/entitlements", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+
+    // Reconcile any stale subscriptions before returning
+    await reconcilePremiumStaleness();
+
+    const [user] = await db
+      .select({ isPremium: usersTable.isPremium })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    if (!user) { sendError(res, "User not found", 404); return; }
+
+    sendSuccess(res, { isPremium: user.isPremium });
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch entitlements");
+    sendError(res, "Failed to fetch entitlements", 500);
   }
 });
 

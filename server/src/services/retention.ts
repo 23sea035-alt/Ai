@@ -90,3 +90,30 @@ export async function markInactiveUsers(): Promise<void> {
 
   logger.info({ count: (result as any).rowCount ?? 0 }, "Users marked inactive");
 }
+
+export async function reconcilePremiumStaleness(): Promise<void> {
+  const now = new Date();
+  logger.info("Running premium staleness reconciliation");
+
+  const expiredSubs = await db
+    .select({ id: subscriptionsTable.id, userId: subscriptionsTable.userId })
+    .from(subscriptionsTable)
+    .where(and(
+      lte(subscriptionsTable.expiresAt!, now),
+      eq(subscriptionsTable.willRenew, false),
+      isNotNull(subscriptionsTable.userId),
+    ));
+
+  for (const sub of expiredSubs) {
+    await db.update(subscriptionsTable)
+      .set({ status: "expired", updatedAt: now })
+      .where(eq(subscriptionsTable.id, sub.id));
+    await db.update(usersTable)
+      .set({ isPremium: false, updatedAt: now })
+      .where(eq(usersTable.id, sub.userId!));
+  }
+
+  if (expiredSubs.length > 0) {
+    logger.info({ count: expiredSubs.length }, "Stale premium subscriptions expired");
+  }
+}
