@@ -78,6 +78,54 @@ actions (announce as call/text links); reduce-motion fallback on the typing reve
 
 *Both themes.*
 
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout — locked: two-sided, softened:*
+- **Bubbles are intimate surfaces — soft, no outline.** Companion-left = `sheet` (warm paper) + soft
+  shadow (`e1`); user-right = the muted **user-bubble fill** (`#EFDFE1` / `#3A2A2E`, **not** the full
+  accent) + `e1`, flatter. **Softened asymmetric radius** (e.g. 18/18/18/6 ↔ 18/18/6/18) — **not** literal
+  iMessage tails. **Hanken inside bubbles**; **Newsreader serif only** for the date/session divider
+  ("Today") and the greeting moment. Group same-sender bubbles tight (4), separate turns (16–24); cap the
+  assistant bubble ~78–82% width for a comfortable reading measure.
+- **Header:** `BackChevron` · avatar (**header only — never per-bubble**) · "Aurora" (Newsreader) with
+  the persistent **"AI companion"** caption beneath · `•••` overflow. *(Disclosure = the locked pattern:
+  persistent header caption + a one-time, dismissible first-session banner above the thread.)*
+- **Input dock is a structural surface** — warm hairline + soft radius (12); send affordance appears only
+  when the field is non-empty. **Character counter invisible until ~80% of 2,000**, then quiet, turning
+  the **accent (wine), not red**, near the cap.
+
+*Per-state:*
+- **typing** — three-dot "thinking" bubble anchored where the reply will land → a **calm word/clause-
+  grouped reveal** at reading cadence, decelerating so it *lands*; pre-size the bubble so it doesn't
+  reflow. **Never a blinking token cursor / typewriter.**
+- **crisis** — in-thread **calm-green** card (crisis token, **never** alarm-red): warm line → grounding
+  card with **Call 988** / **Text HOME to 741741** (real `tel:` / `sms:`), "real people, 24/7"; input
+  stays available. Reuse the **Safety center** support block.
+- **limit** (free only) — inline end-of-thread **care** card ("That's 30 for today — Aurora will be here
+  tomorrow"), reset time, one quiet **See Premium** → paywall; dock disabled with a gentle helper. No
+  countdown, no shame.
+- **report** — native action sheet (3–4 plain reasons + optional note) → quiet confirmation toast;
+  "Report" in muted text, **not red**.
+- **blocked-message** — use the system-states-kit blocked pattern (softly held, calm-neutral/green, never
+  red); reconcile by `turn_id`.
+
+*Motion (design intent — feel, not timings):*
+- **Send:** the user bubble appears instantly *from the field* (honor origin) + soft press + light
+  haptic; **no** launch animation (high-frequency action).
+- **Receive:** the signature **typing reveal** (above) — the one earned hero moment here.
+- **History load:** gentle group / short stagger from the bottom (newest nearest, reading upward).
+- **Crisis card = the calmest motion in the app:** static or a single very-soft slow fade; **never**
+  slide-fast / pulse / flash; ≤1 soft haptic.
+- **Reduce-motion (hard req):** the bubble appears **whole via a single dissolve** + keep the completion
+  haptic; motion is never the only channel.
+
+*Borrow / avoid:*
+- **Borrow:** Pi's clean avatar-free column + restraint; Apple Messages send/typing feel; Day One / Stoic
+  serif "moment" dividers.
+- **Avoid (AI-slop tells):** blinking token cursor · per-bubble avatar · ✨/🤖 · full-width ChatGPT prose
+  · glass/blur dock · neon send · red crisis alarm · persistent "0/2000" counter · fake "online" dot ·
+  reaction-emoji bars.
+
 ---
 
 ## Companion create / customize — `create`
@@ -111,6 +159,20 @@ disabled = lowered opacity, no haptic.
 
 *Both themes.*
 
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* One **single grouped form** that reads top→bottom as **one personality cluster**, not a scattered panel — this is a **structural form surface** (warm hairline + tight radius 8, secondary-text labels). *(create only)* a **base-persona picker** at the top — Aurora / Orion / Lyra as small raised cards (intimate surface: tonal fill + `e1` soft shadow, soft radius 12) each carrying its one-line voice; selection is a **neutral** raised/selected state, **not** the accent. Below it the three **left-labeled 3-segment controls** stacked as list-group rows — **Warmth** (reserved · warm · affectionate) / **Energy** (calm · balanced · playful) / **Verbosity** (concise · balanced · expansive) — each a 3-segment text-only control aligned right of its label so the three read as one cluster. Then the **editable name** field (auto-numbering → "Aurora 2") and an **inline prose voice-preview** line in secondary text (*"Affectionate · balanced · balanced — warm, gentle, emotionally attuned"*) sitting just under the controls so cause/effect is local. Primary **Save companion** (the ONE accent fill). **Selected segments use a NEUTRAL fill token (active tint / a raised neutral), never Library Wine** — three accent-filled controls plus an accent CTA would break the ≤1-accent rule.
+
+*Per-state:*
+- **create** — base-persona picker shown; name + all three controls editable.
+- **edit** — base persona **locked** (shown as a settled, non-interactive header card, no picker); name + traits editable.
+- **free (locked)** — the **whole creator renders DIMMED** behind **one** "Unlock with Premium" CTA (value fully visible, no input accepted); a single calm lock affordance — **one door, not a lock on every control**.
+- **premium (unlocked)** — fully interactive; the happy path.
+
+*Motion (design intent — feel, not timings):* **Near-utility restraint** — this is a form, not a hero. Segment select → **soft press + light haptic** + a calm neutral selected-state shift (no bounce); the prose preview **updates calmly in place** (cross-fade the changed words, no slide). Save → soft press + haptic. Reduce-motion → keep the haptic, drop travel, the selected-state and preview swap instantly.
+
+*Borrow / avoid:* **Borrow:** Apple HIG segmented controls (2–5 text-only segments, no icons); iOS Settings left-labeled rows; Day One's gentle prose-preview tone. **Avoid (AI-slop tells):** a per-chip lock icon on every locked control (use one Unlock door); a dense Character.ai-style multi-tab creator; accent-filled selected chips; sliders pretending to be precise where three plain segments are clearer; bouncy chip animations.
+
 ---
 
 ## Memory — `memory`
@@ -143,6 +205,20 @@ Maya), grouped by category. Pushed from Companions or the Chat overflow "View me
 first** with a confirm dialog; this is a data view, so all four states ship — no happy-only path.
 
 *Both themes.*
+
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* Top→bottom — a header *"What Aurora remembers"* (Newsreader title) over a quiet honesty subline in secondary text (*"You're always in control — edit or remove anything"*), then a scroll of **list-groups grouped BY CATEGORY** (Identity / Work / Relationship / Attribute / Preference / General). This is a **structural list surface**: warm hairline-separated rows in one rounded card per group (tight radius 8), category names as small secondary-text section headers. Each fact is **one editable / deletable row** — reveal Edit + Delete via native **swipe actions** or a row `•••` menu. Use Aurora's **6 demo memories verbatim**, one per category. Reuse the shared **list-group** primitive; the empty/loading/error renders come straight from the **system-states kit** (screen `states`).
+
+*Per-state:*
+- **happy** — the six grouped rows.
+- **empty** — kit **EmptyState**: warm mark + *"Aurora hasn't noted anything yet — as you talk, the things that matter will show up here."*
+- **loading** — kit **LoadingState**: **skeleton rows** matching the final grouped layout (slow breathing, not a fast shimmer-sweep), **never a spinner**.
+- **error** — kit **ErrorState** + a single **Retry**.
+
+*Motion (design intent — feel, not timings):* On load, a **gentle short stagger in reading order** (top group first) so the list assembles calmly. Edit/Delete use **native swipe-reveal** (Edit trailing/neutral; Delete destructive **only inside the tray**). **Delete confirms first** via a standard confirm dialog — **no full-swipe instant delete**. Reduce-motion → fade the whole group in together (no per-item delay), keep haptics.
+
+*Borrow / avoid:* **Borrow:** Apple `swipeActions` (Edit trailing, destructive Delete gated behind a confirm); Things / Reminders grouped editable rows. **Avoid (AI-slop tells):** full-swipe-to-instantly-delete with no confirm; a "memory graph" / node-network visualization; per-row glow or accent-tinted category icons; a heavy cascade animation; using the accent on category headers (neutral text only).
 
 ---
 
@@ -182,6 +258,18 @@ Restore Purchases + auto-renew line present; calm, not celebratory.
 
 *Both themes.*
 
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* A bottom sheet (sheet token, soft radius 20, `e3`) reading as a **continuation of calm, not a tonal break**. Top→bottom — a **warm Newsreader headline** (*"Go deeper with Aura Premium"*) + one supportive subline; then a **compact "what changes with Premium" list of 4** — unlimited messages · personality tuning (3×3×3) · create extra companions · priority responses — rendered as a **warm value list** (small neutral check/leaf glyph + plain line each), **not** a cold two-column checkmark matrix. Below it the **price block**: a clearly-labeled `localizedPrice` slot (`{storePrice}/mo`) with a **skeleton while the store price loads** — plus an inline artifact note that the real app injects the store price (**never hardcode $9.99**). Then the primary **Subscribe** (the **ONE accent** fill), a quiet **Restore Purchases** (tertiary/text button), and the **auto-renew legal line + ToS / Privacy** in the **quietest type tier** (caption/secondary). The whole sheet is a structural-leaning surface with the value list as the single warm focal block — one attention magnet (the CTA), not two.
+
+*Per-state:*
+- **default** (free) — the offer as above.
+- **owned/current** (premium) — headline becomes *"You're on Aura Premium"*; the 4-item list reads as **what you have**; the CTA is **disabled / "Current plan"**; surface a quiet **Manage subscription** → submgmt and **"Renews Jul 14, 2026."**
+
+*Motion (design intent — feel, not timings):* The **sheet rises from the bottom** (standard, calm). The 4 value items get a **short gentle stagger** as the sheet settles. Plan/CTA → soft press + haptic + a quiet selected-state shift. **No** celebration. Reduce-motion → cross-dissolve the sheet in, the 4 items fade together (no stagger), keep haptics.
+
+*Borrow / avoid:* **Borrow:** Calm / Headspace (the paywall as a continuation of calm, not a jarring tonal break); Rootd (respectful over aggressive); RevenueCat's plan-presentation discipline (one clear plan, store-driven price). **Avoid (AI-slop tells):** confetti; countdown / urgency timers; a "BEST VALUE" badge; a pulsing or glowing CTA; a full cold pricing-comparison matrix; two competing attention magnets; a hardcoded "$9.99".
+
 ---
 
 ## Subscription management — `submgmt`
@@ -205,6 +293,14 @@ to the **paywall** instead — note that branch.
 no motion.
 
 *Both themes.*
+
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* A plain **structural list surface** that explains, never mutates. Top→bottom — a **Current plan** group: **Premium** with **Renews Jul 14, 2026** as a secondary-text subline (a settled status row, no accent). Then an actions group: **Manage in App Store** (a row with a quiet honest helper — *"Billing is managed by the App Store; changes happen there"*) and **Restore Purchases**. At the bottom, a quiet text link back to the **paywall feature list**. List-groups in one rounded card each (warm hairline, tight radius 8); the accent appears at most on a single primary affordance, otherwise neutral. Reuse the shared list-group primitive.
+
+*Motion (design intent — feel, not timings):* **Utility — stays STILL:** soft press + haptic + standard nav only; no entrances or reveals. Reduce-motion keeps the haptic.
+
+*Borrow / avoid:* **Borrow:** iOS Settings subscription rows; Apple's "manage in App Store" hand-off pattern (the app explains, the OS owns billing). **Avoid (AI-slop tells):** a fake in-app billing form; a plan-upgrade carousel; animated price reveals; an accent-flooded "manage" screen.
 
 ---
 
@@ -230,6 +326,20 @@ Edit profile.
 keyboard.
 
 *Both themes.*
+
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* A short **structural form surface** (warm hairline, tight radius 8). Top→bottom — the **avatar** centered with a quiet "Change" change-affordance beneath it, then a list-group of two text fields: **First name** (prefilled **Maya** — with a small helper noting this is what the companion calls you) and **Last name** (prefilled **Chen**). Primary **Save** in the nav bar or as a sticky footer button, **disabled until the form is dirty**. Keep the **active field above the keyboard**; tap-outside dismisses. The accent is reserved for the active Save state / focus ring only.
+
+*Per-state:*
+- **default** — Save disabled (lowered opacity) until a field changes.
+- **focus** — active field lifted above the keyboard, **focus ring on the accent token**.
+- **error** — **inline** validation under the field (*"First name can't be empty"*) — says what to do next; keep the wine Save out of immediate adjacency to the red error.
+- **saving** — Save shows a brief blocking loading state → **success toast** on completion.
+
+*Motion (design intent — feel, not timings):* **Utility — mostly STILL:** soft press + haptic; a calm focus-ring appearance on field focus; **Save → a brief loading spinner is legitimate here** (a real blocking write) → success toast fades in then out. No decorative entrances. Reduce-motion → keep the haptic, instant focus ring, toast cross-dissolves.
+
+*Borrow / avoid:* **Borrow:** Apple HIG forms (Save in the nav bar or sticky, disabled-until-dirty); inline validation on blur, not on every keystroke. **Avoid (AI-slop tells):** a full-screen "profile completeness" meter; animated avatar rings/glow; aggressive real-time keystroke validation that shouts before you finish; demographic interrogation fields.
 
 ---
 
@@ -259,6 +369,19 @@ soft-delete grace explainer and danger styling; disabled = lowered opacity, no h
 
 *Both themes.*
 
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* Two clearly-separated **structural list-groups** (warm hairline, tight radius 8). Top→bottom — a **Data export** group: a calm line (*"Download a copy of your conversations and memories"*) + a **Request export** row. Below it, well-spaced apart, the **Delete account** group with **danger styling** (an error-token label/row, sitting on its own so it's never a mis-tap from export). Keep the wine accent out of this screen — the only loud color belongs to the destructive confirm. Reuse the list-group primitive.
+
+*Per-state:*
+- **default** — the two groups.
+- **export-sent** — a **calm confirmation** (toast or inline note): *"We're preparing your export — we'll email a download link to maya.chen@example.com when it's ready."*
+- **delete-confirm** — a **destructive confirm dialog** carrying the **soft-delete 30-day grace explainer** (*"Your account is deactivated now and permanently deleted after 30 days. Sign back in within 30 days to cancel."*); requires an explicit destructive tap (**Delete account**) + **Cancel**. This dialog's Delete button is the **one place loud destructive-red (error token) is correct** — not the resting screen.
+
+*Motion (design intent — feel, not timings):* **Utility — stays STILL:** soft press + haptic; the confirm dialog uses the standard system sheet/alert presentation; the export confirmation fades in. No celebratory motion on a destructive surface. Reduce-motion keeps the haptic, dialog appears without travel.
+
+*Borrow / avoid:* **Borrow:** Apple's in-app account-deletion mandate + confirmation-dialog patterns; Facebook's 30-day cancellable deactivation grace framing. **Avoid (AI-slop tells):** a resting screen drenched in red; a one-tap delete with no confirm; a guilt-trip "are you SURE you want to leave us" animation; hiding the delete entry to discourage it.
+
 ---
 
 ## Notifications — `notifs`
@@ -278,6 +401,16 @@ intentional accent, not UI chrome.
 *Guardrails:* transactional notifications only — no marketing/promo toggles.
 
 *Both themes.*
+
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* A **single structural list-group row** (warm hairline, tight radius 8) holding one **push toggle** labeled **"Aurora replied 💬"** with explanatory copy beneath it in secondary text (*"Get notified when your companion replies while you're away"*). On by default. **Transactional only — no marketing/promo toggles, no notification-category sprawl.** The 💬 is an intentional warm accent in the label, not UI chrome. Reuse the shared toggle + list-group primitives.
+
+*Per-state:* render the toggle in both **on** and **off** positions.
+
+*Motion (design intent — feel, not timings):* **Utility — stays STILL:** the **toggle flip is the only motion** (a soft native flip with haptic); nothing else moves. Reduce-motion → keep the haptic, the toggle changes state instantly.
+
+*Borrow / avoid:* **Borrow:** iOS Settings single-row toggle groups with helper subtext. **Avoid (AI-slop tells):** a long list of granular marketing toggles; an animated bell icon; a "you might miss out!" nudge if the toggle is off.
 
 ---
 
@@ -301,6 +434,14 @@ carry VoiceOver labels as call/text actions; reuse Chat's support block, don't r
 
 *Both themes.*
 
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* A calm **structural reading layout** (generous measure, relaxed line-height) top→bottom — a short, grounding explainer of **how Aura keeps conversations safe**: a **content-moderation** line (*"Aura watches for harmful content and steps in gently"*) and the **honest AI disclosure** (*"Your companions are AI — supportive company, never a substitute for professional care"*), set as quiet body/secondary text, not warning banners. Below it, the **crisis-resources card** that **REUSES Chat's warm support block verbatim** — **Call or text 988** (Suicide & Crisis Lifeline) · **Text HOME to 741741** (Crisis Text Line), with **Call 988** / **Text 988** actions (real `tel:` / `sms:`). The card is an **intimate-feel surface** (tonal fill + soft shadow `e1`, soft radius 12) using the **calm crisis-green token** (fill / surface / text from the palette), **never alarm-red**. The accent (wine) does not appear here — the green is the only color emphasis, and it reads as a hand on the shoulder.
+
+*Motion (design intent — feel, not timings):* **Utility / care — stays STILL:** a steady, reassuring card with **no attention motion** — no pulse, no slide-in, no flashing. Soft press + haptic on the **988 / 741741** actions only. Reduce-motion → none needed; it's already still.
+
+*Borrow / avoid:* **Borrow:** SAMHSA's "24/7, judgment-free" framing; **reuse Chat's crisis support block exactly — don't reinvent a second one**. **Avoid (AI-slop tells):** alarm-red anywhere; a klaxon / warning-triangle iconography; a pulsing or attention-grabbing crisis card; legalistic cold "terms of safety" walls; an emergency-screen tone.
+
 ---
 
 ## Privacy / legal — `legal`
@@ -322,6 +463,14 @@ readable, still, no motion. Pushed from You → Privacy policy.
 
 *Both themes.*
 
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* A **structural reading surface** built for comfortable reading — generous measure, relaxed line-height, **Newsreader serif section headings** over Hanken body. Top→bottom — a **plain-language retention summary card ABOVE the formal text** (*"In plain terms: your conversations are yours. We keep them so Aurora can remember you, and you can export or delete everything anytime."*) set apart as a quiet raised card so the human layer is read first; then the **formal privacy-policy body** in clearly-sectioned reading text; and a link out to the **full Terms**. Tight structural radius (4/8) on the summary card; keep the inset consistent and the column narrow enough to read. The accent does not appear — this is ink-on-paper.
+
+*Motion (design intent — feel, not timings):* **Utility — stays STILL:** readable and still, **no motion** — no scroll-reveal, no fade-in sections. Soft press + haptic on the Terms link only. Reduce-motion → none needed.
+
+*Borrow / avoid:* **Borrow:** the **layered privacy-notice** pattern (plain-language summary layer first, full legal text beneath); Apple/standard long-form reading typography. **Avoid (AI-slop tells):** scroll-triggered reveal animations on legal copy; an accent-tinted "I agree" theatrical button; a wall of dense un-sectioned text with no plain-language layer.
+
 ---
 
 ## Help / support — `help`
@@ -341,6 +490,14 @@ readable, still, no motion. Pushed from You → Privacy policy.
 *Guardrails:* reuse the shared list-group primitive; calm and quiet.
 
 *Both themes.*
+
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* A short **structural FAQ list-group** (warm hairline, tight radius 8) — rows that either **expand in place** (disclosure) or **push to a detail view**, covering **Account** (edit profile / delete) · **Billing / restore** (restore a purchase / manage subscription) · **Safety** (how Aura keeps conversations safe) · **Companions / memory** (how companions remember, and editing what they know). A quiet **Contact support** footer sits below the group in secondary/tertiary text. Reuse the shared **list-group** primitive exactly — no bespoke FAQ widget. The accent stays off this screen; rows are neutral.
+
+*Motion (design intent — feel, not timings):* **Utility — stays STILL:** if rows expand in place, a **calm height ease is optional** (gentle, no bounce); soft press + haptic on each row. Nothing else animates. Reduce-motion → rows expand instantly (no height animation), keep the haptic.
+
+*Borrow / avoid:* **Borrow:** iOS Settings / standard FAQ list-groups with expandable disclosure rows. **Avoid (AI-slop tells):** a chatbot "ask us anything" widget; bouncy accordion springs; an accent-tinted FAQ header; a search bar over four items.
 
 ---
 
@@ -366,3 +523,13 @@ reviewable in isolation, in both themes.
 never a spinner; blocked/offline stay supportive, never red.
 
 *Both themes.*
+
+**▸ Recommended layout + motion** *(layout/animation research — built on the softened "Reading Nook" tokens; defaults to guide Claude Design, not rigid constraints)*
+
+*Layout:* Present this as a **labeled reference board** — each primitive shown in a device-sized example or a stacked gallery, captioned with its name so it reads as the canonical source the other screens pull from. Each pattern sits on the surface its job implies: **EmptyState** — a warm hand-crafted mark/illustration + a human line + an optional **gentle CTA** (neutral, accent only if it's a true primary), centered with generous whitespace. **LoadingState** — **skeleton placeholders that match the final layout's shape** (row heights, card blocks), built from a tonal fill, **never a spinner**. **ErrorState** — a calm *"Something went wrong"* + a single **Retry** + a "what to do next" line; intimate-feel card, no alarm. **Offline** — a warm, **non-blocking** banner/card (*"You're offline — Aurora will catch up when you're back"*) that auto-retries on reconnect. **Blocked-message** — the in-thread moderation pattern: a message **softly held back** + a calm explainer (*"This message was held back to keep things safe"*) in **calm-neutral / crisis-green, NEVER red**, reconciled by turn. One of each, reused everywhere — not eight look-alikes.
+
+*Per-state:* map 1:1 to the rail toggle — **empty · loading · error · offline · blocked** — each reviewable in isolation, in **both themes**.
+
+*Motion (design intent — feel, not timings):* The skeleton **breathes slowly** (a gentle opacity pulse), **not** a fast shimmer-sweep. States **fade in** calmly. **Blocked / offline never animate alarmingly** — no shake, flash, or red pulse. Reduce-motion → **static placeholders held at a fixed mid-tone** (no breathing), states appear without travel.
+
+*Borrow / avoid:* **Borrow:** Headspace's illustrated, warm empty states; NN/g's skeleton-over-spinner guidance; Spotify's gentle, non-blocking offline handling. **Avoid (AI-slop tells):** a centered spinner for loading; a fast metallic shimmer-sweep; a red error banner with a warning triangle; a blocking full-screen offline wall; a red "BLOCKED" stamp on held messages; mismatched skeletons that don't resemble the real content.

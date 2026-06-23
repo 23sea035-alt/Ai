@@ -15,6 +15,11 @@ it work, and does it carry the brand? Restraint is part of the brand: **flair is
 moments (meeting your companion, a reply arriving) get gentle motion; utility screens (Settings,
 legal, account) stay still. Animating everything is its own vibe-coded smell.
 
+**Material — the surface's job decides.** Structural/utility surfaces (lists, inputs, settings, legal)
+are **crisp**: warm hairline edges + tight radius. Intimate surfaces (chat bubbles, the companion
+presence, persona/raised cards) are **soft**: tonal fill + soft warm shadow, **no hard outline**,
+gentler radius. Aura is a soft place to land, not a magazine spread. (Tokens: [`approved-tokens.md`](approved-tokens.md).)
+
 | Vibe-coded tell (avoid) | Warm-Sanctuary equivalent (do) |
 |---|---|
 | Glassmorphism / frosted surfaces everywhere | Warm, **opaque** surfaces; depth from tone + soft shadow |
@@ -47,8 +52,11 @@ warm bubble, the type) must be present on every screen.
 
 - **Text:** primary for anything that matters; secondary for support; tertiary/muted only for
   fine-print — never a primary label, body, or placeholder.
-- **Surfaces:** background → raised card → sheet, separated by **warmth and tone**, not borders or
-  glow. Borders are soft and low-contrast when used at all.
+- **Surfaces:** background → raised card → sheet, separated by **warmth and tone**. Depth follows the
+  surface's job: **structural** surfaces (list-groups, inputs, settings/legal, dividers) may use a
+  **warm low-contrast hairline**; **intimate** surfaces (chat bubbles, companion presence,
+  persona/raised cards) use **tonal fill + soft warm shadow, no outline**. Never border + shadow on the
+  same element; no glow.
 - **No hardcoded hex/rgba in screens.** Tokens only.
 
 ## 3. Spacing & rhythm
@@ -56,8 +64,9 @@ warm bubble, the type) must be present on every screen.
 - **8pt rhythm.** Use a small fixed scale (4 · 8 · 12 · 16 · 20 · 24 · 32 · 40); no arbitrary px.
 - **Standard screen horizontal inset is consistent** (e.g. 20); card padding consistent within a
   screen. Generous whitespace — let content breathe; the calm *is* the premium.
-- **Radius:** a token set (e.g. sm/md/lg/xl + pill). Soft continuous corners; avoid full-pill
-  everything. Cards lean lg/xl; chips/avatars/pills use pill.
+- **Radius — dual system.** **Structural/editorial** elements use tight radii (4/8); **intimate/
+  conversational** surfaces use soft continuous radii (12/16, sheets 20). **Pill** reserved for
+  chips/avatars/small pills — avoid full-pill-everything.
 
 ## 4. Typography
 
@@ -137,8 +146,8 @@ need the same shape, it's the same component.
 ## 13. The gate (run before any screen is "done")
 
 1. One warm accent, accent-agnostic? Semantics semantic-only? Crisis = supportive, not alarm? (§1, §10)
-2. Surfaces **opaque + warm**, depth from tone/soft-shadow — **no glass, no glow, no cosmic gradient**? (§0–2)
-3. All spacing/radius/type/color from **tokens**, nothing hardcoded? 8pt rhythm? (§2–4)
+2. Surfaces **opaque + warm**; **the surface's job decides** — structural (lists, inputs, settings, legal) = crisp **warm hairline** + tight radius; intimate (bubbles, companion presence, cards) = **tonal fill + soft warm shadow** + soft radius, **no outline**. No glass, no glow, no cosmic gradient, **no borders-everywhere**? (§0–3)
+3. All spacing/radius/type/color from **tokens**, nothing hardcoded? 8pt rhythm? **Dual radius applied by surface job?** (§2–4)
 4. Gentle entrances + soft press/haptic; **reduce-motion fallback**; typing reveal calm? (§5)
 5. One committed icon family, consistent sizes, no accent tiles? (§6)
 6. Reused the shared primitives instead of bespoke look-alikes? (§7)
