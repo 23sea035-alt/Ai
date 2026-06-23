@@ -6,12 +6,14 @@
   "scripts": {
     "build": "pnpm --filter @aura/shared run build && pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
     "eslint": "^9.26.0",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3",
