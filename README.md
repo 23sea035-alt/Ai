@@ -1,130 +1,157 @@
 # Aura AI — AI Companion
 
-A regulation-compliant AI companion app with safety pipeline, memory engine, voice chat, streaming responses, and Stripe monetization.
+An 18+ AI companion chat app with safety-first design, memory engine, and premium subscriptions.
 
 ## Tech Stack
 
 - **Frontend**: React Native (Expo) + TypeScript
-- **Backend**: Node.js + Express (TypeScript)
-- **Database**: PostgreSQL + Drizzle ORM
+- **Backend**: Node.js + Express 5 (TypeScript)
+- **Database**: PostgreSQL (Neon) + Drizzle ORM
 - **LLM**: Groq (llama-3.1-8b-instant)
-- **Memory**: Keyword-based fact extraction & retrieval
-- **Voice**: Web Speech API (browser) / OpenAI Whisper + TTS (with API key)
-- **Auth**: JWT + bcrypt
-- **Payments**: Stripe Checkout
-- **Safety**: Pre/post-message content moderation + crisis detection
+- **Auth**: Clerk (session tokens, webhooks)
+- **Payments**: RevenueCat (in-app subscriptions)
+- **Push**: APNs (Apple Push Notification service)
+- **Safety**: OpenAI omni-moderation + Groq prompt-guard + custom safeguard
+
+## Architecture
+
+```
+aura/
+├── client/          # Expo / React Native app (iOS-first)
+├── server/          # Express API + services
+│   ├── src/
+│   │   ├── config/        # Zod-validated env (fail-closed)
+│   │   ├── routes/        # HTTP endpoints
+│   │   ├── services/      # Business logic
+│   │   │   ├── auth/      # Clerk middleware + webhook
+│   │   │   ├── chat/      # Turn pipeline, prompt assembler
+│   │   │   ├── moderation/ # L0-L3 safety pipeline
+│   │   │   ├── memory/    # Retrieval, consolidation
+│   │   │   ├── payments/  # RevenueCat webhook
+│   │   │   ├── notifications/ # APNs push
+│   │   │   └── jobs/      # Async workers
+│   │   ├── middleware/     # Auth, validate, rate-limit, error-handler
+│   │   ├── db/            # Schema + migrations
+│   │   └── lib/           # Logger, crypto, response envelope
+│   └── eval/              # Eval corpora (moderation, retrieval, consolidation)
+└── shared/          # @aura/shared — Zod DTOs, enums, constants
+```
 
 ## Features
 
-- ✅ Chat with AI companions (Aurora, Orion, Lyra + custom)
-- ✅ Safety pipeline — crisis detection, content moderation, minor protection, break reminders
-- ✅ Memory engine — extracts facts from conversations, retrieves relevant memories
-- ✅ Age gating — birth year verification, minor mode
-- ✅ AI disclosure banner — transparent about AI nature
-- ✅ Voice calls — Web Speech API (browser) or OpenAI (with key)
-- ✅ WebSocket streaming — real-time token-by-token responses
-- ✅ Stripe payments — premium subscription with checkout flow
-- ✅ Free tier — 50 messages/day, unlimited with premium
-- ✅ Glassmorphism design — cosmic purple/blue theme
+- ✅ Safety pipeline — crisis detection, L0-L3 content moderation, injection guard, break reminders
+- ✅ Server-authoritative turn model — idempotent, moderated, fallback-safe
+- ✅ Memory engine — keyword extraction, LLM consolidation, dedup + contradiction handling
+- ✅ Age gating — 18+ self-attestation, Clerk-managed auth
+- ✅ RevenueCat subscriptions — HMAC-verified webhooks, sandbox/prod handling
+- ✅ APNs push notifications — transactional "your companion replied"
+- ✅ Rate limiting — per-minute (30), daily hard cap (1000), auth brute-force
+- ✅ Compliance — account deletion (soft-delete + 30d grace), data export, admin tools
+- ✅ CI — GitHub Actions (typecheck, lint, test)
+- ✅ Graceful shutdown — SIGTERM drain, retention jobs
 
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js 20+
-- Docker (for PostgreSQL)
+- PostgreSQL (local Docker or Neon)
 - pnpm (`npm i -g pnpm`)
 
 ### Setup
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Start PostgreSQL
-docker compose up -d db
-
-# Copy env and fill in your keys
-cp .env.example .env
+cp .env.example .env   # fill in your keys
+pnpm --filter @aura/server run migrate
+pnpm --filter @aura/server run dev
 ```
 
-### Environment Variables
+### Required Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `SESSION_SECRET` | Yes | JWT signing secret |
-| `GROQ_API_KEY` | Yes | LLM chat via Groq |
-| `OPENAI_API_KEY` | No | Memory embeddings + STT/TTS |
-| `STRIPE_SECRET_KEY` | No | Stripe payments |
-| `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook signing secret |
-
-### Run
-
-```bash
-# Push database schema
-pnpm --filter @workspace/db exec drizzle-kit push --config ./drizzle.config.ts
-
-# Start API server (port 8080)
-pnpm --filter @workspace/api-server run dev
-
-# Start Expo app (port 8081)
-cd artifacts/aura-ai
-pnpm run dev:win   # Windows
-pnpm run dev       # macOS/Linux
-```
-
-## Project Structure
-
-```
-├── artifacts/
-│   ├── api-server/          # Express backend
-│   │   └── src/
-│   │       ├── routes/      # API endpoints
-│   │       ├── services/    # Safety, memory, voice, LLM
-│   │       └── middleware/  # Auth middleware
-│   └── aura-ai/             # React Native / Expo frontend
-│       └── app/             # Screens & navigation
-├── lib/
-│   └── db/                  # Database schema & client
-├── docker-compose.yml
-└── AGENTS.md                # AI assistant instructions
-```
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `CLERK_SECRET_KEY` | Clerk secret key |
+| `CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret |
+| `GROQ_API_KEY` | Groq LLM API key |
+| `OPENAI_API_KEY` | OpenAI moderation API key |
+| `REVENUECAT_WEBHOOK_SECRET` | RevenueCat webhook signing secret |
+| `BANNED_IDENTITY_PEPPER` | Pepper for banned-identity hashing |
 
 ## API Endpoints
 
+### Auth
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/register` | Create account (with birth year) |
-| POST | `/api/auth/login` | Login |
-| GET | `/api/auth/me` | Get profile |
-| PUT | `/api/auth/me` | Update profile |
+| POST | `/api/auth/seed-companions` | Create default companions post-registration |
+| PATCH | `/api/auth/profile` | Update profile (DOB, name, etc.) |
+| GET | `/api/auth/me` | Get current user profile |
+
+### Chat
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/chat/usage` | Get free-tier usage |
 | GET | `/api/companions` | List companions |
 | POST | `/api/companions` | Create companion |
-| POST | `/api/companions/:id/chat` | Send message |
+| PATCH | `/api/companions/:id` | Update companion |
 | GET | `/api/companions/:id/messages` | Get chat history |
-| POST | `/api/payments/create-checkout-session` | Premium checkout |
-| POST | `/api/voice/stt` | Speech-to-text (with OpenAI key) |
-| POST | `/api/voice/tts` | Text-to-speech (with OpenAI key) |
-| WS | `/ws/chat?token=JWT` | WebSocket streaming chat |
-| GET | `/api/healthz` | Health check |
+| POST | `/api/companions/:id/chat` | Send message (moderated + persisted) |
 
-## Safety Features
+### Payments
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/payments/webhook` | RevenueCat webhook (HMAC-verified) |
+| GET | `/api/payments/entitlements` | App-foreground premium refresh |
 
-- Crisis detection (self-harm, suicide language) with crisis resources
-- Content moderation (explicit, medical advice)
-- Minor protection mode (stricter filtering for under-18)
-- Pre-message and post-message safety checks
-- Break reminders every 20 messages for minors, 50 for adults
-- AI disclosure banner on every screen
+### Notifications
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/notifications/register` | Register APNs device token |
+| DELETE | `/api/notifications/register` | Unregister device token |
 
-## Voice
+### Compliance
+| Method | Path | Description |
+|--------|------|-------------|
+| DELETE | `/api/account` | Soft-delete account (30d grace) |
+| PATCH | `/api/account/reactivate` | Reactivate within grace period |
+| GET | `/api/account/export` | GDPR data export |
+| POST | `/api/messages/:id/report` | Flag an AI message (UGC) |
 
-On **web browsers** (Chrome/Edge), voice uses the built-in Web Speech API — no API key needed. On **native** (iOS/Android), set `OPENAI_API_KEY` for Whisper STT and TTS.
+### Admin
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/safety-events` | Review safety queue |
+| POST | `/api/admin/ban` | Ban user by email |
+| POST | `/api/admin/unban` | Unban user by email |
+
+### System
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/healthz` | Health check (with DB probe) |
+| POST | `/webhooks/clerk` | Clerk user lifecycle events (svix-signed) |
+
+## Safety Pipeline
+
+The moderation system runs on every message:
+
+1. **L0** — Deterministic pre-filter (crisis keywords, hard-block terms)
+2. **L1** — Prompt injection detection (parallel with L2)
+3. **L2** — OpenAI omni-moderation (categories, crisis detection)
+4. **L3** — Output moderation (AI reply screened before delivery)
+5. **Safeguard** — Groq-based policy classification (on escalation or L2 fallback)
+6. **Break reminders** — Configurable by age group (SB 243)
+7. **Crisis path** — Fixed template + 988 resources, logged to safety_events
+
+Fail-closed at every layer. Degradation ladder: OpenAI omni → Groq safeguard → block.
 
 ## Memory
 
-Facts are extracted from conversations using regex patterns and stored with keyword tags. Relevant memories are retrieved by keyword similarity. No external API needed — works entirely with the built-in keyword engine.
+- Keyword extraction with Jaccard similarity for retrieval
+- LLM-based async consolidation: extract facts, deduplicate, handle contradictions
+- Categories: identity, preference, attribute, relationship, work, location, general
+- Recency decay + importance scoring for retrieval ranking
 
 ## License
 
