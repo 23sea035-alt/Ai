@@ -16,6 +16,29 @@ design. Monetized via a single **$9.99/month** premium subscription (free tier: 
 The repo began as a Replit-Agent prototype; v1.0 rebuilt it on pnpm workspaces
 (`client` Expo + `server` Express 5 + `shared` `@aura/shared`), Clerk auth, RevenueCat, Drizzle/Neon, APNs.
 
+## TODO (coworker): choose the app's new name
+
+The working name **"Aura"** (used across this repo and `@aura/shared`) is a placeholder that needs to
+change. Both names tried so far are **unavailable**: "Aura" is badly crowded (Aura Health, aura.com,
+Aura Frames, the Oura ring), and "Hearth" is blocked too (an existing company holds a live software
+trademark on it, and the AI/wellness names and domains are already taken).
+
+**Your task: propose a new, suitable name and confirm it is actually available before we commit.**
+
+- **Fit the brand.** A 1:1 AI companion / emotional-wellness app for adults: warm, calm, trustworthy,
+  "a soft place to land." Lean into warmth, sanctuary, or memory and continuity ("a companion who
+  remembers you"). Avoid the cold, cosmic, or techy register.
+- **Make it ownable.** Pick something distinctive, not a common dictionary word. Common words are
+  exactly why "Aura" and "Hearth" failed (crowded and already trademarked).
+- **Clear it before committing (the important part).** Check: (1) USPTO for a live trademark, especially
+  Class 9 (software/apps), 42 (SaaS), and 44 (health/wellness); (2) the App Store for existing apps
+  using the name; (3) domain availability (.com and .ai). If an established company owns the name in a
+  software or wellness class, choose a different one.
+- **Keep the companion names** Aurora, Orion, and Lyra. Only the *app* name changes.
+
+Bring back a short list of names you have already availability-checked and we will choose together.
+(This is a preliminary screen; a formal attorney clearance is still required before launch.)
+
 ## How to work this — in order
 Work top to bottom; the phases are dependency-ordered (fixes and the test harness interleave —
 don't save all testing for the end). IDs reference the fixlist (`Pn-n`) and testing plan (`Tn-n`).
