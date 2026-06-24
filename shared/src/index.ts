@@ -160,6 +160,15 @@ export const ReportMessageSchema = z.object({
   detail: z.string().max(2000).optional(),
 });
 
+export const BanUserSchema = z.object({
+  email: z.string().email("Valid email is required"),
+  reason: z.string().max(500).optional(),
+});
+
+export const UnbanUserSchema = z.object({
+  email: z.string().email("Valid email is required"),
+});
+
 // ── Health check DTO ───────────────────────────────────────────────────
 export const HealthCheckResponse = z.object({
   status: z.enum(["ok", "degraded"]),

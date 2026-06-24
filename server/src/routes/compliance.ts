@@ -1,17 +1,12 @@
 import { Router } from "express";
-import { z } from "zod";
-import { eq, and, desc, isNotNull } from "drizzle-orm";
-import { db, usersTable, messagesTable, companionsTable, memoriesTable, subscriptionsTable, deviceTokensTable, memoryJobsTable, bannedIdentitiesTable, safetyEventsTable } from "../db/src/index.js";
-import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { eq, desc } from "drizzle-orm";
+import { db, usersTable, messagesTable, companionsTable, memoriesTable, deviceTokensTable, safetyEventsTable, bannedIdentitiesTable } from "../db/src/index.js";
+import { requireAuth, requireAdmin, AuthRequest } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
 import { logger } from "../lib/logger.js";
 import { hashIdentifier } from "../lib/crypto.js";
 import { sendSuccess, sendError } from "../lib/response.js";
-import { AppError } from "../middleware/error-handler.js";
-
-const ReportSchema = z.object({
-  reason: z.string().min(1).max(500),
-  detail: z.string().max(2000).optional(),
-});
+import { ReportMessageSchema, BanUserSchema, UnbanUserSchema } from "@aura/shared";
 
 const router = Router();
 
@@ -87,16 +82,11 @@ router.get("/account/export", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // POST /api/messages/:id/report — Flag an AI message (Apple Guideline 1.2 / UGC)
-router.post("/messages/:id/report", requireAuth, async (req: AuthRequest, res) => {
+router.post("/messages/:id/report", requireAuth, validate(ReportMessageSchema), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const messageId = req.params.id as string;
-
-    const parsed = ReportSchema.safeParse(req.body);
-    if (!parsed.success) {
-      sendError(res, parsed.error.issues.map(i => i.message).join("; "), 400);
-      return;
-    }
+    const { reason, detail } = req.body;
 
     const [message] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId)).limit(1);
     if (!message) {
@@ -109,8 +99,8 @@ router.post("/messages/:id/report", requireAuth, async (req: AuthRequest, res) =
       messageId,
       eventType: "user_reported",
       source: "user_report",
-      detail: parsed.data.reason,
-      flaggedContent: parsed.data.detail ?? null,
+      detail: reason,
+      flaggedContent: detail ?? null,
     });
 
     logger.info({ userId, messageId }, "Message reported");
@@ -122,15 +112,8 @@ router.post("/messages/:id/report", requireAuth, async (req: AuthRequest, res) =
 });
 
 // GET /api/admin/safety-events — Review safety events queue (admin only)
-router.get("/admin/safety-events", requireAuth, async (req: AuthRequest, res) => {
+router.get("/admin/safety-events", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const userId = req.userId!;
-    const [user] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-    if (!user?.isAdmin) {
-      sendError(res, "Admin access required", 403);
-      return;
-    }
-
     const events = await db.select().from(safetyEventsTable).orderBy(desc(safetyEventsTable.createdAt)).limit(50);
 
     sendSuccess(res, events);
@@ -141,25 +124,15 @@ router.get("/admin/safety-events", requireAuth, async (req: AuthRequest, res) =>
 });
 
 // POST /api/admin/ban — Ban a user by email (admin only)
-router.post("/admin/ban", requireAuth, async (req: AuthRequest, res) => {
+router.post("/admin/ban", requireAuth, requireAdmin, validate(BanUserSchema), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
-    const [user] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-    if (!user?.isAdmin) {
-      sendError(res, "Admin access required", 403);
-      return;
-    }
-
-    const { email } = req.body;
-    if (!email) {
-      sendError(res, "email is required", 400);
-      return;
-    }
+    const { email, reason } = req.body;
 
     await db.insert(bannedIdentitiesTable).values({
       identifierHash: hashIdentifier(email.toLowerCase()),
       identifierType: "email",
-      reason: req.body.reason ?? "Violation of terms",
+      reason: reason ?? "Violation of terms",
     });
 
     logger.info({ adminId: userId, bannedEmail: email }, "User banned");
@@ -171,25 +144,14 @@ router.post("/admin/ban", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // POST /api/admin/unban — Unban a user by email (admin only)
-router.post("/admin/unban", requireAuth, async (req: AuthRequest, res) => {
+router.post("/admin/unban", requireAuth, requireAdmin, validate(UnbanUserSchema), async (req: AuthRequest, res) => {
   try {
-    const userId = req.userId!;
-    const [user] = await db.select({ isAdmin: usersTable.isAdmin }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-    if (!user?.isAdmin) {
-      sendError(res, "Admin access required", 403);
-      return;
-    }
-
     const { email } = req.body;
-    if (!email) {
-      sendError(res, "email is required", 400);
-      return;
-    }
 
     const hash = hashIdentifier(email.toLowerCase());
     await db.delete(bannedIdentitiesTable).where(eq(bannedIdentitiesTable.identifierHash, hash));
 
-    logger.info({ adminId: userId, unbannedEmail: email }, "User unbanned");
+    logger.info({ adminId: req.userId!, unbannedEmail: email }, "User unbanned");
     sendSuccess(res, { unbanned: true });
   } catch (err) {
     logger.error({ err }, "Unban failed");
