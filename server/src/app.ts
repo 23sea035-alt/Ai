@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+
 import http from "http";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -27,21 +27,11 @@ const app: Express = express();
 // Security headers (CSP, X-Frame-Options, etc.)
 app.use(helmet());
 
-// Rate limiting: 100 requests per 15 minutes per IP
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many requests — please slow down." },
-});
-app.use("/api", limiter);
-
-// Raw body for Stripe webhook
+// Raw body capture for webhook signature verification
 app.use(
   express.json({
     verify: (req, _res, buf) => {
-      (req as any).rawBody = buf.toString();
+      req.rawBody = buf.toString();
     },
   }),
 );

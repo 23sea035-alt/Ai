@@ -186,7 +186,8 @@ async function executeTurnTransaction(
         messages: messages.map(m => ({ role: m.role, content: m.content })),
       });
       if (!replyContent) replyContent = GENERATION_FALLBACK_REPLY;
-    } catch {
+    } catch (err) {
+      logger.error({ err }, "LLM generation failed, using fallback reply");
       replyContent = GENERATION_FALLBACK_REPLY;
     }
 

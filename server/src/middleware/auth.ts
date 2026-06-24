@@ -3,6 +3,7 @@ import { db } from "../db/src/index.js";
 import { usersTable } from "../db/src/index.js";
 import { eq } from "drizzle-orm";
 import { sendError } from "../lib/response.js";
+import { logger } from "../lib/logger.js";
 import type { AuthRequest } from "../services/auth/clerk.middleware.js";
 
 // Re-export Clerk-based auth as the standard auth interface.
@@ -26,7 +27,8 @@ export async function requireAdmin(req: AuthRequest, res: Response, next: NextFu
       return;
     }
     next();
-  } catch {
+  } catch (err) {
+    logger.error({ err, userId: req.userId }, "Admin verification failed");
     sendError(res, "Failed to verify admin status", 500);
   }
 }

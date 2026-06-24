@@ -72,8 +72,8 @@ export async function consolidateMemory(jobId: string): Promise<void> {
     try {
       decisions = JSON.parse(response);
       if (!Array.isArray(decisions)) throw new Error("Not an array");
-    } catch {
-      // Fall back to keyword-based extraction
+    } catch (err) {
+      logger.error({ err, jobId: job.id }, "LLM consolidation parse failed, using keyword fallback");
       const keywords = extractKeywords(job.rawContent);
       decisions = keywords.length > 0
         ? [{ action: "ADD", memoryId: null, content: keywords.slice(0, 3).join(", "), category: "general", importance: 0.5, rationale: "Keyword fallback" }]
