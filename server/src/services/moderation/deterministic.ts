@@ -1,8 +1,8 @@
 const CRISIS_PATTERNS = [
   { pattern: /\b(kill myself|end my life|want to die)\b/i, category: "self-harm/crisis" },
   { pattern: /\b(suicide|suicidal|self-harm|self harm)\b/i, category: "self-harm/crisis" },
-  { pattern: /\b(cutting|hurt myself|not worth living|better off dead)\b/i, category: "self-harm/crisis" },
-  { pattern: /\b(no reason to live|want to end it)\b/i, category: "self-harm/crisis" },
+  { pattern: /\b(cutting|hurt myself|not worth living|better off (dead|without))\b/i, category: "self-harm/crisis" },
+  { pattern: /\b(no reason to live|want to end it|can't go on)\b/i, category: "self-harm/crisis" },
 ];
 
 const HARD_BLOCK_PATTERNS = [
@@ -10,6 +10,7 @@ const HARD_BLOCK_PATTERNS = [
   { pattern: /\b(how\s+to\s+)?(build|make)\s+(a\s+)?(bomb|weapon|explosive)\b/i, category: "violence/weapons" },
   { pattern: /\b(mass shooting|school shooting)\s+(guide|plan|how to)\b/i, category: "violence/weapons" },
   { pattern: /\bstrip\s+search\b/i, category: "sexual/minors" },
+  { pattern: /\bdecode\s+(this\s+)?base64\b/i, category: "injection" },
 ];
 
 function normalizeEncoding(text: string): string {

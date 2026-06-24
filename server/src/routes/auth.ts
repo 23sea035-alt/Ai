@@ -2,6 +2,9 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable, companionsTable } from "../db/src/index.js";
 import { requireAuth, AuthRequest } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { UpdateProfileSchema } from "@aura/shared";
+import { logger } from "../lib/logger.js";
 
 const EIGHTEEN_YEARS_MS = 18 * 365.25 * 24 * 60 * 60 * 1000;
 const AGE_GUARD_ERROR = { error: "Age verification required. Complete onboarding before using this endpoint." };
@@ -45,6 +48,7 @@ router.post("/auth/seed-companions", requireAuth, async (req: AuthRequest, res) 
 
     res.status(201).json({ seeded: true });
   } catch (err) {
+    logger.error({ err }, "Failed to seed companions");
     res.status(500).json({ error: "Failed to seed companions" });
   }
 });
@@ -66,18 +70,16 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
       onboardingDone: user.onboardingDone,
       aiDisclosureAccepted: user.aiDisclosureAccepted,
     });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch user");
     res.status(500).json({ error: "Failed to fetch user" });
   }
 });
 
 // PUT /api/auth/me — update profile
-router.put("/auth/me", requireAuth, async (req: AuthRequest, res) => {
+router.put("/auth/me", requireAuth, validate(UpdateProfileSchema), async (req: AuthRequest, res) => {
   try {
-    const { firstName, lastName, dateOfBirth, onboardingDone, aiDisclosureAccepted, tosAcceptedVersion } = req.body as Partial<{
-      firstName: string; lastName: string; dateOfBirth: string;
-      onboardingDone: boolean; aiDisclosureAccepted: boolean; tosAcceptedVersion: string;
-    }>;
+    const { firstName, lastName, dateOfBirth, onboardingDone, aiDisclosureAccepted, tosAcceptedVersion } = req.body;
 
     const updates: Record<string, unknown> = {};
     if (firstName !== undefined) updates.firstName = firstName;
@@ -104,7 +106,8 @@ router.put("/auth/me", requireAuth, async (req: AuthRequest, res) => {
       ageVerified: user.ageVerified, onboardingDone: user.onboardingDone,
       aiDisclosureAccepted: user.aiDisclosureAccepted,
     });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, "Failed to update profile");
     res.status(500).json({ error: "Failed to update profile" });
   }
 });

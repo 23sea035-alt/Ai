@@ -25,6 +25,17 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
 
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+
+  // ── Model selection ─────────────────────────────────────────────
+  MODEL_GENERATE_REPLY: z.string().default("llama-3.1-8b-instant"),
+  MODEL_MODERATE_INPUT: z.string().default("meta-llama/llama-prompt-guard-2-86m"),
+  MODEL_MODERATE_OUTPUT: z.string().default("openai/gpt-oss-safeguard-20b"),
+  MODEL_CONSOLIDATE_MEMORY: z.string().default("llama-3.1-8b-instant"),
+
+  MODEL_FALLBACK_GENERATE_REPLY: z.string().default("llama-3.1-8b-instant"),
+  MODEL_FALLBACK_MODERATE_INPUT: z.string().default("llama-3.3-70b-versatile"),
+  MODEL_FALLBACK_MODERATE_OUTPUT: z.string().default("llama-3.3-70b-versatile"),
+  MODEL_FALLBACK_CONSOLIDATE_MEMORY: z.string().default("llama-3.3-70b-versatile"),
 });
 
 export type Env = z.infer<typeof envSchema>;

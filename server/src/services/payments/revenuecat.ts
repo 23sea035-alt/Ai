@@ -60,8 +60,7 @@ export async function handleRevenueCatWebhook(
   }
 
   if (environment.toUpperCase() !== "PRODUCTION") {
-    logger.info({ environment, event }, "RevenueCat webhook skipped — non-production event");
-    return { received: true };
+    logger.info({ environment, event }, "RevenueCat webhook — processing non-production event");
   }
 
   const userId = app_user_id;

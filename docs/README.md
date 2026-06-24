@@ -1,103 +1,100 @@
 # Aura AI — Backend Brief & Doc Index (Start Here)
 
-**Status (2026-06-23):** the v1.0 backend has been **built and audited**. The audit verdict is
-**NO-GO / fix-first** — good scaffolding, but blocking defects (live-data deletion, broken auth
-verification, migrations never run, dropped DB constraints, moderation mis-tuning) plus unbuilt
-spec features and an absent test/eval loop. **The job now is to FIX, not to rebuild from scratch.**
+Status (2026-06-23): the v1.0 backend has been built and audited. The audit verdict is **NO-GO / fix-first** — good scaffolding, but blocking defects (live-data deletion, broken auth verification, migrations never run, dropped DB constraints, moderation mis-tuning) plus unbuilt spec features and an absent test/eval loop. The job now is to **FIX**, not to rebuild from scratch.
 
-> **Authoritative backend status = [`planning/backend-fixlist-v1.md`](planning/backend-fixlist-v1.md).**
-> The old phase tracker ([`planning/v1-tasklist.md`](planning/v1-tasklist.md)) over-claims "done" — trust the fixlist.
-> The pre-audit version of this README is archived at [`archive/README.pre-audit-2026-06.md`](archive/README.pre-audit-2026-06.md).
+**Authoritative backend status** = `planning/backend-fixlist-v1.md`. The old phase tracker (`planning/v1-tasklist.md`) over-claims "done" — trust the fixlist. The pre-audit version of this README is archived at `archive/README.pre-audit-2026-06.md`.
 
 ## What Aura AI is
-An iOS AI-companion chat app (**18+, US-first**). Users chat 1:1 with vetted AI personas that
-remember facts across conversations; the differentiator is a **safety-first, regulation-aware**
-design. Monetized via a single **$9.99/month** premium subscription (free tier: **30 messages/day**).
-The repo began as a Replit-Agent prototype; v1.0 rebuilt it on pnpm workspaces
-(`client` Expo + `server` Express 5 + `shared` `@aura/shared`), Clerk auth, RevenueCat, Drizzle/Neon, APNs.
 
-## TODO (coworker): choose the app's new name
+An iOS AI-companion chat app (**18+, US-first**). Users chat 1:1 with vetted AI personas that remember facts across conversations; the differentiator is a **safety-first, regulation-aware** design. Monetized via a single **$9.99/month** premium subscription (free tier: 30 messages/day). The repo began as a Replit-Agent prototype; v1.0 rebuilt it on pnpm workspaces (`client` Expo + `server` Express 5 + `shared` `@aura/shared`), Clerk auth, RevenueCat, Drizzle/Neon, APNs.
 
-The working name **"Aura"** (used across this repo and `@aura/shared`) is a placeholder that needs to
-change. Both names tried so far are **unavailable**: "Aura" is badly crowded (Aura Health, aura.com,
-Aura Frames, the Oura ring), and "Hearth" is blocked too (an existing company holds a live software
-trademark on it, and the AI/wellness names and domains are already taken).
+---
 
-**Your task: propose a new, suitable name and confirm it is actually available before we commit.**
+## App name (resolved)
 
-- **Fit the brand.** A 1:1 AI companion / emotional-wellness app for adults: warm, calm, trustworthy,
-  "a soft place to land." Lean into warmth, sanctuary, or memory and continuity ("a companion who
-  remembers you"). Avoid the cold, cosmic, or techy register.
-- **Make it ownable.** Pick something distinctive, not a common dictionary word. Common words are
-  exactly why "Aura" and "Hearth" failed (crowded and already trademarked).
-- **Clear it before committing (the important part).** Check: (1) USPTO for a live trademark, especially
-  Class 9 (software/apps), 42 (SaaS), and 44 (health/wellness); (2) the App Store for existing apps
-  using the name; (3) domain availability (.com and .ai). If an established company owns the name in a
-  software or wellness class, choose a different one.
-- **Keep the companion names** Aurora, Orion, and Lyra. Only the *app* name changes.
+The name stays **Aura** (per coworker decision 2026-06-24). Five candidates were researched (Nosta, Lumine, Velara, Serein, Mellora) — see [`planning/app-name-research.md`](planning/app-name-research.md) for the full availability audit. Velara, Serein, and Mellora were blocked; the remaining candidates had domain/conflict concerns worse than staying with Aura.
 
-Bring back a short list of names you have already availability-checked and we will choose together.
-(This is a preliminary screen; a formal attorney clearance is still required before launch.)
+---
 
 ## How to work this — in order
-Work top to bottom; the phases are dependency-ordered (fixes and the test harness interleave —
-don't save all testing for the end). IDs reference the fixlist (`Pn-n`) and testing plan (`Tn-n`).
 
-- **A — Scaffolding / unblockers:** migrate-on-boot (`P0-3`), the **model-selection seam** (`T0-1`),
-  extract the turn processor (`T0-3`), install test infra (PGlite + coverage, `T2-1`).
-- **B — P0 blockers + their contract tests (TDD):** retention purge (`P0-1`), Clerk `verifyToken`
-  (`P0-2`; the red `auth.contract.test.ts` goes green), dropped UNIQUEs + turn transaction (`P0-4`),
-  moderation input thresholds (`P0-5`), partial-degradation fail-open (`P0-6`), consolidation
-  safety-skip (`P0-7`).
-- **C — P1 security:** auth status filter, ban-evasion, IDOR, rate-limiters, Zod, webhook rawBody,
-  indexes, admin→Clerk roles, RevenueCat trust (`P1-1…P1-11`).
-- **D — P2 spec features + tests:** persona/traits assembly, datamarking, dedicated guard models,
-  memory recency/floor, etc. (`P2-*`) + Tier-1 units (`T1-*`) + the **moderation eval runner** (`T3-1`).
-- **E — Prompt-iteration loop:** run the moderation corpus → tune the moderation/safeguard prompts;
-  then the generation runner + LLM judge (`T3-2`) → tune the persona/safety prompts. **See
-  [`testing/testing-readiness-v1.md`](testing/testing-readiness-v1.md)** — the prompts are unvalidated
-  first drafts and there is no loop yet; the shortest path to start iterating is `T0-1 → T3-1`.
+Work top to bottom; the phases are dependency-ordered (fixes and the test harness interleave — don't save all testing for the end). IDs reference the fixlist (Pn-n) and testing plan (Tn-n).
+
+- **A — Scaffolding / unblockers:** migrate-on-boot (P0-3), the model-selection seam (T0-1), extract the turn processor (T0-3), install test infra (PGlite + coverage, T2-1).
+- **B — P0 blockers + their contract tests (TDD):** retention purge (P0-1), Clerk verifyToken (P0-2; the red `auth.contract.test.ts` goes green), dropped UNIQUEs + turn transaction (P0-4), moderation input thresholds (P0-5), partial-degradation fail-open (P0-6), consolidation safety-skip (P0-7).
+- **C — P1 security:** auth status filter, ban-evasion, IDOR, rate-limiters, Zod, webhook rawBody, indexes, admin→Clerk roles, RevenueCat trust (P1-1…P1-11).
+- **D — P2 spec features + tests:** persona/traits assembly, datamarking, dedicated guard models, memory recency/floor, etc. (P2-*) + Tier-1 units (T1-*) + the moderation eval runner (T3-1).
+- **E — Prompt-iteration loop:** run the moderation corpus → tune the moderation/safeguard prompts; then the generation runner + LLM judge (T3-2) → tune the persona/safety prompts. See `testing/testing-readiness-v1.md` — the prompts are unvalidated first drafts and there is no loop yet; the shortest path to start iterating is T0-1 → T3-1.
 - **F — P3/P4 cleanup:** quality/types/silent-failures, config/docs, coverage to 80%, reports/verdicts.
 
-**Acceptance per item:** `pnpm build && pnpm typecheck && pnpm lint && pnpm test` green (incl. new
-tests); a fresh-DB boot serves an authenticated chat turn end-to-end.
+**Acceptance per item:** `pnpm build && pnpm typecheck && pnpm lint && pnpm test` green (incl. new tests); a fresh-DB boot serves an authenticated chat turn end-to-end.
+
+---
 
 ## The docs
-**Specs — the agreed design ("what it should be"; conformance targets, don't relitigate):**
-- [`specs/v1-architecture.md`](specs/v1-architecture.md) — the 12 locked decisions (D1–D12) + the "why."
-- [`specs/v1-schema.md`](specs/v1-schema.md) — the Postgres/Drizzle schema + the `@aura/shared` catalog.
-- [`specs/moderation-pipeline.md`](specs/moderation-pipeline.md) · [`specs/memory-pipeline.md`](specs/memory-pipeline.md) · [`specs/generation-pipeline.md`](specs/generation-pipeline.md) — the chat-turn pipeline "how."
 
-**Testing — how we validate:**
-- [`testing/test-harness.md`](testing/test-harness.md) — the 3-tier strategy (Vitest + PGlite + evals).
-- [`testing/testing-readiness-v1.md`](testing/testing-readiness-v1.md) — what's missing before you can iterate (the build plan).
-- [`testing/eval-safety-rubric.md`](testing/eval-safety-rubric.md) · [`testing/eval-report-layout.md`](testing/eval-report-layout.md) — the eval criteria + report format. **Jason owns the safety labels.**
+### Specs — the agreed design ("what it should be"; conformance targets, don't relitigate)
 
-**Planning — actionable / time-bound:**
-- [`planning/backend-fixlist-v1.md`](planning/backend-fixlist-v1.md) — **the live backend work** (P0→P4).
-- [`planning/v1-tasklist.md`](planning/v1-tasklist.md) — the original phase plan (history; backend status now lives in the fixlist).
-- [`planning/frontend-todo.md`](planning/frontend-todo.md) — the client/Expo build (frontend owner only).
+| Doc | Location |
+|-----|----------|
+| Architecture & decisions (D1–D12) | `specs/v1-architecture.md` |
+| DB schema & `@aura/shared` catalog | `specs/v1-schema.md` |
+| Moderation pipeline (L0–L3) | `specs/moderation-pipeline.md` |
+| Memory pipeline (async LLM consolidation) | `specs/memory-pipeline.md` |
+| Generation pipeline (hardened prompt assembly) | `specs/generation-pipeline.md` |
 
-**Compliance — legal drafts (do NOT publish without sign-off):**
-- [`compliance/data-retention-policy.md`](compliance/data-retention-policy.md) · [`compliance/privacy-policy-draft.md`](compliance/privacy-policy-draft.md)
+### Testing — how we validate
 
-**Design:** [`redesign/`](redesign/README.md) — the client visual redesign.
+| Doc | Location |
+|-----|----------|
+| 3-tier strategy (Vitest + PGlite + evals) | `testing/test-harness.md` |
+| What's missing before you can iterate | `testing/testing-readiness-v1.md` |
+| Eval criteria + report format | `testing/eval-safety-rubric.md` · `testing/eval-report-layout.md` |
+
+**Jason owns the safety labels.** Coworker may build the eval runner and scale non-safety cases, but must not author or freeze safety labels.
+
+### Planning — actionable / time-bound
+
+| Doc | Location |
+|-----|----------|
+| Live backend work (P0→P4) | `planning/backend-fixlist-v1.md` |
+| Original phase plan (history) | `planning/v1-tasklist.md` |
+| Client/Expo build (frontend owner only) | `planning/frontend-todo.md` |
+
+### Compliance — legal drafts (do NOT publish without sign-off)
+
+| Doc | Location |
+|-----|----------|
+| Data retention policy | `compliance/data-retention-policy.md` |
+| Privacy policy draft | `compliance/privacy-policy-draft.md` |
+
+### Design
+
+| Doc | Location |
+|-----|----------|
+| Client visual redesign | `redesign/` |
+
+---
 
 ## Ownership
-- **Backend / server — coworker (on Replit):** work [`planning/backend-fixlist-v1.md`](planning/backend-fixlist-v1.md) then [`testing/testing-readiness-v1.md`](testing/testing-readiness-v1.md). **Does NOT build the frontend** — append client-affecting contract changes to [`planning/frontend-todo.md`](planning/frontend-todo.md) → "Backend-driven items."
-- **Frontend / client — Jason (via Claude Code):** the Expo app — [`planning/frontend-todo.md`](planning/frontend-todo.md).
-- **Safety labels / eval corpus — Jason.** The coworker may build the eval runner and scale non-safety cases, but **must not author or freeze safety labels** (`testing/eval-safety-rubric.md` §0).
-- **Contract = `@aura/shared`** (Zod DTOs, enums, constants) — the single source for client+server types.
+
+| Role | Person | Scope |
+|------|--------|-------|
+| **Backend / server** | Coworker (on Replit) | Work `planning/backend-fixlist-v1.md` then `testing/testing-readiness-v1.md`. Does NOT build the frontend — append client-affecting contract changes to `planning/frontend-todo.md` → "Backend-driven items." |
+| **Frontend / client** | Jason (via Claude Code) | Expo app — `planning/frontend-todo.md` |
+| **Safety labels / eval corpus** | Jason | The coworker may build the eval runner and scale non-safety cases, but must not author or freeze safety labels (`testing/eval-safety-rubric.md` §0). |
+| **Contract boundary** | `@aura/shared` | Zod DTOs, enums, constants — the single source for client+server types. |
+
+---
 
 ## Do NOT guess these — they're for legal counsel
+
 - Exact **retention windows** (current numbers are defaults).
 - Whether `safety_events.flagged_content` is **retained in full or scrubbed** to metadata (fixlist leaves a `TODO(legal)`).
 - **Served jurisdictions** (US-only vs EEA/UK) and final **privacy-policy / data-retention** wording.
 
+---
+
 ## Replit setup (for the coworker)
-This workspace is the **server** (the iOS client needs Mac + Xcode + EAS — not buildable on Replit).
-The Agent reads [`../replit.md`](../replit.md) + [`../AGENTS.md`](../AGENTS.md) each session; both now point
-here and to the fixlist. Custom Instructions (workspace settings) should say: *work
-`docs/planning/backend-fixlist-v1.md` in order, one item at a time; after each — typecheck + tests pass,
-no `console.*`/secrets, then commit; backend only; don't guess the legal items.* Hosting is **Render**
-(or an always-on Replit Reserved VM so RevenueCat webhooks deliver).
+
+This workspace is the **server** (the iOS client needs Mac + Xcode + EAS — not buildable on Replit). The Agent reads `../replit.md` + `../AGENTS.md` each session; both now point here and to the fixlist. Custom Instructions (workspace settings) should say: work `docs/planning/backend-fixlist-v1.md` in order, one item at a time; after each — typecheck + tests pass, no console.*/secrets, then commit; backend only; don't guess the legal items. Hosting is Render (or an always-on Replit Reserved VM so RevenueCat webhooks deliver).
