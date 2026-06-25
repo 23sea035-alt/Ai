@@ -1,6 +1,6 @@
 import { validateEnv, getEnv } from "./config/env.js";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import app, { server } from "./app.js";
+import app, { server, startBackgroundServices } from "./app.js";
 import { logger } from "./lib/logger.js";
 import { stopJobWorker } from "./services/jobs/worker.js";
 import { db } from "./db/src/index.js";
@@ -22,6 +22,9 @@ try {
   logger.fatal({ err }, "Migration failed — cannot start");
   process.exit(1);
 }
+
+// Start background services only after migrations have applied.
+await startBackgroundServices();
 
 server.listen(env.PORT, () => {
   logger.info({ port: env.PORT }, "Server listening");

@@ -26,6 +26,10 @@ const envSchema = z.object({
 
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 
+  // Comma-separated browser origins allowed by CORS. Empty = no cross-origin browser
+  // access (native iOS app is unaffected). Set only if a web client is added.
+  CORS_ALLOWED_ORIGINS: z.string().optional(),
+
   // ── Model selection ─────────────────────────────────────────────
   MODEL_GENERATE_REPLY: z.string().default("llama-3.1-8b-instant"),
   MODEL_MODERATE_INPUT: z.string().default("meta-llama/llama-prompt-guard-2-86m"),

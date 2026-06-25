@@ -34,8 +34,9 @@ Evaluate the AI-GENERATED TEXT below against the CRITERIA. Return JSON:
     try {
       parsed = JSON.parse(response) as typeof parsed;
     } catch {
-      const flagged = /"flagged"\s*:\s*true/i.test(response);
-      parsed = { flagged, category: flagged ? "escalated" : null, confidence: flagged ? "med" : "low" };
+      // Unparseable safeguard output → fail CLOSED (block) unless it explicitly says safe.
+      const explicitlySafe = /"flagged"\s*:\s*false/i.test(response);
+      parsed = { flagged: !explicitlySafe, category: explicitlySafe ? null : "unparseable_failclosed", confidence: "low" };
     }
 
     if (parsed.flagged) {
@@ -93,8 +94,9 @@ Return JSON: { "flagged": bool, "category": "<rule-id or null>", "confidence": "
     try {
       parsed = JSON.parse(response) as typeof parsed;
     } catch {
-      const flagged = /"flagged"\s*:\s*true/i.test(response);
-      parsed = { flagged, category: flagged ? "escalated" : null, confidence: flagged ? "med" : "low", rationale: [response] };
+      // Unparseable safeguard output → fail CLOSED (block) unless it explicitly says safe.
+      const explicitlySafe = /"flagged"\s*:\s*false/i.test(response);
+      parsed = { flagged: !explicitlySafe, category: explicitlySafe ? null : "unparseable_failclosed", confidence: "low", rationale: [response] };
     }
 
     if (parsed.flagged) {

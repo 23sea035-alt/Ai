@@ -98,7 +98,7 @@ async function main(): Promise<void> {
   for (const c of cases) {
     const isOutputSide = c.draftReply !== undefined;
     const verdict = isOutputSide
-      ? await moderator.screenOutput(c.draftReply)
+      ? await moderator.screenOutput(c.draftReply!)
       : await moderator.screenInput(c.input, { userId: "eval", isMinor: false });
     const actionMatch = verdict.action === c.expected.action;
     const confusionCell = classifyConfusionCell(verdict.action, c.expected.action);

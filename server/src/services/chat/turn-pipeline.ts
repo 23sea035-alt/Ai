@@ -1,6 +1,6 @@
 import { eq, and, asc, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { db, messagesTable, companionsTable, usersTable, safetyEventsTable } from "../../db/src/index.js";
+import { db, messagesTable, companionsTable, usersTable, safetyEventsTable, type DbOrTx } from "../../db/src/index.js";
 import { SAFE_FALLBACK_REPLY, MAX_MESSAGE_CHARS, MEMORY_RETRIEVAL_TOP_N, HISTORY_WINDOW } from "@aura/shared";
 import type { PersonaTraits, PersonaKey } from "@aura/shared";
 import { createModerator, buildCrisisResponse } from "../moderation/index.js";
@@ -38,7 +38,7 @@ async function logSafetyEvent(
   userId: string,
   eventType: string,
   details: { severity: string; detail?: string; content?: string },
-  tx?: typeof db,
+  tx?: DbOrTx,
 ): Promise<void> {
   const client = tx ?? db;
   try {
@@ -121,7 +121,7 @@ async function executeTurnTransaction(
       await logSafetyEvent(userId, "input_blocked", {
         severity: "warning", detail: inputVerdict.reason, content,
       }, tx);
-      autoSuspendIfNeeded(userId);
+      await autoSuspendIfNeeded(userId);
       return { error: inputVerdict.reason ?? "Message blocked by safety check", userMessage: null, aiMessage: null, turnId };
     }
 
@@ -129,7 +129,7 @@ async function executeTurnTransaction(
       await logSafetyEvent(userId, "crisis_detected", {
         severity: "critical", detail: inputVerdict.reason, content,
       }, tx);
-      autoSuspendIfNeeded(userId);
+      await autoSuspendIfNeeded(userId);
       const [blockedMsg] = await tx.insert(messagesTable).values({
         companionId, userId, turnId, role: "user", status: "complete", content: content.trim(),
       }).returning();
@@ -197,7 +197,7 @@ async function executeTurnTransaction(
       await logSafetyEvent(userId, "output_blocked", {
         severity: "warning", detail: "Output moderated", content: replyContent,
       }, tx);
-      autoSuspendIfNeeded(userId);
+      await autoSuspendIfNeeded(userId);
       finalReply = outputVerdict.safeFallback ?? SAFE_FALLBACK_REPLY;
     }
 

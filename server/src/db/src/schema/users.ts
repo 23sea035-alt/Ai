@@ -12,7 +12,6 @@ export const usersTable = pgTable("users", {
   ageVerifiedAt: timestamp("age_verified_at", { withTimezone: true }),
   isMinor: boolean("is_minor").notNull().default(false),
   isPremium: boolean("is_premium").notNull().default(false),
-  isAdmin: boolean("is_admin").notNull().default(false),
   role: text("role").notNull().default("user"),
   status: text("status").notNull().default("active"),
   onboardingDone: boolean("onboarding_done").notNull().default(false),

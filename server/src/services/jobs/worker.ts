@@ -1,5 +1,5 @@
 import { db, memoryJobsTable } from "../../db/src/index.js";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
 import { consolidateMemory } from "../memory/consolidation.js";
 
@@ -7,25 +7,40 @@ const POLL_INTERVAL_MS = 5_000;
 const BATCH_SIZE = 5;
 
 let running = false;
+let cycleInProgress = false;
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
 async function processPendingJobs(): Promise<void> {
+  if (cycleInProgress) return; // never run two cycles concurrently
+  cycleInProgress = true;
   try {
-    const jobs = await db
-      .select()
-      .from(memoryJobsTable)
-      .where(eq(memoryJobsTable.status, "pending"))
-      .limit(BATCH_SIZE);
+    // Atomically CLAIM a batch (pending -> processing) so overlapping cycles or multiple
+    // server instances never process the same job twice. FOR UPDATE SKIP LOCKED lets
+    // concurrent claimers grab disjoint rows.
+    const result = await db.execute(sql`
+      UPDATE ${memoryJobsTable} SET status = 'processing'
+      WHERE id IN (
+        SELECT id FROM ${memoryJobsTable}
+        WHERE status = 'pending'
+        ORDER BY created_at
+        LIMIT ${BATCH_SIZE}
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING id
+    `);
+    const rows = result.rows as Array<{ id: string }>;
 
-    for (const job of jobs) {
-      await consolidateMemory(job.id);
+    for (const row of rows) {
+      await consolidateMemory(row.id);
     }
 
-    if (jobs.length > 0) {
-      logger.info({ processed: jobs.length }, "Job worker cycle complete");
+    if (rows.length > 0) {
+      logger.info({ processed: rows.length }, "Job worker cycle complete");
     }
   } catch (err) {
     logger.error({ err }, "Job worker cycle error");
+  } finally {
+    cycleInProgress = false;
   }
 }
 

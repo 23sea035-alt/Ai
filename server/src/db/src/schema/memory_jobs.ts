@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
 import { usersTable } from "./users.js";
 import { companionsTable } from "./companions.js";
 
@@ -8,6 +8,7 @@ export const memoryJobsTable = pgTable("memory_jobs", {
   companionId: uuid("companion_id").notNull().references(() => companionsTable.id, { onDelete: "cascade" }),
   rawContent: text("raw_content").notNull(),
   status: text("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
   result: text("result"),
   error: text("error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
