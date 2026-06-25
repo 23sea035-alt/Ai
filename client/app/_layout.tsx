@@ -1,9 +1,22 @@
 import {
+  HankenGrotesk_400Regular,
+  HankenGrotesk_500Medium,
+  HankenGrotesk_600SemiBold,
+  HankenGrotesk_700Bold,
+  useFonts as useHankenFonts,
+} from '@expo-google-fonts/hanken-grotesk';
+import {
   Manrope_400Regular,
   Manrope_500Medium,
   Manrope_600SemiBold,
   useFonts as useManropeFonts,
 } from '@expo-google-fonts/manrope';
+import {
+  Newsreader_400Regular,
+  Newsreader_500Medium,
+  Newsreader_600SemiBold,
+  useFonts as useNewsreaderFonts,
+} from '@expo-google-fonts/newsreader';
 import {
   Sora_400Regular,
   Sora_500Medium,
@@ -69,9 +82,24 @@ export default function RootLayout() {
     Manrope_500Medium,
     Manrope_600SemiBold,
   });
+  // Warm Sanctuary families (design.ts FONTS) — display + body.
+  const [newsreaderLoaded, newsreaderError] = useNewsreaderFonts({
+    Newsreader_400Regular,
+    Newsreader_500Medium,
+    Newsreader_600SemiBold,
+  });
+  const [hankenLoaded, hankenError] = useHankenFonts({
+    HankenGrotesk_400Regular,
+    HankenGrotesk_500Medium,
+    HankenGrotesk_600SemiBold,
+    HankenGrotesk_700Bold,
+  });
 
-  const fontsLoaded = soraLoaded && manropeLoaded;
-  const fontError = soraError || manropeError;
+  // Sora/Manrope are cosmic-era and still loaded until the legacy screens migrate (Phase 2).
+  const fontsLoaded =
+    soraLoaded && manropeLoaded && newsreaderLoaded && hankenLoaded;
+  const fontError =
+    soraError || manropeError || newsreaderError || hankenError;
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
