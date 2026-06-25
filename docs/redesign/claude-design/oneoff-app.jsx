@@ -1585,7 +1585,7 @@ function AccountScreen() {
 
   return (
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: T.bg }}>
-      <TopBar label="Privacy & Safety" />
+      <TopBar label="Manage your data" />
 
       <div className="aura-noscroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 36px' }}>
 

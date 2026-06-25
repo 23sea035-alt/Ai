@@ -342,32 +342,6 @@ function RosterCard({ T, c, empty, i }) {
   );
 }
 
-function CreateEntry({ T, premium, i }) {
-  return (
-    <button type="button" onClick={() => { window.location.href = premium ? 'OneOff.html?screen=create' : 'OneOff.html?screen=paywall'; }}
-      className="home-enter"
-      style={{ animationDelay: `${i * 0.07}s`, width: '100%', display: 'flex', alignItems: 'center', gap: 13,
-        textAlign: 'left', background: 'transparent', border: `1px solid ${T.border}`, borderRadius: 8,
-        padding: '14px 15px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', marginTop: 4 }}>
-      <span style={{ width: 38, height: 38, flex: 'none', borderRadius: 8, display: 'grid', placeItems: 'center',
-        background: T.bg, border: `1px solid ${T.border}`, color: T.textSecondary }}>
-        {premium ? (
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-        ) : (
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-        )}
-      </span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontFamily: FF_BODY, fontWeight: 600, fontSize: 15, color: T.textPrimary }}>
-          {premium ? 'New companion' : 'Create your own companion'}</span>
-        <span style={{ display: 'block', fontFamily: FF_BODY, fontWeight: 500, fontSize: 12.5, color: T.textTertiary, marginTop: 1 }}>
-          {premium ? 'Design a voice that’s yours' : 'Included with Premium'}</span>
-      </span>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="m9 6 6 6-6 6" /></svg>
-    </button>
-  );
-}
-
 function CompanionsLoading({ T }) {
   return (
     <div style={{ minHeight: '100%', background: T.bg, padding: `${SAFE_TOP}px 28px ${NAV_CLEARANCE}px` }}>
@@ -414,15 +388,30 @@ function Companions() {
   if (state === 'error') return <CompanionsError T={T} />;
   const isEmpty = state === 'empty';
 
+  const openCreate = () => { window.location.href = premium ? 'OneOff.html?screen=create' : 'OneOff.html?screen=paywall'; };
   return (
     <div style={{ minHeight: '100%', background: T.bg, padding: `${SAFE_TOP}px 28px ${NAV_CLEARANCE}px` }}>
-      <h1 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 34, lineHeight: 1.06, letterSpacing: '-0.015em',
-        color: T.textPrimary, margin: '0 0 24px' }}>Companions</h1>
+      {/* title + always-accessible create action (top-right, never scroll-buried by a long roster) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 24px' }}>
+        <h1 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 34, lineHeight: 1.06, letterSpacing: '-0.015em',
+          color: T.textPrimary, margin: 0 }}>Companions</h1>
+        <button type="button" aria-label={premium ? 'New companion' : 'Create a companion (Premium)'} onClick={openCreate}
+          style={{ position: 'relative', width: 42, height: 42, flex: 'none', borderRadius: '50%', display: 'grid', placeItems: 'center',
+            background: T.raised, border: `1px solid ${T.border}`, color: T.textPrimary, cursor: 'pointer',
+            boxShadow: T.e1, WebkitTapHighlightColor: 'transparent' }}>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+          {!premium && (
+            <span style={{ position: 'absolute', right: -2, bottom: -2, width: 17, height: 17, borderRadius: '50%',
+              background: T.bg, border: `1px solid ${T.border}`, display: 'grid', placeItems: 'center' }}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={T.textTertiary} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+            </span>
+          )}
+        </button>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {ROSTER.map((c, i) => (
           <RosterCard key={c.name} T={T} c={c} i={i} empty={isEmpty} />
         ))}
-        <CreateEntry T={T} premium={premium} i={ROSTER.length} />
       </div>
     </div>
   );
@@ -435,17 +424,6 @@ function Companions() {
    ════════════════════════════════════════════════════════════════════════════ */
 
 function goScreen(id) { window.location.href = `OneOff.html?screen=${id}`; }
-
-function Toggle({ T, on, onClick }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} onClick={onClick}
-      style={{ width: 50, height: 30, flex: 'none', borderRadius: 999, border: 'none', cursor: 'pointer', padding: 0,
-        background: on ? T.accent : T.border, position: 'relative', transition: 'background .2s', WebkitTapHighlightColor: 'transparent' }}>
-      <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 24, height: 24, borderRadius: '50%',
-        background: T.sheet, boxShadow: T.e1, transition: 'left .2s' }} />
-    </button>
-  );
-}
 
 function Row({ T, label, detail, detailAccent, onClick, toggle, last }) {
   const interactive = !!onClick;
@@ -509,8 +487,7 @@ function You() {
   const T = useT();
   const d = useDev();
   const premium = d.account === 'premium';
-  const [notif, setNotif] = useState(true);
-  const [dialog, setDialog] = useState(null); // 'signout' | 'delete' | null
+  const [dialog, setDialog] = useState(null); // 'signout' | null
 
   return (
     <div style={{ minHeight: '100%', background: T.bg, padding: `${SAFE_TOP}px 22px ${NAV_CLEARANCE}px` }}>
@@ -544,20 +521,18 @@ function You() {
 
       <Group T={T} title="Account">
         <Row T={T} label="Edit profile" onClick={() => goScreen('editprofile')} />
-        <Row T={T} label="Subscription" last
+        <Row T={T} label="Subscription"
           detail={premium ? 'Manage in App Store' : 'Upgrade to Premium'} detailAccent={!premium}
           onClick={() => goScreen('paywall')} />
-      </Group>
-
-      <Group T={T} title="Notifications">
-        <Row T={T} label="Aurora replied" last toggle={<Toggle T={T} on={notif} onClick={() => setNotif(v => !v)} />} />
+        {/* Notifications is its own screen now (room for more toggles) — a row, not an inline toggle */}
+        <Row T={T} label="Notifications" last onClick={() => goScreen('notifs')} />
       </Group>
 
       <Group T={T} title="Privacy & Safety">
         <Row T={T} label="Safety center" onClick={() => goScreen('safety')} />
         <Row T={T} label="Privacy policy" onClick={() => goScreen('legal')} />
-        <Row T={T} label="Data export" onClick={() => goScreen('account')} />
-        <Row T={T} label="Delete account" last onClick={() => setDialog('delete')} />
+        {/* export + delete live together on one screen — delete is buried a level deeper, not a top-level mistap */}
+        <Row T={T} label="Manage your data" last onClick={() => goScreen('account')} />
       </Group>
 
       <Group T={T} title="Support">
@@ -579,11 +554,6 @@ function You() {
       {dialog === 'signout' && (
         <ConfirmDialog T={T} title="Sign out?" body="You can sign back in anytime. Aurora will be right where you left her."
           confirmLabel="Sign out" onConfirm={() => setDialog(null)} onCancel={() => setDialog(null)} />
-      )}
-      {dialog === 'delete' && (
-        <ConfirmDialog T={T} destructive title="Delete account?"
-          body="This permanently erases your account, conversations, and memories. This can’t be undone."
-          confirmLabel="Delete account" onConfirm={() => setDialog(null)} onCancel={() => setDialog(null)} />
       )}
     </div>
   );
