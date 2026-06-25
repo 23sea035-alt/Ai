@@ -532,7 +532,7 @@ function ThreadArt({ T, playKey, active }) {
   const animate = active && !REDUCED;
 
   // small conversation bubbles riding the thread — cream/sand, same register as slides 2 & 3
-  const bubGrad   = dark ? 'linear-gradient(160deg, #3B3025, #2C2319)' : 'linear-gradient(160deg, #F8EFE0, #EBDBC2)';
+  const bubGrad   = dark ? 'linear-gradient(160deg, #3B3025, #2C2319)' : 'linear-gradient(160deg, #EFE0C6, #E0CCA4)'; // deepened for light-bg contrast
   const bubShadow = dark ? '0 4px 10px rgba(0,0,0,0.38)' : '0 4px 10px rgba(120,84,52,0.16)';
   const lineC     = dark ? 'rgba(244,236,223,0.18)' : 'rgba(120,84,52,0.18)';
 
@@ -629,7 +629,9 @@ function ChatArt({ T, playKey, active }) {
   );
 
   // gradient stops (light crown → deeper base) + shadow flood, per voice
-  const themStops = dark ? ['#3B3025', '#2C2319'] : ['#F8EFE0', '#EBDBC2'];
+  // companion bubble deepened in light mode so it reads against the cream bg (#F4ECE0):
+  // its old lightest stop (#F8EFE0) was lighter than the ground, so the top dissolved.
+  const themStops = dark ? ['#3B3025', '#2C2319'] : ['#EFE0C6', '#E0CCA4'];
   const youStops  = dark ? ['#80584A', '#69463A'] : ['#DAAB8C', '#C79172'];
   const floodC    = dark ? '#000000' : '#785434';
 
@@ -697,7 +699,7 @@ function PresenceArt({ T, playKey, active }) {
   const dark = T.mode === 'dark';
   const animate = active && !REDUCED;
   // bubble — companion / warm-sand tone, identical to slide 2's "them"
-  const stops  = dark ? ['#3B3025', '#2C2319'] : ['#F8EFE0', '#EBDBC2'];
+  const stops  = dark ? ['#3B3025', '#2C2319'] : ['#EFE0C6', '#E0CCA4']; // deepened for light-bg contrast (see slide 2)
   const lineC  = dark ? 'rgba(244,236,223,0.15)' : 'rgba(120,84,52,0.15)';
   const floodC = dark ? '#000000' : '#785434';
   // sun (muted gold/amber disc) + moon (warm taupe crescent) — warm in BOTH themes
