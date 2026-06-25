@@ -1248,7 +1248,7 @@ function Persona({ onContinue }) {
               style={{ display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', width: '100%',
                 cursor: 'pointer', background: on ? T.accentTint : T.raised, border: 'none',
                 borderRadius: RADIUS_CARD, padding: '15px 16px',
-                boxShadow: on ? `0 0 0 1.5px ${T.accent}, ${T.e2}` : T.e1,
+                boxShadow: on ? T.e2 : T.e1, // §2: intimate cards lift with soft shadow, no outline; selection reads via tonal fill + check
                 opacity: on ? 1 : 0.78, filter: on ? 'none' : 'saturate(0.85)',
                 transform: REDUCED ? 'none' : (on ? 'translateY(-1px)' : 'none'),
                 transition: 'background .25s, box-shadow .3s, opacity .25s, filter .25s, transform .3s',
