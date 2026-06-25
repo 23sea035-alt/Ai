@@ -13,6 +13,14 @@ function isAdult(dateOfBirth: string): boolean {
   return Date.now() - new Date(dateOfBirth).getTime() >= EIGHTEEN_YEARS_MS;
 }
 
+function isPlausibleDob(dateOfBirth: string): boolean {
+  const t = new Date(dateOfBirth).getTime();
+  if (Number.isNaN(t)) return false;
+  if (t > Date.now()) return false; // not in the future
+  if (t < Date.UTC(1900, 0, 1)) return false; // not absurdly old
+  return true;
+}
+
 const router = Router();
 
 const DEFAULT_COMPANIONS = [
@@ -85,10 +93,12 @@ router.put("/auth/me", requireAuth, validate(UpdateProfileSchema), async (req: A
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
     if (dateOfBirth !== undefined) {
+      if (!isPlausibleDob(dateOfBirth)) { res.status(400).json({ error: "Please enter a valid date of birth." }); return; }
       if (!isAdult(dateOfBirth)) { res.status(403).json({ error: "You must be 18 or older to use Aura." }); return; }
       updates.dateOfBirth = dateOfBirth;
       updates.isMinor = false;
       updates.ageVerified = true;
+      updates.ageVerifiedAt = new Date();
     }
     if (onboardingDone !== undefined) updates.onboardingDone = onboardingDone;
     if (aiDisclosureAccepted !== undefined) updates.aiDisclosureAccepted = aiDisclosureAccepted;

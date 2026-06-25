@@ -21,12 +21,19 @@ export async function runL1(text: string, provider?: LLMProvider): Promise<Promp
     let prob = 0;
     try {
       const parsed = JSON.parse(response);
-      prob = typeof parsed.malicious_probability === "number" ? parsed.malicious_probability : 0;
+      prob = typeof parsed.malicious_probability === "number" ? parsed.malicious_probability : NaN;
     } catch {
-      if (response.trim() === "B") prob = 0;
-      else if (response.trim() === "J") prob = 1;
+      const r = response.trim().toLowerCase();
+      if (r === "b" || r.includes("benign") || r.includes("safe")) prob = 0;
+      else if (r === "j" || r.includes("malicious") || r.includes("injection") || r.includes("unsafe")) prob = 1;
+      else prob = NaN;
     }
 
+    // Unparseable / ambiguous classifier output → fail CLOSED by escalating to the
+    // safeguard, never silently pass.
+    if (Number.isNaN(prob)) {
+      return { injectionProb: ESCALATE_THRESHOLD, action: "escalate", error: "L1 unparseable output — escalating" };
+    }
     if (prob >= BLOCK_THRESHOLD) return { injectionProb: prob, action: "block" };
     if (prob >= ESCALATE_THRESHOLD) return { injectionProb: prob, action: "escalate" };
     return { injectionProb: prob, action: "pass" };

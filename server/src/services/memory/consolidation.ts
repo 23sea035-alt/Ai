@@ -32,6 +32,7 @@ Rules:
 - Never store crisis content, self-harm statements, or blocked material as a memory.`;
 
 const CRISIS_PATTERNS = /\b(kill myself|want to die|end my life|suicide|self-harm|self harm)\b/i;
+const MAX_CONSOLIDATION_ATTEMPTS = 3;
 
 export async function consolidateMemory(jobId: string): Promise<void> {
   const [job] = await db
@@ -40,7 +41,8 @@ export async function consolidateMemory(jobId: string): Promise<void> {
     .where(eq(memoryJobsTable.id, jobId))
     .limit(1);
 
-  if (!job || job.status !== "pending") return;
+  // Accept jobs claimed by the worker (status 'processing') as well as raw 'pending'.
+  if (!job || (job.status !== "pending" && job.status !== "processing")) return;
 
   // Safety pre-check: skip crisis/self-harm content
   if (CRISIS_PATTERNS.test(job.rawContent)) {
@@ -110,9 +112,17 @@ export async function consolidateMemory(jobId: string): Promise<void> {
     logger.info({ jobId, decisions: decisions.length }, "Memory consolidated");
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown";
+    const attempts = (job.attempts ?? 0) + 1;
+    const giveUp = attempts >= MAX_CONSOLIDATION_ATTEMPTS;
+    // Re-queue (status -> 'pending') for a bounded number of retries; give up after that.
     await db.update(memoryJobsTable)
-      .set({ status: "failed", error: message, processedAt: new Date() })
+      .set({
+        status: giveUp ? "failed" : "pending",
+        attempts,
+        error: message,
+        processedAt: giveUp ? new Date() : null,
+      })
       .where(eq(memoryJobsTable.id, jobId));
-    logger.error({ err, jobId }, "Memory consolidation failed");
+    logger.error({ err, jobId, attempts, giveUp }, "Memory consolidation failed");
   }
 }

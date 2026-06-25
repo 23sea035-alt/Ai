@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db, usersTable, messagesTable, companionsTable, memoriesTable, deviceTokensTable, safetyEventsTable, bannedIdentitiesTable } from "../db/src/index.js";
 import { requireAuth, requireAdmin, AuthRequest } from "../middleware/auth.js";
+import { authBruteForceLimiter } from "../middleware/rate-limit.js";
 import { validate } from "../middleware/validate.js";
 import { logger } from "../lib/logger.js";
 import { hashIdentifier } from "../lib/crypto.js";
@@ -88,7 +89,9 @@ router.post("/messages/:id/report", requireAuth, validate(ReportMessageSchema), 
     const messageId = req.params.id as string;
     const { reason, detail } = req.body;
 
-    const [message] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId)).limit(1);
+    const [message] = await db.select().from(messagesTable)
+      .where(and(eq(messagesTable.id, messageId), eq(messagesTable.userId, userId)))
+      .limit(1);
     if (!message) {
       sendError(res, "Message not found", 404);
       return;
@@ -124,18 +127,24 @@ router.get("/admin/safety-events", requireAuth, requireAdmin, async (req: AuthRe
 });
 
 // POST /api/admin/ban — Ban a user by email (admin only)
-router.post("/admin/ban", requireAuth, requireAdmin, validate(BanUserSchema), async (req: AuthRequest, res) => {
+router.post("/admin/ban", requireAuth, requireAdmin, authBruteForceLimiter, validate(BanUserSchema), async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const { email, reason } = req.body;
 
     await db.insert(bannedIdentitiesTable).values({
       identifierHash: hashIdentifier(email.toLowerCase()),
-      identifierType: "email",
+      identifierType: "email_hash",
       reason: reason ?? "Violation of terms",
     });
 
-    logger.info({ adminId: userId, bannedEmail: email }, "User banned");
+    // Revoke access for an already-registered account with this email (requireAuth blocks
+    // non-active users). Banning must affect existing users, not just future re-registration.
+    await db.update(usersTable)
+      .set({ status: "banned", updatedAt: new Date() })
+      .where(eq(usersTable.email, email.toLowerCase()));
+
+    logger.info({ adminId: userId }, "User banned");
     sendSuccess(res, { banned: true }, 201);
   } catch (err) {
     logger.error({ err }, "Ban failed");
@@ -144,14 +153,19 @@ router.post("/admin/ban", requireAuth, requireAdmin, validate(BanUserSchema), as
 });
 
 // POST /api/admin/unban — Unban a user by email (admin only)
-router.post("/admin/unban", requireAuth, requireAdmin, validate(UnbanUserSchema), async (req: AuthRequest, res) => {
+router.post("/admin/unban", requireAuth, requireAdmin, authBruteForceLimiter, validate(UnbanUserSchema), async (req: AuthRequest, res) => {
   try {
     const { email } = req.body;
 
     const hash = hashIdentifier(email.toLowerCase());
     await db.delete(bannedIdentitiesTable).where(eq(bannedIdentitiesTable.identifierHash, hash));
 
-    logger.info({ adminId: req.userId!, unbannedEmail: email }, "User unbanned");
+    // Reactivate a previously-banned account with this email.
+    await db.update(usersTable)
+      .set({ status: "active", updatedAt: new Date() })
+      .where(and(eq(usersTable.email, email.toLowerCase()), eq(usersTable.status, "banned")));
+
+    logger.info({ adminId: req.userId! }, "User unbanned");
     sendSuccess(res, { unbanned: true });
   } catch (err) {
     logger.error({ err }, "Unban failed");

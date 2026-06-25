@@ -3,8 +3,6 @@ import { db, usersTable, messagesTable, companionsTable, memoriesTable, subscrip
 import { logger } from "../lib/logger.js";
 
 // ALL hardcoded retention numbers are defaults — LEGAL-REVIEW before launch
-const RETENTION_DAYS_MESSAGES = 90; // LEGAL-REVIEW
-const RETENTION_DAYS_INACTIVE_ACCOUNTS = 365; // LEGAL-REVIEW
 const RETENTION_DAYS_SAFETY_EVENTS = 365; // LEGAL-REVIEW
 const RETENTION_DAYS_BANNED_IDENTITIES = 730; // LEGAL-REVIEW
 const GRACE_DAYS_SOFT_DELETE = 30; // LEGAL-REVIEW
@@ -34,8 +32,8 @@ async function deleteWhere(
     throw new Error(`Retention [${context}]: WHERE clause is empty — refusing (would delete all rows)`);
   }
   if (dryRun) {
-    const rows = await db.select({ id: (table as any).id }).from(table).where(where).limit(100);
-    logger.warn({ context, count: rows.length, sample: rows.map((r: any) => r.id) }, "DRY RUN — would delete rows");
+    const rows = await db.select({ id: table.id }).from(table).where(where).limit(100);
+    logger.warn({ context, count: rows.length, sample: rows.map((r: { id: unknown }) => r.id) }, "DRY RUN — would delete rows");
     return rows.length;
   }
   const result = await db.delete(table).where(where);
@@ -44,14 +42,9 @@ async function deleteWhere(
   return count;
 }
 
-export async function enforceRetention(options?: { dryRun?: boolean }): Promise<number> {
-  const cutoff = new Date(Date.now() - RETENTION_DAYS_MESSAGES * MS_PER_DAY);
-  validateCutoff(cutoff, "enforceRetention");
-  const dryRun = options?.dryRun ?? false;
-  logger.info({ cutoff, dryRun }, "Running message retention enforcement");
-
-  return deleteWhere(messagesTable, lte(messagesTable.createdAt, cutoff), "messages", dryRun);
-}
+// REMOVED: enforceRetention() (global 90-day message purge) and markInactiveUsers().
+// Retention is account-deletion-only — live messages are retained for active users and
+// hard-deleted ONLY via enforceGraceExpiry() after account deletion (data-retention-policy.md).
 
 export async function enforceSafetyEventRetention(options?: { dryRun?: boolean }): Promise<number> {
   const cutoff = new Date(Date.now() - RETENTION_DAYS_SAFETY_EVENTS * MS_PER_DAY);
@@ -114,35 +107,6 @@ export async function enforceGraceExpiry(options?: { dryRun?: boolean }): Promis
     logger.info({ count: expiredUsers.length }, "Grace-expiry hard purge complete");
   }
   return expiredUsers.length;
-}
-
-export async function markInactiveUsers(options?: { dryRun?: boolean }): Promise<number> {
-  const cutoff = new Date(Date.now() - RETENTION_DAYS_INACTIVE_ACCOUNTS * MS_PER_DAY);
-  validateCutoff(cutoff, "markInactiveUsers");
-  const dryRun = options?.dryRun ?? false;
-  logger.info({ cutoff, dryRun }, "Marking inactive users");
-
-  if (dryRun) {
-    const candidates = await db
-      .select({ id: usersTable.id, email: usersTable.email })
-      .from(usersTable)
-      .where(
-        and(lte(usersTable.updatedAt, cutoff), eq(usersTable.status, "active"), isNotNull(usersTable.updatedAt)),
-      ).limit(100);
-    logger.warn({ count: candidates.length, sample: candidates.map(c => c.id) }, "DRY RUN — would mark inactive");
-    return candidates.length;
-  }
-
-  const result = await db
-    .update(usersTable)
-    .set({ status: "inactive", deletedAt: new Date() })
-    .where(
-      and(lte(usersTable.updatedAt, cutoff), eq(usersTable.status, "active"), isNotNull(usersTable.updatedAt)),
-    );
-
-  const count = (result as { rowCount: number | null }).rowCount ?? 0;
-  logger.info({ count }, "Users marked inactive");
-  return count;
 }
 
 export async function reconcilePremiumStaleness(options?: { dryRun?: boolean }): Promise<number> {
