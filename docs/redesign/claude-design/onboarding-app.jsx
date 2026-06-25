@@ -512,42 +512,6 @@ const REDUCED = typeof window !== 'undefined' && window.matchMedia
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // three distinct warm marks (simple primitives, no orbs/stock)
-function CarouselArt({ which, T }) {
-  const a = T.avatar, w = T.accent;
-  if (which === 0) {
-    // continuity — a thread linking conversations
-    return (
-      <svg width="200" height="150" viewBox="0 0 200 150" fill="none" aria-hidden="true">
-        <path d="M22 96 C 60 56, 80 56, 100 80 S 150 104, 178 60"
-          stroke={a} strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.55" />
-        <circle cx="22" cy="96" r="9" fill={a} />
-        <circle cx="100" cy="80" r="11" fill={a} />
-        <circle cx="178" cy="60" r="14" fill={w} />
-      </svg>
-    );
-  }
-  if (which === 1) {
-    // calm private place — a sheltering arch (a hearth) holding a small warmth
-    return (
-      <svg width="200" height="150" viewBox="0 0 200 150" fill="none" aria-hidden="true">
-        <path d="M40 130 V70 a60 60 0 0 1 120 0 V130" fill={a} opacity="0.5" />
-        <path d="M72 130 V86 a28 28 0 0 1 56 0 V130" fill={T.bg} />
-        <circle cx="100" cy="104" r="13" fill={w} />
-      </svg>
-    );
-  }
-  // always here — a gentle presence reaching out in soft ripples
-  return (
-    <svg width="200" height="150" viewBox="0 0 200 150" fill="none" aria-hidden="true">
-      {[58, 40].map((r, i) => (
-        <path key={r} d={`M ${100 - r} 104 A ${r} ${r} 0 0 1 ${100 + r} 104`}
-          stroke={a} strokeWidth="5" strokeLinecap="round" fill="none" opacity={0.3 + i * 0.25} />
-      ))}
-      <circle cx="100" cy="104" r="15" fill={w} />
-    </svg>
-  );
-}
-
 /* Slide 1 hero — "the kept thread". One soft, thick, tactile ribbon (gouache
    weight, flat tonal fill, no outline) that meanders gently and stays level,
    entering from the left and continuing off the right edge: the continuous
@@ -680,7 +644,7 @@ function ChatArt({ T, playKey, active }) {
             </filter>
           </defs>
           <path d={bodyPath} fill={`url(#bg-${id})`} filter={`url(#sh-${id})`} />
-          <path d={trimPath} fill="none" stroke={trimC} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+          <path d={trimPath} fill="none" stroke={trimC} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
         </svg>
         <div style={{ position: 'relative', height: '100%', padding: '0 24px',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
@@ -696,7 +660,7 @@ function ChatArt({ T, playKey, active }) {
       <Bubble id={`them-${playKey}`} w={152} h={80} left={28} top={38} rotate={-1.4}
         stops={themStops} trimC={trimThemC} vbW={176} vbH={132}
         bodyPath={'M 42,12 L 134,12 Q 164,12 164,42 L 164,62 Q 164,92 134,92 L 80,92 C 66,92 54,106 44,118 C 40,106 40,98 46,92 L 42,92 Q 12,92 12,62 L 12,42 Q 12,12 42,12 Z'}
-        trimPath={'M 46,16 Q 100,13 130,16'} delay=".15s">
+        trimPath={'M 30,28 Q 34,15 48,14.5 L 130,14.5 Q 152,15 158,30'} delay=".15s">
         {softLine(80, themLine)}
         {softLine(52, themLine)}
       </Bubble>
@@ -704,9 +668,103 @@ function ChatArt({ T, playKey, active }) {
       <Bubble id={`you-${playKey}`} w={120} h={64} left={162} top={100} rotate={1.6}
         stops={youStops} trimC={trimYouC} vbW={144} vbH={120}
         bodyPath={'M 38,12 L 106,12 Q 132,12 132,38 L 132,50 Q 132,76 106,76 C 116,86 120,94 122,104 C 110,96 100,84 90,76 L 38,76 Q 12,76 12,50 L 12,38 Q 12,12 38,12 Z'}
-        trimPath={'M 40,16 Q 88,13 104,16'} delay=".55s">
+        trimPath={'M 24,26 Q 28,15 42,14.5 L 102,14.5 Q 120,15 126,28'} delay=".55s">
         {softLine(58, youLine)}
       </Bubble>
+    </div>
+  );
+}
+
+/* Slide 3 hero — "here whenever you need." ONE steady companion bubble (warm sand,
+   the SAME register as slide 2's companion bubble) present through day & night: a small
+   soft SUN flanks the upper-left, a warm CRESCENT MOON the upper-right. The bubble is the
+   constant hero; the sun/moon are small, secondary context. NO radiating rays/arcs (not a
+   wifi/signal motif), NO Library Wine (wine stays on the bar + Continue), NO cold blue —
+   warm in both themes (it inverts naturally in dark). Motion: the bubble eases in + settles
+   steady, then the sun + moon softly fade in flanking it (calmest slide; dead-still after,
+   which the spec permits). Reduce-motion → all whole, already in place.
+   [The bubble render mirrors slide 2's companion bubble; at the RN port both collapse into
+   the shared <WarmBubble> component.] */
+function PresenceArt({ T, playKey, active }) {
+  const dark = T.mode === 'dark';
+  const animate = active && !REDUCED;
+  // bubble — companion / warm-sand tone, identical to slide 2's "them"
+  const stops  = dark ? ['#3B3025', '#2C2319'] : ['#F8EFE0', '#EBDBC2'];
+  const trimC  = dark ? 'rgba(244,236,223,0.10)' : 'rgba(255,252,246,0.72)';
+  const lineC  = dark ? 'rgba(244,236,223,0.15)' : 'rgba(120,84,52,0.15)';
+  const floodC = dark ? '#000000' : '#785434';
+  // sun (muted gold/amber disc) + moon (warm taupe crescent) — warm in BOTH themes
+  const sunGrad   = dark ? 'radial-gradient(120% 120% at 36% 30%, #DEA64C, #C2883A)'
+                         : 'radial-gradient(120% 120% at 36% 30%, #EDC074, #D6A24E)';
+  const sunShadow = dark ? '0 4px 12px rgba(0,0,0,0.42), inset 0 1.5px 1px rgba(255,244,214,0.28)'
+                         : '0 5px 14px rgba(150,110,40,0.26), inset 0 1.5px 1px rgba(255,250,235,0.55)';
+  const moonStops = dark ? ['#9A7560', '#7C5A47'] : ['#C99E80', '#AE7F62'];
+  const starC     = dark ? '#E6C68C' : '#D6A24E';
+
+  // soft completion haptic as the day/night cue settles
+  React.useEffect(() => {
+    if (!active) return;
+    const buzz = () => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8); };
+    const t = setTimeout(buzz, REDUCED ? 80 : 1200);
+    return () => clearTimeout(t);
+  }, [active, playKey]);
+
+  const softLine = (w) => <div style={{ height: 7, width: w, borderRadius: 4, background: lineC }} />;
+  const bubbleSettle = animate ? { animation: 'bubble-settle .8s cubic-bezier(.16,1,.3,1) .15s both' } : {};
+  const sunAnim  = animate ? { animation: 'aura-fadein .6s ease .6s both' } : {};
+  const moonAnim = animate ? { animation: 'aura-fadein .6s ease .72s both' } : {};
+
+  return (
+    <div key={playKey} style={{ position: 'relative', width: 320, height: 200 }}>
+      {/* SUN — upper-left, soft muted-gold disc (no rays) */}
+      <div style={{ position: 'absolute', left: 44, top: 50, width: 34, height: 34, borderRadius: '50%',
+        background: sunGrad, boxShadow: sunShadow, ...sunAnim }} />
+      {/* MOON — upper-right, warm taupe crescent (no rays) + a tiny star */}
+      <div style={{ position: 'absolute', left: 246, top: 46, width: 34, height: 34, ...moonAnim }}>
+        <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true" style={{ overflow: 'visible' }}>
+          <defs>
+            <mask id={`mm-${playKey}`}>
+              <rect width="34" height="34" fill="black" />
+              <circle cx="17" cy="17" r="15.5" fill="white" />
+              <circle cx="23" cy="11.5" r="13" fill="black" />
+            </mask>
+            <linearGradient id={`mg-${playKey}`} x1="0" y1="0" x2="0.4" y2="1">
+              <stop offset="0" stopColor={moonStops[0]} /><stop offset="1" stopColor={moonStops[1]} />
+            </linearGradient>
+            <filter id={`ms-${playKey}`} x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor={floodC} floodOpacity={dark ? 0.4 : 0.18} />
+            </filter>
+          </defs>
+          <g filter={`url(#ms-${playKey})`}>
+            <rect width="34" height="34" fill={`url(#mg-${playKey})`} mask={`url(#mm-${playKey})`} />
+          </g>
+        </svg>
+        <div style={{ position: 'absolute', right: -3, top: 0, width: 4.5, height: 4.5, borderRadius: '50%', background: starC, opacity: 0.9 }} />
+      </div>
+      {/* BUBBLE — centered, the steady constant (companion sand tone, tail ↙ bottom-left) */}
+      <div style={{ position: 'absolute', left: 84, top: 80, width: 152, height: 80, ...bubbleSettle }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative', transform: 'rotate(-1deg)' }}>
+          <svg width="176" height="132" viewBox="0 0 176 132" fill="none" aria-hidden="true"
+            style={{ position: 'absolute', left: -12, top: -12, overflow: 'visible', pointerEvents: 'none' }}>
+            <defs>
+              <linearGradient id={`pb-${playKey}`} x1="0" y1="0" x2="0.3" y2="1">
+                <stop offset="0" stopColor={stops[0]} /><stop offset="1" stopColor={stops[1]} />
+              </linearGradient>
+              <filter id={`pbsh-${playKey}`} x="-40%" y="-30%" width="180%" height="190%">
+                <feDropShadow dx="0" dy="8" stdDeviation="7" floodColor={floodC} floodOpacity={dark ? 0.34 : 0.14} />
+              </filter>
+            </defs>
+            <path d={'M 42,12 L 134,12 Q 164,12 164,42 L 164,62 Q 164,92 134,92 L 80,92 C 66,92 54,106 44,118 C 40,106 40,98 46,92 L 42,92 Q 12,92 12,62 L 12,42 Q 12,12 42,12 Z'}
+              fill={`url(#pb-${playKey})`} filter={`url(#pbsh-${playKey})`} />
+            <path d={'M 30,28 Q 34,15 48,14.5 L 130,14.5 Q 152,15 158,30'} fill="none" stroke={trimC} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+          </svg>
+          <div style={{ position: 'relative', height: '100%', padding: '0 24px',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
+            {softLine(82)}
+            {softLine(54)}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -767,7 +825,7 @@ function Carousel({ index, setIndex, onDone }) {
           ? <ThreadArt T={T} active={index === 0} playKey={land} />
           : i === 1
           ? <ChatArt T={T} active={index === 1} playKey={land} />
-          : <CarouselArt which={i} T={T} />}
+          : <PresenceArt T={T} active={index === 2} playKey={land} />}
       </div>
       <h1 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 30, lineHeight: 1.12,
         letterSpacing: '-0.015em', color: T.textPrimary, margin: '0 0 14px', maxWidth: '15ch', textWrap: 'balance',
