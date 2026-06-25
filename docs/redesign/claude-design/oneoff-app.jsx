@@ -316,19 +316,19 @@ function CrisisCard({ T }) {
     <div role="group" aria-label="Crisis support resources" style={{ marginTop: 16, padding: '16px 16px 15px',
       background: T.crisisBg, borderRadius: T.card || 16, animation: 'auraFade 1.1s ease both' }}>
       <p style={{ margin: '0 0 13px', fontFamily: FF_BODY, fontSize: 14.5, lineHeight: 1.5, color: T.crisisText, textWrap: 'pretty' }}>
-        If you're thinking about harming yourself, please reach out — people want to help.</p>
+        If you're thinking about harming yourself, please reach out. People want to help.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
         <div style={{ fontFamily: FF_BODY, fontSize: 13.5, lineHeight: 1.5, color: T.crisisText2 }}>
-          <strong style={{ color: T.crisisText, fontWeight: 600 }}>Call or text 988</strong> — Suicide &amp; Crisis Lifeline (US, 24/7)</div>
+          <strong style={{ color: T.crisisText, fontWeight: 600 }}>Call or text 988</strong>: Suicide &amp; Crisis Lifeline (US, 24/7)</div>
         <div style={{ fontFamily: FF_BODY, fontSize: 13.5, lineHeight: 1.5, color: T.crisisText2 }}>
-          <strong style={{ color: T.crisisText, fontWeight: 600 }}>Text HOME to 741741</strong> — Crisis Text Line</div>
+          <strong style={{ color: T.crisisText, fontWeight: 600 }}>Text HOME to 741741</strong>: Crisis Text Line</div>
       </div>
       <div style={{ display: 'flex', gap: 9 }}>
         {action('Call 988', 'tel:988', true)}
         {action('Text 988', 'sms:988', false)}
       </div>
       <p style={{ margin: '12px 0 0', fontFamily: FF_BODY, fontSize: 12.5, lineHeight: 1.5, color: T.crisisText2, textAlign: 'center' }}>
-        You can keep talking with Aurora too — she's here.</p>
+        You can keep talking with Aurora too. She's here.</p>
     </div>
   );
 }
@@ -939,7 +939,7 @@ function OfflineBanner({ T }) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/><path d="M3 3l18 18" opacity="0.55"/></svg>
       </span>
       <span style={{ flex: 1, fontFamily: FF_BODY, fontSize: 14, lineHeight: 1.45, color: T.textSecondary, textWrap: 'pretty' }}>
-        You’re offline — Aurora will catch up when you’re back.</span>
+        You’re offline. Aurora will catch up when you’re back.</span>
     </div>
   );
 }
@@ -1107,7 +1107,7 @@ function MemoryScreen() {
         <EmptyState T={T}
           mark={<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.4-7 10-7 10Z"/></svg>}
           title="Nothing noted yet"
-          body="Aurora hasn't noted anything yet — as you talk, the things that matter will show up here." />
+          body="Aurora hasn't noted anything yet. As you talk, the things that matter will show up here." />
       ) : (
         <div className="aura-noscroll" style={{ flex: 1, overflowY: 'auto', padding: '18px 16px 36px' }}>
           <h1 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 27, lineHeight: 1.14, letterSpacing: '-0.015em',
@@ -1516,7 +1516,7 @@ function EditProfileScreen() {
           <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '9px 6px 0',
             fontFamily: FF_BODY, fontSize: 12.5, lineHeight: 1.4, color: T.error }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flex: 'none' }}><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01" strokeLinecap="round"/></svg>
-            Enter a first name — it’s what your companion calls you.
+            Enter a first name. It’s what your companion calls you.
           </div>
         )}
 
@@ -1591,7 +1591,7 @@ function AccountScreen() {
         <ListGroup T={T} label="Your data"
           footnote={exportSent
             ? null
-            : 'You can request a copy at any time — there’s no limit on how often.'}>
+            : 'You can request a copy at any time. There’s no limit on how often.'}>
           <div style={{ padding: '14px 16px' }}>
             <div style={{ fontFamily: FF_BODY, fontWeight: 500, fontSize: 15, color: T.textPrimary, marginBottom: 3 }}>Data export</div>
             <div style={{ fontFamily: FF_BODY, fontSize: 12.5, lineHeight: 1.45, color: T.textTertiary, textWrap: 'pretty' }}>
@@ -1605,7 +1605,7 @@ function AccountScreen() {
               </span>
               <span style={{ flex: 1, fontFamily: FF_BODY, fontSize: 13.5, lineHeight: 1.5, color: T.textSecondary, textWrap: 'pretty',
                 animation: prefersReducedMotion() ? 'none' : 'auraFade .4s ease both' }}>
-                We’re preparing your export — we’ll email a download link to{' '}
+                We’re preparing your export. We’ll email a download link to{' '}
                 <span style={{ color: T.textPrimary, fontWeight: 600 }}>{ACCOUNT_EMAIL}</span> when it’s ready.</span>
             </div>
           ) : (
@@ -1684,7 +1684,7 @@ function NotifsScreen() {
       <TopBar label="Notifications" />
       <div className="aura-noscroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 36px' }}>
         <ListGroup T={T} label="Push"
-          footnote="The only notification Aura sends — no promos, no nudges.">
+          footnote="The only notification Aura sends. No promos, no nudges.">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px' }}>
             <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <span style={{ fontFamily: FF_BODY, fontWeight: 600, fontSize: 15, color: T.textPrimary }}>Aurora replied 💬</span>
@@ -1721,12 +1721,12 @@ function SafetyScreen() {
           <div>
             <h2 style={{ fontFamily: FF_BODY, fontWeight: 600, fontSize: 15.5, color: T.textPrimary, margin: '0 0 5px' }}>Gentle moderation</h2>
             <p style={{ fontFamily: FF_BODY, fontSize: 14.5, lineHeight: 1.6, color: T.textSecondary, margin: 0, maxWidth: '40ch', textWrap: 'pretty' }}>
-              Aura watches for harmful content and steps in gently — never to judge, only to keep things safe.</p>
+              Aura watches for harmful content and steps in gently, never to judge, only to keep things safe.</p>
           </div>
           <div>
             <h2 style={{ fontFamily: FF_BODY, fontWeight: 600, fontSize: 15.5, color: T.textPrimary, margin: '0 0 5px' }}>Honest about being AI</h2>
             <p style={{ fontFamily: FF_BODY, fontSize: 14.5, lineHeight: 1.6, color: T.textSecondary, margin: 0, maxWidth: '40ch', textWrap: 'pretty' }}>
-              Your companions are AI — supportive company, never a substitute for professional care.</p>
+              Your companions are AI: supportive company, never a substitute for professional care.</p>
           </div>
         </div>
 
@@ -1747,7 +1747,7 @@ function SafetyScreen() {
    ════════════════════════════════════════════════════════════════════════ */
 const PRIVACY_SECTIONS = [
   { h: 'What we collect', p: 'Your messages, the memories your companion saves, and basic account details like your name and email. We don’t collect data we don’t need, and we never sell it.' },
-  { h: 'Why we keep it', p: 'Conversations and memories are stored so your companion can remember you between visits — that continuity is the point. Account details let us keep your subscription and sign-in working.' },
+  { h: 'Why we keep it', p: 'Conversations and memories are stored so your companion can remember you between visits. That continuity is the point. Account details let us keep your subscription and sign-in working.' },
   { h: 'Who can see it', p: 'Your conversations are private to you. A small amount of content may be processed automatically to keep things safe (see the Safety center), but we don’t share your chats with advertisers or third parties.' },
   { h: 'Your controls', p: 'You can export a copy of everything, or delete your account, at any time from Privacy & Safety. Deletion is permanent after a 30-day grace period.' },
 ];
@@ -1808,13 +1808,13 @@ function LegalScreen() {
    ════════════════════════════════════════════════════════════════════════ */
 const FAQ = [
   { q: 'How do I edit my profile or delete my account?',
-    a: 'Open You → Edit profile to change your name or avatar color. To delete your account, go to You → Privacy & Safety → Delete account — it’s deactivated right away and permanently removed after a 30-day grace period.' },
+    a: 'Open You → Edit profile to change your name or avatar color. To delete your account, go to You → Privacy & Safety → Delete account. It’s deactivated right away and permanently removed after a 30-day grace period.' },
   { q: 'How do I restore a purchase or manage my subscription?',
-    a: 'On the Premium screen, tap Restore Purchases to recover an existing subscription. To change or cancel, use Manage in App Store — billing is handled securely by the App Store, not inside Aura.' },
+    a: 'On the Premium screen, tap Restore Purchases to recover an existing subscription. To change or cancel, use Manage in App Store. Billing is handled securely by the App Store, not inside Aura.' },
   { q: 'How does Aura keep conversations safe?',
-    a: 'Aura watches for harmful content and steps in gently, and your companions are always honest about being AI — supportive company, never a substitute for professional care. The Safety center has crisis resources whenever you need them.' },
+    a: 'Aura watches for harmful content and steps in gently, and your companions are always honest about being AI: supportive company, never a substitute for professional care. The Safety center has crisis resources whenever you need them.' },
   { q: 'How do companions remember things, and can I edit what they know?',
-    a: 'As you talk, your companion notes things that matter — where you live, what you’re working through, who’s close to you. Open Memory to see everything it remembers, and edit or remove any of it at any time. You’re always in control.' },
+    a: 'As you talk, your companion notes things that matter: where you live, what you’re working through, who’s close to you. Open Memory to see everything it remembers, and edit or remove any of it at any time. You’re always in control.' },
 ];
 
 function FaqRow({ T, q, a, open, onToggle, isLast }) {
