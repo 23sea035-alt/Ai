@@ -20,7 +20,7 @@ const SCREENS = [
   { id: 'create',      label: 'Companion create/edit', states: ['create', 'edit'], purpose: 'Create or customize a companion (premium).' },
   { id: 'memory',      label: 'Memory',              purpose: 'What your companion remembers about you. (states follow the Data-state toggle)' },
   { id: 'paywall',     label: 'Paywall',             purpose: 'Upgrade to Aura Premium. (default / owned follow the Account toggle)' },
-  { id: 'submgmt',     label: 'Subscription mgmt',   purpose: 'Manage your subscription and billing. (premium-only; free → paywall)' },
+  { id: 'submgmt',     label: 'Subscription',        purpose: 'Your subscription (both tiers) — Free shows plan + upgrade, Premium shows billing.' },
   { id: 'editprofile', label: 'Edit profile',        states: ['default', 'focus', 'error', 'saving'], purpose: 'Edit your name and profile details.' },
   { id: 'account',     label: 'Account management',  states: ['default', 'export-sent', 'delete-confirm'], purpose: 'Export or delete your account data.' },
   { id: 'notifs',      label: 'Notifications',       states: ['default'], purpose: 'Choose what Aura notifies you about.' },
@@ -748,10 +748,11 @@ function CreateScreen() {
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: T.bg }}>
       <TopBar label={isEdit ? 'Edit companion' : 'New companion'} />
 
-      {/* scrollable grouped form */}
-      <div className="aura-noscroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 22px',
-        opacity: locked ? 0.5 : 1, pointerEvents: locked ? 'none' : 'auto', filter: locked ? 'saturate(0.85)' : 'none',
-        transition: 'opacity .2s' }} aria-disabled={locked}>
+      {/* scrollable grouped form — free can scroll to preview the whole creator, but it stays
+          dimmed + non-interactive (pointer-events off on the CONTENT, not the scroller, so it still scrolls) */}
+      <div className="aura-noscroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 22px' }}>
+        <div style={{ opacity: locked ? 0.5 : 1, pointerEvents: locked ? 'none' : 'auto',
+          filter: locked ? 'saturate(0.85)' : 'none', transition: 'opacity .2s' }} aria-disabled={locked}>
 
         {/* avatar + change look */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -832,6 +833,7 @@ function CreateScreen() {
               <span>Numbered to keep it distinct from your existing {base}. Tap to rename.</span>
             </div>
           )}
+        </div>
         </div>
       </div>
 
@@ -1115,7 +1117,7 @@ function MemoryScreen() {
           <h1 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 27, lineHeight: 1.14, letterSpacing: '-0.015em',
             color: T.textPrimary, margin: '0 4px 5px' }}>What Aurora remembers</h1>
           <p style={{ fontFamily: FF_BODY, fontSize: 14, lineHeight: 1.5, color: T.textSecondary, margin: '0 4px 20px', textWrap: 'pretty' }}>
-            You're always in control. Edit or remove anything.</p>
+            You're always in control. Swipe or tap ••• on any memory to edit or remove it.</p>
 
           {items.map((m, i) => (
             <div key={m.id} style={{ marginBottom: 18, animation: prefersReducedMotion() ? 'none' : `auraRise .42s ${i * 0.05}s cubic-bezier(.22,.8,.32,1) both` }}>
@@ -1129,9 +1131,6 @@ function MemoryScreen() {
               </div>
             </div>
           ))}
-
-          <p style={{ fontFamily: FF_BODY, fontSize: 12, lineHeight: 1.5, color: T.textTertiary, textAlign: 'center', margin: '8px 24px 0', textWrap: 'pretty' }}>
-            Swipe a memory or tap ••• to edit or remove it.</p>
         </div>
       )}
 
@@ -1155,7 +1154,7 @@ const RENEWAL_DATE = 'Jul 14, 2026';
 
 const PREMIUM_VALUE = [
   'Unlimited messages',
-  'Personality tuning: the full 3×3×3 traits',
+  'Personality tuning: warmth, energy, and style',
   'Create extra companions',
   'Priority responses',
 ];
@@ -1253,12 +1252,9 @@ function PaywallScreen() {
                 animation: prefersReducedMotion() ? 'none' : 'auraBreath 2.4s ease-in-out infinite' }} />
             )}
           </div>
-          <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 6, marginBottom: 20,
-            padding: '4px 10px', borderRadius: RADIUS.tight + 2, background: T.bg, border: `1px dashed ${T.border}` }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.textTertiary} strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" strokeLinecap="round"/></svg>
-            <span style={{ fontFamily: FF_BODY, fontSize: 11, color: T.textTertiary }}>Real app injects StoreKit <code style={{ fontFamily: 'ui-monospace, monospace' }}>localizedPriceString</code></span>
-          </div>
-
+          {/* NOTE: in the real app the price is StoreKit / RevenueCat `localizedPriceString`;
+              STORE_PRICE is only a prototype placeholder and is not surfaced to users. */}
+          <div style={{ height: 16 }} />
           <div style={{ flex: 1 }} />
 
           {/* primary CTA — the ONE accent */}
@@ -1358,31 +1354,46 @@ function ActionRow({ T, label, sub, external, onActivate }) {
 function SubMgmtScreen() {
   const T = useT();
   const d = useDev();
-  // premium-only screen; in free this entry routes to the paywall (Shell note)
+  // "your subscription" for BOTH tiers — Free shows its plan + a gentle upgrade path (NOT a forced
+  // paywall); Premium shows plan + store-managed billing. The paywall stays the dedicated upsell.
+  const premium = d.account === 'premium';
   return (
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: T.bg }}>
       <TopBar label="Subscription" />
       <div className="aura-noscroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 36px' }}>
 
-        <ListGroup T={T} label="Your plan">
-          <StatusRow T={T} label="Current plan" value="Premium" accentValue />
-          <StatusRow T={T} label="Renews" value={RENEWAL_DATE} />
+        <ListGroup T={T} label="Your plan"
+          footnote={premium ? undefined : 'Free includes 3 base companions, their default personalities, and 30 messages a day.'}>
+          <StatusRow T={T} label="Current plan" value={premium ? 'Premium' : 'Free'} accentValue={premium} />
+          {premium && <StatusRow T={T} label="Renews" value={RENEWAL_DATE} />}
         </ListGroup>
+
+        {!premium && (
+          <button type="button" onClick={() => d.setScreenId('paywall')}
+            style={{ width: '100%', padding: '15px', borderRadius: RADIUS.pill, border: 'none', background: T.accent, color: T.onAccent,
+              fontFamily: FF_BODY, fontWeight: 600, fontSize: 16, cursor: 'pointer', boxShadow: T.e1, marginBottom: 22, WebkitTapHighlightColor: 'transparent' }}>
+            Upgrade to Premium
+          </button>
+        )}
 
         <ListGroup T={T} label="Billing"
           footnote="Aura can’t change billing in-app. Payment, price, and cancellation are handled securely by the App Store.">
-          <ActionRow T={T} label="Manage in App Store" external
-            sub="Billing is managed by the App Store; changes happen there."
-            onActivate={() => {}} />
+          {premium && (
+            <ActionRow T={T} label="Manage in App Store" external
+              sub="Billing is managed by the App Store; changes happen there."
+              onActivate={() => {}} />
+          )}
           <ActionRow T={T} label="Restore Purchases" onActivate={() => {}} />
         </ListGroup>
 
-        <button type="button" onClick={() => d.setScreenId('paywall')}
-          style={{ display: 'block', width: '100%', textAlign: 'center', padding: '10px', background: 'transparent', border: 'none',
-            color: T.textSecondary, fontFamily: FF_BODY, fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            WebkitTapHighlightColor: 'transparent', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-          See everything Premium includes
-        </button>
+        {premium && (
+          <button type="button" onClick={() => d.setScreenId('paywall')}
+            style={{ display: 'block', width: '100%', textAlign: 'center', padding: '10px', background: 'transparent', border: 'none',
+              color: T.textSecondary, fontFamily: FF_BODY, fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+            See everything Premium includes
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1968,11 +1979,11 @@ function Shell() {
       </IOSDevice>
     );
   }
-  // submgmt is premium-only; the free You→Subscription entry routes to the paywall instead
+  // submgmt = "your subscription" for both tiers (Free shows plan + upgrade; Premium shows billing)
   if (screen.id === 'submgmt') {
     return (
       <IOSDevice dark={d.theme === 'dark'}>
-        {d.account === 'premium' ? <SubMgmtScreen /> : <PaywallScreen />}
+        <SubMgmtScreen />
       </IOSDevice>
     );
   }

@@ -409,7 +409,8 @@ function Companions() {
   if (state === 'error') return <CompanionsError T={T} />;
   const isEmpty = state === 'empty';
 
-  const openCreate = () => { window.location.href = premium ? 'OneOff.html?screen=create' : 'OneOff.html?screen=paywall'; };
+  // both tiers open the creator; free sees it dimmed + scrollable with an "Unlock with Premium" CTA (not a cold paywall)
+  const openCreate = () => { window.location.href = 'OneOff.html?screen=create'; };
   return (
     <div style={{ minHeight: '100%', background: T.bg, padding: `${SAFE_TOP}px 28px ${NAV_CLEARANCE}px` }}>
       {/* title + always-accessible create action (top-right, never scroll-buried by a long roster) */}
@@ -544,8 +545,8 @@ function You() {
       <Group T={T} title="Account">
         <Row T={T} label="Edit profile" onClick={() => goScreen('editprofile')} />
         <Row T={T} label="Subscription"
-          detail={premium ? 'Manage in App Store' : 'Upgrade to Premium'} detailAccent={!premium}
-          onClick={() => goScreen('paywall')} />
+          detail={premium ? 'Premium' : 'Upgrade to Premium'} detailAccent={!premium}
+          onClick={() => goScreen('submgmt')} />
         {/* Notifications is its own screen now (room for more toggles) — a row, not an inline toggle */}
         <Row T={T} label="Notifications" last onClick={() => goScreen('notifs')} />
       </Group>
