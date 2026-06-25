@@ -57,6 +57,17 @@ All 8 screens ported to the kit + `constants/content/*`:
 - Follow-ups: carousel slide illustrations are Ionicon placeholders (no warm illustration assets yet);
   auth has no SSO row yet (UI-shell minimal); chat typing-reveal is a simple appear (no per-word reveal).
 
+### Phase 3 — HomeTabs (DONE, typecheck green)
+- Tab bar restructured: 5 cosmic tabs -> a 3-tab Warm Sanctuary navpill (Home / Companions / You).
+  `chat`/`memory`/`premium`/`profile` kept routable but off the bar (`href:null`) until ported/removed.
+- Home (`(tabs)/index.tsx`) — the companion's room (greeting + large avatar + AI marker + one CTA);
+  resurfaced-memory chip + free 18/30 usage deferred (need the "remembers" / usage wiring).
+- Companions (`(tabs)/companions.tsx`) — roster / chat-list cards -> push Chat; premium-gated create.
+- You (`(tabs)/you.tsx`) — header card + tier pill + grouped rows + confirm-first Sign out.
+- New kit primitives: `Avatar` (curated portrait + initials fallback), `ListGroup` / `ListRow`.
+- Placeholders: You's Data export / Delete account point to `/settings` until the `account` one-off
+  exists; companions/you still link to cosmic one-offs (premium / safety / help / privacy / rate-app).
+
 ### Known issues
 - **Web preview blocked.** `expo start --web` fails to bundle: pnpm strict-linking can't resolve
   `expo-modules-core` from `expo` for Metro web (`@expo/metro-runtime` was added and got past the
