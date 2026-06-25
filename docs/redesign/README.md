@@ -13,6 +13,12 @@ playbook successfully (same Expo/React Native stack).
   cosmic/purple/neon/glassmorphism default (that look reads as vibe-coded).
 - **Palette + type:** **LOCKED — Option A "Reading Nook"**: Newsreader (display) × Hanken Grotesk (body),
   terracotta accent on warm paper; warm-light + warm-dark. Full tokens in [`approved-tokens.md`](approved-tokens.md).
+- **Logo / app icon:** **LOCKED (2026-06-24)** — an abstract two-form mark (a larger wine form sheltering a
+  smaller terracotta one; warm gouache on cream). No wordmark yet (blocked on the app name). Source +
+  variants (color master, transparent animation mark, mono, 1024 PNGs) live in
+  [`../../client/assets/logo/`](../../client/assets/logo/) — see its README. Colors are `LOGO_COLORS` in
+  `client/constants/design.ts` (wine `#8F4150` / honey `#BD6B45` / cream `#F4ECE0`). Still on the old Expo
+  `icon.png` placeholder — wiring the live app icon/splash is a separate step.
 - **Platform:** iOS, native (Expo / React Native). Frame = iPhone 16 Pro (402×874 pt).
 - **Navigation:** 3 tabs — **Home · Companions · You**. Chat is a pushed screen.
 - **Onboarding flow:** one-page Welcome (value prop) → auth (swappable) → **3-screen carousel

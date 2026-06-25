@@ -114,6 +114,16 @@ export const COLORS: Record<ThemeMode, ThemeColors> = {
   },
 };
 
+// ── Brand mark · app icon (fixed, theme-independent) ────────────────────────
+// The abstract app-icon mark is two organic shapes on a cream ground. `wine` and
+// `cream` mirror COLORS.light.accent / .bg; `honey` is the mark's smaller second
+// form (muted terracotta) and has no theme token — it appears only inside the icon.
+export const LOGO_COLORS = {
+  wine: '#8F4150',
+  honey: '#BD6B45',
+  cream: '#F4ECE0',
+} as const;
+
 // ── Elevation · soft warm shadow (lift moments only) ────────────────────────
 // CSS box-shadow ported to RN. Android `elevation` is an approximate equivalent.
 type Elevation = Required<

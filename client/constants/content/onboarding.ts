@@ -78,15 +78,15 @@ export const ONBOARDING = {
     slides: [
       {
         headline: 'Meet a companion who remembers you.',
-        support: 'Pick up where you left off. Your companion carries what matters across every conversation.',
+        support: 'Every conversation picks up where you left off, nothing to repeat.',
       },
       {
         headline: 'A calm, private place to talk.',
-        support: 'No judgment, no audience. Your conversations are yours.',
+        support: 'No judgment, no performance. What you share stays yours.',
       },
       {
         headline: 'Here whenever you need.',
-        support: "Day or night, your companion's around, and always honest that it's an AI.",
+        support: "Day or night, and always honest that you're talking to an AI.",
       },
     ],
   },
