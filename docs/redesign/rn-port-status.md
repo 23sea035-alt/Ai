@@ -43,6 +43,27 @@ tracks the **code** port, not design decisions.
 - Deleted `constants/colors.ts` + `hooks/useColors.ts` (cosmic-color subsystem, orphaned).
 - `pnpm typecheck` green throughout.
 
+### Phase 3 — Onboarding flow (DONE, typecheck green)
+All 8 screens ported to the kit + `constants/content/*`:
+- Welcome; Auth (`(auth)/login` · `register` · `forgot-password` — restyled, UI shell, Clerk
+  deferred); Intro carousel (`onboarding.tsx` — swipe-paged, segmented progress, NO auto-advance);
+  Age gate (`age-verification.tsx` — fail-closed under-18); AI disclosure; Profile; Choose companion
+  (`persona.tsx`); First conversation (`firstchat.tsx`).
+- New kit primitives: `Checkbox`, `Field`. Reusable chat chrome `components/chat/`
+  (`ChatHeader` / `MessageBubble` / `DisclosureBanner` / `ChatComposer`) — built here, reused by the
+  Chat one-off.
+- Flow wiring: welcome → register → onboarding(carousel) → age-verification → ai-disclosure →
+  profile → persona → firstchat → (tabs); login → (tabs).
+- Follow-ups: carousel slide illustrations are Ionicon placeholders (no warm illustration assets yet);
+  auth has no SSO row yet (UI-shell minimal); chat typing-reveal is a simple appear (no per-word reveal).
+
+### Known issues
+- **Web preview blocked.** `expo start --web` fails to bundle: pnpm strict-linking can't resolve
+  `expo-modules-core` from `expo` for Metro web (`@expo/metro-runtime` was added and got past the
+  first resolution error, but this one remains). Fix needs an `.npmrc` hoist
+  (`node-linker=hoisted` or `public-hoist-pattern=*expo*`) or a metro resolver alias. Until then,
+  verify UI on a device / `expo run:android` dev build, not web.
+
 ## Pending
 
 ### Stale — delete at Phase 3-end (once nothing imports them)
