@@ -230,7 +230,7 @@ function Home() {
       {!isEmpty && (
         <button type="button" onClick={openChat} className="home-enter-2"
           style={{ flex: 'none', display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left',
-            background: T.raised, border: `1px solid ${T.border}`, borderRadius: 16, padding: '14px 15px',
+            background: T.raised, border: 'none', borderRadius: 16, padding: '14px 15px',
             cursor: 'pointer', boxShadow: T.e1, marginBottom: 16, WebkitTapHighlightColor: 'transparent' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.accent} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}>
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
@@ -241,7 +241,7 @@ function Home() {
               Aurora remembers</span>
             <span style={{ display: 'block', fontFamily: FF_BODY, fontWeight: 500, fontSize: 15, lineHeight: 1.46,
               color: T.textPrimary, textWrap: 'pretty' }}>
-              You started a new job — how’s it going?</span>
+              You started a new job. How’s it going?</span>
           </span>
         </button>
       )}
@@ -263,8 +263,8 @@ function Home() {
         )}
       </div>
 
-      {/* free-tier daily indicator — quiet, low, hidden for premium */}
-      {d.account !== 'premium' && (
+      {/* free-tier daily indicator — quiet, low, hidden for premium and on the first-run empty state */}
+      {d.account !== 'premium' && !isEmpty && (
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
           marginTop: 22, fontFamily: FF_BODY, fontWeight: 500, fontSize: 12, color: T.textTertiary }}>
           <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.textDisabled }} />
@@ -285,7 +285,7 @@ function Home() {
 
 const ROSTER = [
   { name: 'Aurora', img: 'aurora', voice: 'Warm, gentle, emotionally attuned', base: true,
-    preview: 'Nodding-along season is real — and temporary.', time: '2m', primary: true },
+    preview: 'Nodding-along season is real, and temporary.', time: '2m', primary: true },
   { name: 'Orion', img: 'orion', voice: 'Steady, grounded, thoughtful', base: true },
   { name: 'Lyra', img: 'lyra', voice: 'Bright, playful, curious', base: true },
 ];
@@ -315,7 +315,10 @@ function LockChip({ T, label }) {
   );
 }
 
-function RosterCard({ T, c, locked, i }) {
+function RosterCard({ T, c, locked, empty, i }) {
+  // first-run (empty) has no conversation history yet → no recency, no last-message preview
+  const showRecency = !locked && !empty && c.time;
+  const lastLine = empty ? 'Tap to start a conversation' : (c.preview || 'Tap to start a conversation');
   return (
     <button type="button" onClick={locked ? undefined : openChat} className="home-enter"
       style={{ animationDelay: `${i * 0.07}s`, width: '100%', display: 'flex', alignItems: 'center', gap: 14,
@@ -330,7 +333,7 @@ function RosterCard({ T, c, locked, i }) {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 19, lineHeight: 1.1,
             color: T.textPrimary, letterSpacing: '-0.01em' }}>{c.name}</span>
-          {!locked && c.time && (
+          {showRecency && (
             <span style={{ marginLeft: 'auto', flex: 'none', fontFamily: FF_BODY, fontWeight: 500, fontSize: 11.5,
               color: T.textTertiary }}>{c.time}</span>
           )}
@@ -342,7 +345,7 @@ function RosterCard({ T, c, locked, i }) {
         ) : (
           <div style={{ fontFamily: FF_BODY, fontWeight: 400, fontSize: 14, lineHeight: 1.4, color: T.textSecondary,
             marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {c.preview || 'Tap to start a conversation'}</div>
+            {lastLine}</div>
         )}
       </div>
     </button>
@@ -404,7 +407,7 @@ function CompanionsError({ T }) {
       <h2 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 24, lineHeight: 1.16, color: T.textPrimary, margin: '0 0 10px' }}>
         We couldn’t load your companions</h2>
       <p style={{ fontFamily: FF_BODY, fontSize: 15, lineHeight: 1.55, color: T.textSecondary, margin: '0 0 26px', maxWidth: '30ch', textWrap: 'pretty' }}>
-        Give it a moment and try again — they’re all still here.</p>
+        Give it a moment and try again. They’re all still here.</p>
       <button type="button" onClick={() => window.location.reload()}
         style={{ minHeight: 50, padding: '0 28px', display: 'inline-flex', alignItems: 'center', gap: 8, background: T.accent,
           color: T.onAccent, border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: T.e2, fontFamily: FF_BODY,
@@ -421,6 +424,7 @@ function Companions() {
 
   if (state === 'loading') return <CompanionsLoading T={T} />;
   if (state === 'error') return <CompanionsError T={T} />;
+  const isEmpty = state === 'empty';
 
   return (
     <div style={{ minHeight: '100%', background: T.bg, padding: `${SAFE_TOP}px 28px ${NAV_CLEARANCE}px` }}>
@@ -428,7 +432,7 @@ function Companions() {
         color: T.textPrimary, margin: '0 0 24px' }}>Companions</h1>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {ROSTER.map((c, i) => (
-          <RosterCard key={c.name} T={T} c={c} i={i} locked={!premium && !c.primary} />
+          <RosterCard key={c.name} T={T} c={c} i={i} empty={isEmpty} locked={!premium && !c.primary} />
         ))}
         <CreateEntry T={T} premium={premium} i={ROSTER.length} />
       </div>
