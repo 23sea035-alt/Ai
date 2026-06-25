@@ -42,6 +42,7 @@ export const ARTIFACTS = {
       { id: 'paywall', label: 'Paywall', states: [] },
       { id: 'submgmt', label: 'Subscription mgmt', states: [] },
       { id: 'editprofile', label: 'Edit profile', states: ['default', 'focus', 'error', 'saving'] },
+      { id: 'signin', label: 'Sign-in & security', states: ['password', 'google', 'apple', 'apple-hidden'] },
       { id: 'account', label: 'Account management', states: ['default', 'export-sent', 'delete-confirm'] },
       { id: 'notifs', label: 'Notifications', states: ['default'] },
       { id: 'safety', label: 'Safety center', states: ['default'] },

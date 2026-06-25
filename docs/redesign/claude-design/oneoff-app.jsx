@@ -22,6 +22,7 @@ const SCREENS = [
   { id: 'paywall',     label: 'Paywall',             purpose: 'Upgrade to Aura Premium. (default / owned follow the Account toggle)' },
   { id: 'submgmt',     label: 'Subscription',        purpose: 'Your subscription (both tiers) — Free shows plan + upgrade, Premium shows billing.' },
   { id: 'editprofile', label: 'Edit profile',        states: ['default', 'focus', 'error', 'saving'], purpose: 'Edit your name and profile details.' },
+  { id: 'signin',      label: 'Sign-in & security',  states: ['password', 'google', 'apple', 'apple-hidden'], purpose: 'Email + password — editable for email/password, read-only for Google/Apple SSO.' },
   { id: 'account',     label: 'Account management',  states: ['default', 'export-sent', 'delete-confirm'], purpose: 'Export or delete your account data.' },
   { id: 'notifs',      label: 'Notifications',       states: ['default'], purpose: 'Choose what Aura notifies you about.' },
   { id: 'safety',      label: 'Safety center',       states: ['default'], purpose: 'Crisis resources and content controls.' },
@@ -1400,6 +1401,82 @@ function SubMgmtScreen() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   SIGN-IN & SECURITY — `signin`. Email + password live HERE (not in Edit profile
+   = name/avatar, not in Manage your data = export/delete). Conditional on the
+   sign-in method: email/password → editable; Google/Apple SSO → read-only
+   ("managed by your provider"), since the identity provider owns the credentials.
+   Apple Hide-My-Email shows the relay + a forwarding note. In the real app the
+   method comes from Clerk (externalAccounts / passwordEnabled); here the dev-rail
+   state drives it. Both themes.
+   ════════════════════════════════════════════════════════════════════════ */
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  );
+}
+
+function SigninSecurityScreen() {
+  const T = useT();
+  const d = useDev();
+  const method = ['password', 'google', 'apple', 'apple-hidden'].includes(d.screenState) ? d.screenState : 'password';
+  const sso = method !== 'password';
+  const provider = method === 'google' ? 'Google' : 'Apple';
+  const hidden = method === 'apple-hidden';
+  const email = method === 'google' ? 'maya.chen@gmail.com'
+    : method === 'apple' ? 'maya.chen@icloud.com'
+    : hidden ? 'qp7k3m9x2c@privaterelay.appleid.com'
+    : 'maya.chen@example.com';
+  const emailNote = !sso ? 'We use this to reach you about your account.'
+    : hidden ? 'Apple hides your real address and forwards messages to your inbox. Manage it in your Apple ID settings.'
+    : `Your email comes from your ${provider} account. Change it there and it updates here.`;
+
+  const managedRow = (label) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 16px' }}>
+      <span style={{ flex: 1, minWidth: 0, fontFamily: FF_BODY, fontSize: 15, color: T.textPrimary,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <span style={{ flex: 'none', fontFamily: FF_BODY, fontSize: 12.5, color: T.textTertiary }}>Managed by {provider}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', background: T.bg }}>
+      <TopBar label="Sign-in & security" />
+      <div className="aura-noscroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 36px' }}>
+
+        {/* how you sign in */}
+        <SectionLabel T={T}>How you sign in</SectionLabel>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 13, background: T.sheet, border: `1px solid ${T.border}`,
+          borderRadius: RADIUS.edit, padding: '14px 16px', boxShadow: T.e1, marginBottom: 22 }}>
+          <span style={{ width: 34, height: 34, flex: 'none', borderRadius: '50%', display: 'grid', placeItems: 'center',
+            background: T.bg, border: `1px solid ${T.border}` }}>
+            {method === 'google' ? <GoogleMark />
+              : sso ? <svg width="17" height="17" viewBox="0 0 24 24" fill={T.textPrimary} aria-hidden="true"><path d="M16.37 1.43c0 1.14-.49 2.27-1.18 3.08-.74.9-1.99 1.57-2.98 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.57-2.27 1.2-2.98.8-.94 2.14-1.64 3.25-1.68.03.13.05.28.05.43zM20.93 17.14c-.03.07-.46 1.58-1.52 3.12-.94 1.34-1.94 2.71-3.43 2.71-1.51 0-1.9-.88-3.63-.88-1.7 0-2.3.91-3.67.91-1.38 0-2.33-1.26-3.43-2.8C3.96 18.5 2.93 15.69 2.93 13.04c0-4.28 2.8-6.55 5.55-6.55 1.45 0 2.68.95 3.6.95.86 0 2.22-1.01 3.9-1.01.61 0 2.89.06 4.37 2.19-.13.09-2.38 1.37-2.38 4.19 0 3.26 2.85 4.42 2.96 4.45z"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.textSecondary} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>}
+          </span>
+          <span style={{ flex: 1, fontFamily: FF_BODY, fontWeight: 600, fontSize: 15, color: T.textPrimary }}>
+            {sso ? `Signed in with ${provider}` : 'Email & password'}</span>
+        </div>
+
+        {/* email — editable for email/password; read-only + managed-by note for SSO */}
+        <ListGroup T={T} label="Email" footnote={emailNote}>
+          {sso ? managedRow(email) : <ActionRow T={T} label="Email address" sub={email} onActivate={() => {}} />}
+        </ListGroup>
+
+        {/* password — change for email/password; managed-by the provider for SSO */}
+        <ListGroup T={T} label="Password">
+          {sso ? managedRow('Password') : <ActionRow T={T} label="Change password" onActivate={() => {}} />}
+        </ListGroup>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    EDIT PROFILE — `editprofile`. Minimal: avatar (curated/monogram, NO upload),
    first + last name, sticky Save disabled-until-dirty. Inline validation on blur.
    default · focus (field above keyboard, accent ring) · error · saving→toast.
@@ -1984,6 +2061,13 @@ function Shell() {
     return (
       <IOSDevice dark={d.theme === 'dark'}>
         <SubMgmtScreen />
+      </IOSDevice>
+    );
+  }
+  if (screen.id === 'signin') {
+    return (
+      <IOSDevice dark={d.theme === 'dark'}>
+        <SigninSecurityScreen />
       </IOSDevice>
     );
   }

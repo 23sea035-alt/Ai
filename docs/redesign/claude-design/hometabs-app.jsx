@@ -544,6 +544,7 @@ function You() {
 
       <Group T={T} title="Account">
         <Row T={T} label="Edit profile" onClick={() => goScreen('editprofile')} />
+        <Row T={T} label="Sign-in & security" onClick={() => goScreen('signin')} />
         <Row T={T} label="Subscription"
           detail={premium ? 'Premium' : 'Upgrade to Premium'} detailAccent={!premium}
           onClick={() => goScreen('submgmt')} />
