@@ -68,6 +68,14 @@ All 8 screens ported to the kit + `constants/content/*`:
 - Placeholders: You's Data export / Delete account point to `/settings` until the `account` one-off
   exists; companions/you still link to cosmic one-offs (premium / safety / help / privacy / rate-app).
 
+### Phase 3 — Chat one-off (DONE, typecheck green)
+- `chat/[id].tsx` restyled onto the reusable chat chrome; preserves the send pipeline (WebSocket
+  streaming -> REST -> local fallback), break-reminder, and the limit/upgrade banner. Overflow sheet
+  (companion settings / view memory / report). `ChatHeader` refactored to use the `Avatar` component.
+- Follow-ups: typing indicator is static dots (no animated reveal); report row is inert; the crisis
+  state is not yet specially styled.
+- Core navigation loop now complete: onboarding -> tabs -> Chat.
+
 ### Known issues
 - **Web preview blocked.** `expo start --web` fails to bundle: pnpm strict-linking can't resolve
   `expo-modules-core` from `expo` for Metro web (`@expo/metro-runtime` was added and got past the

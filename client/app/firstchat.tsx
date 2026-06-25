@@ -13,12 +13,6 @@ import { SPACE } from '@/constants/design';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/useTheme';
 
-const AVATARS = {
-  Aurora: require('../assets/avatars/aurora.png'),
-  Orion: require('../assets/avatars/orion.png'),
-  Lyra: require('../assets/avatars/lyra.png'),
-};
-
 type Msg = { role: 'user' | 'assistant'; text: string };
 
 export default function FirstChatScreen() {
@@ -59,7 +53,7 @@ export default function FirstChatScreen() {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <View style={{ paddingTop: insets.top + SPACE.sm }}>
-        <ChatHeader name={companion} avatar={AVATARS[companion]} onBack={handleDone} />
+        <ChatHeader id={companion.toLowerCase()} name={companion} onBack={handleDone} />
       </View>
       <KeyboardAvoidingView
         style={styles.flex}

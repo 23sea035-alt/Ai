@@ -2,29 +2,29 @@
 // with the persistent honest "AI companion" marker, and an overflow. Built in onboarding's
 // first conversation, reused by the Chat one-off.
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import React from 'react';
-import { View, Text, StyleSheet, type ImageSourcePropType } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Avatar } from '@/components/Avatar';
 import { PressableScale } from '@/components/motion';
 import { CHAT } from '@/constants/content';
 import { FONTS, SPACE } from '@/constants/design';
 import { useTheme } from '@/hooks/useTheme';
 
 interface ChatHeaderProps {
+  id: string;
   name: string;
-  avatar: ImageSourcePropType;
   onBack: () => void;
   onOverflow?: () => void;
 }
 
-export function ChatHeader({ name, avatar, onBack, onOverflow }: ChatHeaderProps) {
+export function ChatHeader({ id, name, onBack, onOverflow }: ChatHeaderProps) {
   const { colors } = useTheme();
   return (
     <View style={[styles.header, { borderBottomColor: colors.divider }]}>
       <PressableScale onPress={onBack} hitSlop={8} haptic="light" style={styles.iconBtn}>
         <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
       </PressableScale>
-      <Image source={avatar} style={styles.avatar} contentFit="cover" />
+      <Avatar id={id} name={name} size={38} />
       <View style={styles.titleArea}>
         <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
           {name}
@@ -48,7 +48,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { padding: 4 },
-  avatar: { width: 38, height: 38, borderRadius: 19 },
   titleArea: { flex: 1 },
   name: { fontFamily: FONTS.display.semibold, fontSize: 18 },
   marker: { fontFamily: FONTS.body.medium, fontSize: 12 },
