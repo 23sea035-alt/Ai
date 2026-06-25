@@ -222,7 +222,8 @@ function BreakReminder({ T, onDismiss }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'center', margin: '6px 0 16px', padding: '8px 14px',
       background: T.accentTint, borderRadius: T.pill || 999, maxWidth: '86%' }}>
       <span style={{ flex: 1, fontFamily: FF_BODY, fontSize: 12, lineHeight: 1.4, color: T.accent, textAlign: 'center', textWrap: 'pretty' }}>
-        You've been chatting a while — Aurora will be here whenever you come back. 💛</span>
+        You've been chatting a while — Aurora will be here whenever you come back.
+        <svg width="12" height="12" viewBox="0 0 24 24" fill={T.accent} aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-1px', marginLeft: 4 }}><path d="M12 21s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.4-7 10-7 10Z"/></svg></span>
       <button type="button" aria-label="Dismiss reminder" onClick={onDismiss}
         style={{ flex: 'none', width: 18, height: 18, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'transparent',
           border: 'none', color: T.accent, cursor: 'pointer', opacity: 0.7, WebkitTapHighlightColor: 'transparent' }}>
@@ -1687,7 +1688,7 @@ function NotifsScreen() {
           footnote="The only notification Aura sends. No promos, no nudges.">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px' }}>
             <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontFamily: FF_BODY, fontWeight: 600, fontSize: 15, color: T.textPrimary }}>Aurora replied 💬</span>
+              <span style={{ fontFamily: FF_BODY, fontWeight: 600, fontSize: 15, color: T.textPrimary }}>Aurora replied</span>
               <span style={{ fontFamily: FF_BODY, fontSize: 12.5, lineHeight: 1.45, color: T.textSecondary, textWrap: 'pretty' }}>
                 Get notified when your companion replies while you’re away.</span>
             </span>
