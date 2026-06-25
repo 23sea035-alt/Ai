@@ -90,6 +90,8 @@ function NavPill() {
    ════════════════════════════════════════════════════════════════════════════ */
 
 const TODAY_LABEL = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+// greeting relative to the user's local time (morning / afternoon / evening)
+const GREETING = (() => { const h = new Date().getHours(); return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })();
 function openChat() { window.location.href = 'OneOff.html'; }
 
 /* Aurora's large, hand-crafted warm avatar — the focal presence */
@@ -139,7 +141,7 @@ function HomeGreeting({ T, name }) {
   return (
     <div style={{ flex: 'none' }}>
       <h1 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 32, lineHeight: 1.08, letterSpacing: '-0.015em',
-        color: T.textPrimary, margin: '0 0 5px' }}>Good afternoon, {name}</h1>
+        color: T.textPrimary, margin: '0 0 5px' }}>{GREETING}, {name}</h1>
       <p style={{ fontFamily: FF_BODY, fontWeight: 500, fontSize: 13.5, letterSpacing: '0.01em',
         color: T.textTertiary, margin: 0 }}>{TODAY_LABEL}</p>
     </div>
@@ -309,13 +311,15 @@ function RosterAvatar({ T, img, size = 52 }) {
   );
 }
 
-function RosterCard({ T, c, empty, i }) {
+function RosterCard({ T, c, empty, i, isHome, onSetHome }) {
   // every base companion is free-accessible — the 30/day limit is shared across companions,
   // not a per-model gate. first-run (empty) has no history yet → no recency, no last-message preview.
   const showRecency = !empty && c.time;
   const lastLine = empty ? 'Tap to start a conversation' : (c.preview || 'Tap to start a conversation');
+  // card is a div (not a button) so the Home-companion pin can be a real nested button
+  const pressEnter = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChat(); } };
   return (
-    <button type="button" onClick={openChat} className="home-enter"
+    <div role="button" tabIndex={0} onClick={openChat} onKeyDown={pressEnter} className="home-enter"
       style={{ animationDelay: `${i * 0.07}s`, width: '100%', display: 'flex', alignItems: 'center', gap: 14,
         textAlign: 'left', background: T.raised, border: 'none', borderRadius: 16, padding: 16, boxShadow: T.e2,
         cursor: 'pointer', WebkitTapHighlightColor: 'transparent', transition: 'transform .12s ease' }}
@@ -338,7 +342,22 @@ function RosterCard({ T, c, empty, i }) {
           marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {lastLine}</div>
       </div>
-    </button>
+      {/* Home-companion pin: a "HOME" chip when this is the one shown on Home, else tap to make it Home */}
+      {isHome ? (
+        <span aria-label="Your Home companion" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+          background: T.accentTint, color: T.accent, borderRadius: 999, padding: '4px 9px 4px 7px',
+          fontFamily: FF_BODY, fontWeight: 700, fontSize: 10.5, letterSpacing: '0.04em' }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Z" /><circle cx="12" cy="11" r="2.2" fill={T.accentTint} /></svg>
+          HOME
+        </span>
+      ) : (
+        <button type="button" aria-label={`Make ${c.name} your Home companion`} onClick={(e) => { e.stopPropagation(); onSetHome(); }}
+          style={{ flex: 'none', width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center',
+            background: 'transparent', border: 'none', color: T.textTertiary, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Z" /><circle cx="12" cy="11" r="2.2" /></svg>
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -383,6 +402,8 @@ function Companions() {
   const d = useDev();
   const state = d.screenState || 'happy';
   const premium = d.account === 'premium';
+  // which companion is pinned to Home (persists in the real app; demo-local here). Defaults to the onboarding pick.
+  const [homeId, setHomeId] = useState(ROSTER.find(c => c.primary)?.name || ROSTER[0].name);
 
   if (state === 'loading') return <CompanionsLoading T={T} />;
   if (state === 'error') return <CompanionsError T={T} />;
@@ -410,7 +431,8 @@ function Companions() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {ROSTER.map((c, i) => (
-          <RosterCard key={c.name} T={T} c={c} i={i} empty={isEmpty} />
+          <RosterCard key={c.name} T={T} c={c} i={i} empty={isEmpty}
+            isHome={c.name === homeId} onSetHome={() => setHomeId(c.name)} />
         ))}
       </div>
     </div>
