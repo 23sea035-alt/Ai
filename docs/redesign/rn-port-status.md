@@ -47,7 +47,7 @@ tracks the **code** port, not design decisions.
 
 ### Stale — delete at Phase 3-end (once nothing imports them)
 - `constants/theme.ts` (cosmic) — still imported by: `(tabs)/_layout`, `(tabs)/index`,
-  `(tabs)/chat`, `chat/[id]`, `notifications`, `safety`, `rate-app`, `invite`.
+  `(tabs)/chat`, `chat/[id]`, `notifications`, `safety`, `rate-app`. (invite.tsx was cut from v1 — see below.)
 - Cosmic component family: `AuraButton`, `GlassCard`, `AuraOrb`, `Background`,
   `ParticleField`, `StarField`, `GradientBorder`.
 - Deps: `@expo-google-fonts/sora`, `@expo-google-fonts/manrope`.
@@ -61,10 +61,9 @@ Authoritative screen list: `docs/redesign/harness/matrix.mjs`.
   safety, legal, help, states
 Each rewrite drops its `theme.ts` import. Copy comes from `client/constants/content/*`.
 
-### Open scope question
-- `invite.tsx` — NOT in the redesign matrix; a heavy cosmic screen with no Warm Sanctuary
-  reference. Decide: warm redesign vs remove from v1 vs leave on cosmic. Left on cosmic for
-  now (non-blocking — `theme.ts` persists for the other deferred screens regardless).
+### Resolved scope calls
+- `invite.tsx` (referral / invite-friends) — CUT from v1 (not in the redesign matrix, out of
+  scope). File + orphan route deleted; no app code referenced it.
 
 ### Phase 4 — assets + polish
 - App icon / splash from `client/assets/logo/`.
