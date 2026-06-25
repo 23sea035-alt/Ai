@@ -19,6 +19,11 @@ playbook successfully (same Expo/React Native stack).
   [`../../client/assets/logo/`](../../client/assets/logo/) — see its README. Colors are `LOGO_COLORS` in
   `client/constants/design.ts` (wine `#8F4150` / honey `#BD6B45` / cream `#F4ECE0`). Still on the old Expo
   `icon.png` placeholder — wiring the live app icon/splash is a separate step.
+- **Icons:** **LOCKED (2026-06-25)** — **Phosphor** (`phosphor-react-native`, MIT) is the committed icon
+  family for the RN port: warm/rounded, `regular` (outline) idle + `fill` active, matching doctrine §6.
+  The web prototypes keep hand-rolled inline SVG in the same style (no RN icon deps run in-browser); the
+  logo/brand mark stays bespoke. No emoji-as-UI (§0): the only two were removed/replaced — notifs `💬`
+  dropped (settings rows are text-only), break-reminder `💛` → an inline wine heart SVG.
 - **Platform:** iOS, native (Expo / React Native). Frame = iPhone 16 Pro (402×874 pt).
 - **Navigation:** 3 tabs — **Home · Companions · You**. Chat is a pushed screen.
 - **Onboarding flow:** one-page Welcome (value prop) → auth (swappable) → **3-screen carousel
