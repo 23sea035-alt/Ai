@@ -146,6 +146,19 @@ function HomeGreeting({ T, name }) {
   );
 }
 
+/* shared error-state medallion — warm tonal gradient mark (matches OneOff's StateMark),
+   never a flat accent tile (§6); cream glyph on a warning→accent gradient */
+function ErrorMark({ T }) {
+  return (
+    <div style={{ width: 72, height: 72, borderRadius: '50%', display: 'grid', placeItems: 'center', color: T.bg, marginBottom: 22,
+      background: `radial-gradient(120% 120% at 34% 28%, ${T.warning} 0%, ${T.warning} 42%, ${T.accent} 160%)`, boxShadow: T.e2 }}>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
+      </svg>
+    </div>
+  );
+}
+
 function HomeLoading({ T }) {
   const bar = (w, h, r = 8, mt = 0) => (
     <div style={{ width: w, height: h, borderRadius: r, marginTop: mt, background: T.raised,
@@ -173,12 +186,7 @@ function HomeError({ T }) {
     <div style={{ minHeight: '100%', background: T.bg, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', textAlign: 'center',
       padding: `${SAFE_TOP}px 36px ${NAV_CLEARANCE}px` }}>
-      <div style={{ width: 64, height: 64, borderRadius: '50%', background: T.accentTint, display: 'grid',
-        placeItems: 'center', marginBottom: 22 }}>
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={T.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
-        </svg>
-      </div>
+      <ErrorMark T={T} />
       <h2 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 24, lineHeight: 1.16, color: T.textPrimary, margin: '0 0 10px' }}>
         We couldn’t reach Aurora just now</h2>
       <p style={{ fontFamily: FF_BODY, fontSize: 15, lineHeight: 1.55, color: T.textSecondary, margin: '0 0 26px',
@@ -216,7 +224,6 @@ function Home() {
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 7,
           fontFamily: FF_BODY, fontWeight: 600, fontSize: 11.5, letterSpacing: '0.08em', textTransform: 'uppercase',
           color: T.textTertiary }}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.success }} />
           AI companion
         </div>
         {isEmpty && (
@@ -371,7 +378,7 @@ function CreateEntry({ T, premium, i }) {
         <span style={{ display: 'block', fontFamily: FF_BODY, fontWeight: 600, fontSize: 15, color: T.textPrimary }}>
           {premium ? 'New companion' : 'Create your own companion'}</span>
         <span style={{ display: 'block', fontFamily: FF_BODY, fontWeight: 500, fontSize: 12.5, color: T.textTertiary, marginTop: 1 }}>
-          {premium ? 'Design a voice that’s yours' : 'Premium'}</span>
+          {premium ? 'Design a voice that’s yours' : 'Included with Premium'}</span>
       </span>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}><path d="m9 6 6 6-6 6" /></svg>
     </button>
@@ -401,9 +408,7 @@ function CompanionsError({ T }) {
   return (
     <div style={{ minHeight: '100%', background: T.bg, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: `${SAFE_TOP}px 36px ${NAV_CLEARANCE}px` }}>
-      <div style={{ width: 64, height: 64, borderRadius: '50%', background: T.accentTint, display: 'grid', placeItems: 'center', marginBottom: 22 }}>
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={T.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
-      </div>
+      <ErrorMark T={T} />
       <h2 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 24, lineHeight: 1.16, color: T.textPrimary, margin: '0 0 10px' }}>
         We couldn’t load your companions</h2>
       <p style={{ fontFamily: FF_BODY, fontSize: 15, lineHeight: 1.55, color: T.textSecondary, margin: '0 0 26px', maxWidth: '30ch', textWrap: 'pretty' }}>

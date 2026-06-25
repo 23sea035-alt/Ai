@@ -906,7 +906,7 @@ function ErrorState({ T, title, body, onRetry }) {
       <p style={{ fontFamily: FF_BODY, fontSize: 15, lineHeight: 1.55, color: T.textSecondary, margin: '0 0 20px', maxWidth: '30ch', textWrap: 'pretty' }}>{body}</p>
       <button type="button" onClick={onRetry}
         style={{ padding: '11px 26px', borderRadius: RADIUS.pill, border: `1px solid ${T.border}`, background: T.sheet, color: T.textPrimary,
-          fontFamily: FF_BODY, fontWeight: 600, fontSize: 14.5, cursor: 'pointer', boxShadow: T.e1, WebkitTapHighlightColor: 'transparent' }}>Retry</button>
+          fontFamily: FF_BODY, fontWeight: 600, fontSize: 14.5, cursor: 'pointer', boxShadow: T.e1, WebkitTapHighlightColor: 'transparent' }}>Try again</button>
     </div>
   );
 }
