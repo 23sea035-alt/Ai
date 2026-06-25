@@ -762,7 +762,9 @@ function Carousel({ index, setIndex, onDone }) {
     return (
     <div key={active ? `a${i}-${land}` : `s${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       textAlign: 'center', height: '100%', padding: '0 4px' }}>
-      <div style={{ marginBottom: i <= 1 ? 40 : 36 }}>
+      {/* Fixed-height illustration zone (= tallest art) so the headline baseline stays put
+          across slides instead of jumping when a shorter illustration is centered. */}
+      <div style={{ height: 200, marginBottom: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {i === 0
           ? <ThreadArt T={T} active={index === 0} playKey={land} />
           : i === 1
