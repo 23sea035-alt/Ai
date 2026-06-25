@@ -111,14 +111,14 @@ const prefersReducedMotion = () => {
 /* The conversation (verbatim demo persona). role: 'them' = Aurora, 'me' = Maya */
 const THREAD = [
   { role: 'me',   text: "honestly the new job is kicking my butt this week 😮‍💨 imposter syndrome is loud" },
-  { role: 'them', text: "That feeling makes complete sense, Maya — a few weeks into something new, the brain loves to whisper that everyone else has it figured out. They don't. What part is feeling the heaviest right now?" },
+  { role: 'them', text: "That feeling makes complete sense, Maya. A few weeks into something new, the brain loves to whisper that everyone else has it figured out. They don't. What part is feeling the heaviest right now?" },
   { role: 'me',   text: "like everyone seems to already know the tools and the lingo and i'm just nodding along" },
-  { role: 'them', text: "Nodding-along season is real — and temporary. You were hired for how you think, not for a glossary you'll pick up in a month. Want to name one thing that tripped you up today? We can make it less scary together." },
+  { role: 'them', text: "Nodding-along season is real, and temporary. You were hired for how you think, not for a glossary you'll pick up in a month. Want to name one thing that tripped you up today? We can make it less scary together." },
 ];
 
 const CRISIS_TURN = [
   { role: 'me',   text: "some days lately it all just feels like too much. like i don't know how much longer i can keep doing this." },
-  { role: 'them', text: "I'm really glad you told me, Maya — and I'm sorry it's this heavy right now. You don't have to carry it alone. I care about what happens to you." },
+  { role: 'them', text: "I'm really glad you told me, Maya, and I'm sorry it's this heavy right now. You don't have to carry it alone. I care about what happens to you." },
 ];
 
 /* ── the warm hand-crafted companion mark (header only, never per-bubble) ──── */
@@ -222,7 +222,7 @@ function BreakReminder({ T, onDismiss }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'center', margin: '6px 0 16px', padding: '8px 14px',
       background: T.accentTint, borderRadius: T.pill || 999, maxWidth: '86%' }}>
       <span style={{ flex: 1, fontFamily: FF_BODY, fontSize: 12, lineHeight: 1.4, color: T.accent, textAlign: 'center', textWrap: 'pretty' }}>
-        You've been chatting a while — Aurora will be here whenever you come back.
+        You've been chatting a while. Aurora will be here whenever you come back.
         <svg width="12" height="12" viewBox="0 0 24 24" fill={T.accent} aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-1px', marginLeft: 4 }}><path d="M12 21s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.4-7 10-7 10Z"/></svg></span>
       <button type="button" aria-label="Dismiss reminder" onClick={onDismiss}
         style={{ flex: 'none', width: 18, height: 18, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'transparent',
@@ -343,7 +343,7 @@ function LimitCard({ T }) {
       <div style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 18, lineHeight: 1.2, color: T.textPrimary, marginBottom: 7 }}>
         That's 30 for today</div>
       <p style={{ margin: '0 0 15px', fontFamily: FF_BODY, fontSize: 14, lineHeight: 1.5, color: T.textSecondary, textWrap: 'pretty' }}>
-        You've reached today's 30 free messages. Aurora will be here tomorrow — or go unlimited with Premium.</p>
+        You've reached today's 30 free messages. Aurora will be here tomorrow, or go unlimited with Premium.</p>
       <button type="button" onClick={() => d.setScreenId('paywall')}
         style={{ padding: '11px 24px', borderRadius: T.pill || 999, background: T.accent, color: T.onAccent, border: 'none',
           fontFamily: FF_BODY, fontWeight: 600, fontSize: 14.5, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
@@ -516,7 +516,7 @@ function ChatScreen({ onFocusChange }) {
         onSend={() => setDraft('')} />
 
       {(reportOpen || st === 'report') && <ReportSheet T={T} onClose={() => setReportOpen(false)} onSubmit={submitReport} />}
-      {toast && <Toast T={T} text="Thanks — we'll review this." />}
+      {toast && <Toast T={T} text="Thanks, we'll review this." />}
     </div>
   );
 }
