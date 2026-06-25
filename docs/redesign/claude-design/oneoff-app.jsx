@@ -130,8 +130,9 @@ const COMPANIONS = {
 };
 
 const AVATAR_IMG = { Aurora: 'aurora', Orion: 'orion', Lyra: 'lyra' };
-function Avatar({ T, size = 36, glyph = 'A', color = null, name = 'Aurora' }) {
-  const base = color || T.avatar;
+function Avatar({ T, size = 36, glyph = 'A', name = 'Aurora' }) {
+  // all AI avatars share the same theme background — differentiation is the portrait, not the bg color
+  const base = T.avatar;
   const img = AVATAR_IMG[name];
   return (
     <div role="img" aria-label={`${name}, AI companion`} style={{
@@ -678,7 +679,7 @@ function LookSheet({ T, persona, value, onPick, onClose }) {
                   border: `1.5px solid ${on ? T.textSecondary : T.border}`, boxShadow: on ? T.e1 : 'none',
                   WebkitTapHighlightColor: 'transparent', transition: 'all .16s' }}>
                 <div style={{ position: 'relative', width: 60, height: 60, borderRadius: '50%', overflow: 'hidden',
-                  background: `radial-gradient(120% 120% at 32% 26%, ${PERSONAS[persona].tone} 0%, ${PERSONAS[persona].tone} 38%, ${T.accent} 150%)` }}>
+                  background: `radial-gradient(120% 120% at 32% 26%, ${T.avatar} 0%, ${T.avatar} 38%, ${T.accent} 150%)` }}>
                   <img src={`brand/avatars/${AVATAR_IMG[persona]}.png`} alt="" draggable="false"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 8%', filter: lk.filter }} />
                   {on && <span style={{ position: 'absolute', right: 2, bottom: 2, width: 19, height: 19, borderRadius: '50%',
@@ -755,7 +756,7 @@ function CreateScreen() {
         {/* avatar + change look */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <div style={{ position: 'relative', width: 96, height: 96, borderRadius: '50%', overflow: 'hidden', boxShadow: T.e2,
-            background: `radial-gradient(120% 120% at 32% 26%, ${PERSONAS[base].tone} 0%, ${PERSONAS[base].tone} 38%, ${T.accent} 150%)` }}>
+            background: `radial-gradient(120% 120% at 32% 26%, ${T.avatar} 0%, ${T.avatar} 38%, ${T.accent} 150%)` }}>
             <img src={`brand/avatars/${AVATAR_IMG[base]}.png`} alt={`${base} avatar`} draggable="false"
               style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 8%', filter: lookFilter, transition: 'filter .25s' }} />
           </div>

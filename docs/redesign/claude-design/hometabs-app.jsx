@@ -297,10 +297,10 @@ const ROSTER = [
   { name: 'Lyra', img: 'lyra', voice: 'Bright, playful, curious', base: true },
 ];
 
-function RosterAvatar({ T, img, size = 52, dim }) {
+function RosterAvatar({ T, img, size = 52 }) {
   return (
     <div role="img" style={{ width: size, height: size, flex: 'none', borderRadius: '50%', position: 'relative',
-      overflow: 'hidden', background: T.avatar, boxShadow: T.e1, filter: dim ? 'grayscale(0.5)' : 'none' }}>
+      overflow: 'hidden', background: T.avatar, boxShadow: T.e1 }}>
       <img src={`brand/avatars/${img}.png`} alt="" draggable="false"
         style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 8%', display: 'block' }} />
       <span style={{ position: 'absolute', inset: 0, borderRadius: '50%',
@@ -309,33 +309,20 @@ function RosterAvatar({ T, img, size = 52, dim }) {
   );
 }
 
-function LockChip({ T, label }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: T.raised,
-      border: `1px solid ${T.border}`, borderRadius: 999, padding: '4px 10px 4px 8px',
-      fontFamily: FF_BODY, fontWeight: 600, fontSize: 11, color: T.textTertiary, letterSpacing: '0.01em' }}>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-      </svg>
-      {label}
-    </span>
-  );
-}
-
-function RosterCard({ T, c, locked, empty, i }) {
-  // first-run (empty) has no conversation history yet → no recency, no last-message preview
-  const showRecency = !locked && !empty && c.time;
+function RosterCard({ T, c, empty, i }) {
+  // every base companion is free-accessible — the 30/day limit is shared across companions,
+  // not a per-model gate. first-run (empty) has no history yet → no recency, no last-message preview.
+  const showRecency = !empty && c.time;
   const lastLine = empty ? 'Tap to start a conversation' : (c.preview || 'Tap to start a conversation');
   return (
-    <button type="button" onClick={locked ? undefined : openChat} className="home-enter"
+    <button type="button" onClick={openChat} className="home-enter"
       style={{ animationDelay: `${i * 0.07}s`, width: '100%', display: 'flex', alignItems: 'center', gap: 14,
         textAlign: 'left', background: T.raised, border: 'none', borderRadius: 16, padding: 16, boxShadow: T.e2,
-        cursor: locked ? 'default' : 'pointer', opacity: locked ? 0.62 : 1, WebkitTapHighlightColor: 'transparent',
-        transition: 'transform .12s ease' }}
-      onMouseDown={(e) => { if (!locked) e.currentTarget.style.transform = 'scale(.99)'; }}
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent', transition: 'transform .12s ease' }}
+      onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(.99)'; }}
       onMouseUp={(e) => { e.currentTarget.style.transform = 'none'; }}
       onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; }}>
-      <RosterAvatar T={T} img={c.img} dim={locked} />
+      <RosterAvatar T={T} img={c.img} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 19, lineHeight: 1.1,
@@ -347,13 +334,9 @@ function RosterCard({ T, c, locked, empty, i }) {
         </div>
         <div style={{ fontFamily: FF_BODY, fontWeight: 500, fontSize: 12.5, lineHeight: 1.35, color: T.textTertiary,
           marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.voice}</div>
-        {locked ? (
-          <div style={{ marginTop: 9 }}><LockChip T={T} label="Included with Premium" /></div>
-        ) : (
-          <div style={{ fontFamily: FF_BODY, fontWeight: 400, fontSize: 14, lineHeight: 1.4, color: T.textSecondary,
-            marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {lastLine}</div>
-        )}
+        <div style={{ fontFamily: FF_BODY, fontWeight: 400, fontSize: 14, lineHeight: 1.4, color: T.textSecondary,
+          marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {lastLine}</div>
       </div>
     </button>
   );
@@ -437,7 +420,7 @@ function Companions() {
         color: T.textPrimary, margin: '0 0 24px' }}>Companions</h1>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {ROSTER.map((c, i) => (
-          <RosterCard key={c.name} T={T} c={c} i={i} empty={isEmpty} locked={!premium && !c.primary} />
+          <RosterCard key={c.name} T={T} c={c} i={i} empty={isEmpty} />
         ))}
         <CreateEntry T={T} premium={premium} i={ROSTER.length} />
       </div>
