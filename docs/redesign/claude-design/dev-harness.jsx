@@ -39,6 +39,7 @@ function DevProvider({ screens = [], children, initial = {} }) {
   const [theme, setTheme] = useState(initial.theme ?? 'dark');        // 'light' | 'dark' (warm-dark)
   const [account, setAccount] = useState(initial.account ?? 'free');  // 'free' | 'premium'
   const [dataState, setDataState] = useState(initial.dataState ?? 'happy'); // happy|empty|loading|error
+  const [companion, setCompanion] = useState(initial.companion ?? 'Aurora'); // companion model preview
   const [screenState, setScreenState] = useState(initial.screenState ?? firstState(initial.screenId ?? screens[0]?.id));
 
   // Switching screens resets the per-screen state to that screen's first declared state.
@@ -46,8 +47,8 @@ function DevProvider({ screens = [], children, initial = {} }) {
 
   const value = useMemo(() => ({
     screens, screenId, setScreenId, theme, setTheme, account, setAccount,
-    dataState, setDataState, screenState, setScreenState, devOn: DEV_ON,
-  }), [screens, screenId, theme, account, dataState, screenState]);
+    dataState, setDataState, companion, setCompanion, screenState, setScreenState, devOn: DEV_ON,
+  }), [screens, screenId, theme, account, dataState, companion, screenState]);
 
   return <DevContext.Provider value={value}>{children}</DevContext.Provider>;
 }
@@ -75,7 +76,7 @@ if (typeof document !== 'undefined' && !document.getElementById('aura-devrail-st
     .dev-chip:hover{color:#fff;}
     .dev-chip.on{background:#2b6cff;border-color:#2b6cff;color:#fff;}
     .dev-hint{font-size:10.5px;color:#6a6a73;line-height:1.5;margin-top:16px;}
-    .dev-scaler{transform-origin:top left;}
+    .dev-scaler{transform-origin:center center;}
   `;
   document.head.appendChild(st);
 }
@@ -96,7 +97,7 @@ function DevRail() {
   const active = d.screens.find((s) => s.id === d.screenId);
   return (
     <div className="dev-rail" data-dev>
-      <div className="dev-title">Aura · Dev</div>
+      <div className="dev-title">Hearth · Dev</div>
       <div className="dev-sub">not part of the app — review tooling</div>
 
       <div className="dev-h">Screen</div>
@@ -118,6 +119,13 @@ function DevRail() {
         <>
           <div className="dev-h">{(active.label || active.id) + ' state'}</div>
           <DevSeg options={active.states} value={d.screenState} onChange={d.setScreenState} />
+        </>
+      ) : null}
+
+      {active?.companions?.length ? (
+        <>
+          <div className="dev-h">Companion model</div>
+          <DevSeg options={active.companions} value={d.companion} onChange={d.setCompanion} />
         </>
       ) : null}
 
@@ -146,15 +154,17 @@ function DevStage({ children, frameW = 402, frameH = 874 }) {
     return () => window.removeEventListener('resize', fit);
   }, [frameW, frameH]);
 
-  // Outer box takes the SCALED layout size — `transform: scale()` shrinks the visual but NOT the
-  // layout box, so without this wrapper the full-size frame still claims its height and forces a
-  // page scroll (the overflow bug). The inner frame scales from its top-left corner.
+  if (!d.devOn) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: d.theme === 'dark' ? '#000' : '#F2F2F7' }}>{children}</div>;
+
+  // Outer box is sized to the SCALED dimensions so it occupies real layout space; the inner frame
+  // is scaled from its top-left corner. (A bare transform:scale leaves a full-size layout box, which
+  // is what forces the whole page to scroll — this avoids that.)
   return (
     <div className="dev-stage">
-      {d.devOn ? <DevRail /> : null}
+      <DevRail />
       <div className="dev-stage-canvas" ref={canvasRef}>
         <div style={{ width: frameW * scale, height: frameH * scale }}>
-          <div className="dev-scaler" style={{ width: frameW, height: frameH, transform: `scale(${scale})` }}>{children}</div>
+          <div className="dev-scaler" style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: frameW, height: frameH }}>{children}</div>
         </div>
       </div>
     </div>
