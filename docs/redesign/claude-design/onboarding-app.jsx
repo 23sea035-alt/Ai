@@ -532,8 +532,8 @@ function ThreadArt({ T, playKey, active }) {
   const animate = active && !REDUCED;
 
   // small conversation bubbles riding the thread — cream/sand, same register as slides 2 & 3
-  const bubGrad   = dark ? 'linear-gradient(160deg, #3B3025, #2C2319)' : 'linear-gradient(160deg, #EFE0C6, #E0CCA4)'; // deepened for light-bg contrast
-  const bubShadow = dark ? '0 4px 10px rgba(0,0,0,0.38)' : '0 4px 10px rgba(120,84,52,0.16)';
+  const bubStops  = dark ? ['#3B3025', '#2C2319'] : ['#EFE0C6', '#E0CCA4']; // deepened for light-bg contrast
+  const floodC    = dark ? '#000000' : '#785434';
   const lineC     = dark ? 'rgba(244,236,223,0.18)' : 'rgba(120,84,52,0.18)';
 
   // soft completion haptic as the last conversation settles onto the thread
@@ -547,13 +547,24 @@ function ThreadArt({ T, playKey, active }) {
   const dash = animate ? { strokeDasharray: 100, strokeDashoffset: 100, animation: DRAW } : {};
   // each conversation eases onto the thread as the draw-tip passes its spot (staggered settle)
   const settle = (delay) => (animate ? { animation: `bubble-settle .7s cubic-bezier(.16,1,.3,1) ${delay} both` } : {});
-  const Mini = ({ left, top, tailLeft, delay }) => (
+  // each conversation = ONE continuous SVG bubble silhouette whose bottom pulls into a real
+  // integrated tail (same technique as slides 2 & 3 — no CSS rotated-square "diamond")
+  const Mini = ({ id, left, top, tailLeft, delay }) => (
     <div style={{ position: 'absolute', left, top, ...settle(delay) }}>
-      <div style={{ position: 'relative', width: 46, height: 28, borderRadius: 9, background: bubGrad, boxShadow: bubShadow }}>
-        <div style={{ position: 'absolute', left: 11, top: 12, width: 22, height: 4, borderRadius: 2, background: lineC }} />
-        <div style={{ position: 'absolute', bottom: -3, [tailLeft ? 'left' : 'right']: 9, width: 9, height: 9,
-          background: bubGrad, borderRadius: '0 0 2px 0', transform: 'rotate(45deg)' }} />
-      </div>
+      <svg width="56" height="44" viewBox="0 0 56 44" fill="none" aria-hidden="true"
+        style={{ overflow: 'visible', transform: tailLeft ? 'none' : 'scaleX(-1)' }}>
+        <defs>
+          <linearGradient id={`mb-${id}`} x1="0" y1="0" x2="0.25" y2="1">
+            <stop offset="0" stopColor={bubStops[0]} /><stop offset="1" stopColor={bubStops[1]} />
+          </linearGradient>
+          <filter id={`mbs-${id}`} x="-40%" y="-40%" width="180%" height="200%">
+            <feDropShadow dx="0" dy="4" stdDeviation="3.5" floodColor={floodC} floodOpacity={dark ? 0.36 : 0.16} />
+          </filter>
+        </defs>
+        <path d="M 15,4 L 41,4 Q 50,4 50,13 L 50,21 Q 50,30 41,30 L 29,30 C 25,30 22,35 18,38 C 21,34 22,32 24,30 L 15,30 Q 6,30 6,21 L 6,13 Q 6,4 15,4 Z"
+          fill={`url(#mb-${id})`} filter={`url(#mbs-${id})`} />
+        <rect x="16" y="14.5" width="23" height="3.6" rx="1.8" fill={lineC} />
+      </svg>
     </div>
   );
 
@@ -572,9 +583,9 @@ function ThreadArt({ T, playKey, active }) {
       </svg>
       {/* a few conversations linked along the thread — uneven spacing + varied heights (ride the hills/dips),
           NOT evenly spaced and NOT growing small→large (would read as a graph) */}
-      <Mini left={64}  top={42} tailLeft={true}  delay=".9s" />
-      <Mini left={140} top={86} tailLeft={false} delay="1.3s" />
-      <Mini left={224} top={62} tailLeft={true}  delay="1.7s" />
+      <Mini id={`a-${playKey}`} left={58}  top={38} tailLeft={true}  delay=".9s" />
+      <Mini id={`b-${playKey}`} left={134} top={82} tailLeft={false} delay="1.3s" />
+      <Mini id={`c-${playKey}`} left={218} top={58} tailLeft={true}  delay="1.7s" />
     </div>
   );
 }
