@@ -666,7 +666,7 @@ function LookSheet({ T, persona, value, onPick, onClose }) {
         <div style={{ width: 38, height: 4, borderRadius: 999, background: T.border, margin: '0 auto 16px' }} />
         <h2 style={{ margin: '0 0 4px', fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 20, color: T.textPrimary }}>Choose a look</h2>
         <p style={{ margin: '0 0 18px', fontFamily: FF_BODY, fontSize: 13.5, lineHeight: 1.5, color: T.textSecondary }}>
-          Curated looks for {persona} — same companion, different mood. Pick the one that feels right.</p>
+          Curated looks for {persona}. Same companion, different mood. Pick the one that feels right.</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
           {LOOKS.map(lk => {
             const on = value === lk.id;
@@ -809,7 +809,7 @@ function CreateScreen() {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinejoin="round"/></svg>
           <p key={pv.chips + pv.tail} style={{ margin: 0, fontFamily: FF_BODY, fontSize: 13.5, lineHeight: 1.5, textWrap: 'pretty',
             color: T.textSecondary, animation: prefersReducedMotion() ? 'none' : 'auraFade .4s ease both' }}>
-            <span style={{ color: T.textPrimary, fontWeight: 600 }}>{pv.chips}</span> — {pv.tail}
+            <span style={{ color: T.textPrimary, fontWeight: 600 }}>{pv.chips}</span>: {pv.tail}
           </p>
         </div>
 
@@ -969,7 +969,7 @@ function BlockedMessage({ T }) {
    ════════════════════════════════════════════════════════════════════════ */
 const DEMO_MEMORIES = [
   { id: 'm1', cat: 'Identity',     text: 'Maya is 28 and lives in Austin, Texas.' },
-  { id: 'm2', cat: 'Work',         text: 'Started a new UX design role recently — excited but nervous about proving herself.' },
+  { id: 'm2', cat: 'Work',         text: 'Started a new UX design role recently, excited but nervous about proving herself.' },
   { id: 'm3', cat: 'Relationship', text: 'Close with her younger brother Theo; they catch up most weekends.' },
   { id: 'm4', cat: 'Attribute',    text: 'Has a dog named Pixel.' },
   { id: 'm5', cat: 'Preference',   text: 'Loves rock climbing and sci-fi novels.' },
@@ -1113,7 +1113,7 @@ function MemoryScreen() {
           <h1 style={{ fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 27, lineHeight: 1.14, letterSpacing: '-0.015em',
             color: T.textPrimary, margin: '0 4px 5px' }}>What Aurora remembers</h1>
           <p style={{ fontFamily: FF_BODY, fontSize: 14, lineHeight: 1.5, color: T.textSecondary, margin: '0 4px 20px', textWrap: 'pretty' }}>
-            You're always in control — edit or remove anything.</p>
+            You're always in control. Edit or remove anything.</p>
 
           {items.map((m, i) => (
             <div key={m.id} style={{ marginBottom: 18, animation: prefersReducedMotion() ? 'none' : `auraRise .42s ${i * 0.05}s cubic-bezier(.22,.8,.32,1) both` }}>
@@ -1153,7 +1153,7 @@ const RENEWAL_DATE = 'Jul 14, 2026';
 
 const PREMIUM_VALUE = [
   'Unlimited messages',
-  'Personality tuning — the full 3×3×3 traits',
+  'Personality tuning: the full 3×3×3 traits',
   'Create extra companions',
   'Priority responses',
 ];
@@ -1227,7 +1227,7 @@ function PaywallScreen() {
             {owned ? "You're on Aura Premium" : 'Go deeper with Aura Premium'}</h1>
           <p style={{ fontFamily: FF_BODY, fontSize: 15, lineHeight: 1.5, color: T.textSecondary, margin: '0 0 20px', textWrap: 'pretty' }}>
             {owned
-              ? 'Everything below is yours — thank you for supporting a calmer kind of companion.'
+              ? 'Everything below is yours. Thank you for supporting a calmer kind of companion.'
               : 'More room to be heard, and the space to make a companion truly yours.'}</p>
 
           {/* the single warm value block */}
@@ -1368,7 +1368,7 @@ function SubMgmtScreen() {
         </ListGroup>
 
         <ListGroup T={T} label="Billing"
-          footnote="Aura can’t change billing in-app — payment, price, and cancellation are handled securely by the App Store.">
+          footnote="Aura can’t change billing in-app. Payment, price, and cancellation are handled securely by the App Store.">
           <ActionRow T={T} label="Manage in App Store" external
             sub="Billing is managed by the App Store; changes happen there."
             onActivate={() => {}} />
