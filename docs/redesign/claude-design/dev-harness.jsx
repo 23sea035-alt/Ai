@@ -97,7 +97,7 @@ function DevRail() {
   const active = d.screens.find((s) => s.id === d.screenId);
   return (
     <div className="dev-rail" data-dev>
-      <div className="dev-title">Hearth · Dev</div>
+      <div className="dev-title">Aura · Dev</div>
       <div className="dev-sub">not part of the app — review tooling</div>
 
       <div className="dev-h">Screen</div>

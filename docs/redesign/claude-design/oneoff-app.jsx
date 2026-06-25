@@ -19,11 +19,11 @@ const SCREENS = [
   { id: 'chat',        label: 'Chat conversation ★', states: ['default', 'typing', 'crisis', 'limit', 'report', 'break'], companions: ['Aurora', 'Orion', 'Lyra'], purpose: 'The 1:1 conversation — the heart of Aura.' },
   { id: 'create',      label: 'Companion create/edit', states: ['create', 'edit'], purpose: 'Create or customize a companion (premium).' },
   { id: 'memory',      label: 'Memory',              purpose: 'What your companion remembers about you. (states follow the Data-state toggle)' },
-  { id: 'paywall',     label: 'Paywall',             purpose: 'Upgrade to Hearth Premium. (default / owned follow the Account toggle)' },
+  { id: 'paywall',     label: 'Paywall',             purpose: 'Upgrade to Aura Premium. (default / owned follow the Account toggle)' },
   { id: 'submgmt',     label: 'Subscription mgmt',   purpose: 'Manage your subscription and billing. (premium-only; free → paywall)' },
   { id: 'editprofile', label: 'Edit profile',        states: ['default', 'focus', 'error', 'saving'], purpose: 'Edit your name and profile details.' },
   { id: 'account',     label: 'Account management',  states: ['default', 'export-sent', 'delete-confirm'], purpose: 'Export or delete your account data.' },
-  { id: 'notifs',      label: 'Notifications',       states: ['default'], purpose: 'Choose what Hearth notifies you about.' },
+  { id: 'notifs',      label: 'Notifications',       states: ['default'], purpose: 'Choose what Aura notifies you about.' },
   { id: 'safety',      label: 'Safety center',       states: ['default'], purpose: 'Crisis resources and content controls.' },
   { id: 'legal',       label: 'Privacy / legal',     states: ['default'], purpose: 'Privacy policy, terms, and data use.' },
   { id: 'help',        label: 'Help / support',      states: ['default'], purpose: 'Get help or contact support.' },
@@ -362,7 +362,7 @@ function ReportSheet({ T, onClose, onSubmit }) {
       <div role="dialog" aria-label="Report this message" style={{ position: 'relative', background: T.sheet, borderRadius: '24px 24px 0 0',
         padding: '10px 18px calc(18px + env(safe-area-inset-bottom))', boxShadow: T.e3, animation: 'auraSheet .32s cubic-bezier(.22,.8,.32,1) both' }}>
         <div style={{ width: 38, height: 4, borderRadius: 999, background: T.border, margin: '0 auto 16px' }} />
-        <h2 style={{ margin: '0 0 4px', fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 20, color: T.textPrimary }}>Help us keep Hearth safe</h2>
+        <h2 style={{ margin: '0 0 4px', fontFamily: FF_DISPLAY, fontWeight: 600, fontSize: 20, color: T.textPrimary }}>Help us keep Aura safe</h2>
         <p style={{ margin: '0 0 16px', fontFamily: FF_BODY, fontSize: 13.5, lineHeight: 1.5, color: T.textSecondary }}>
           Tell us what felt off. This is private and won't interrupt your chat.</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
@@ -1368,7 +1368,7 @@ function SubMgmtScreen() {
         </ListGroup>
 
         <ListGroup T={T} label="Billing"
-          footnote="Hearth can’t change billing in-app — payment, price, and cancellation are handled securely by the App Store.">
+          footnote="Aura can’t change billing in-app — payment, price, and cancellation are handled securely by the App Store.">
           <ActionRow T={T} label="Manage in App Store" external
             sub="Billing is managed by the App Store; changes happen there."
             onActivate={() => {}} />

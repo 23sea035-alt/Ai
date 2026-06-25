@@ -581,7 +581,7 @@ function You() {
         Sign out
       </button>
       <div style={{ textAlign: 'center', fontFamily: FF_BODY, fontWeight: 500, fontSize: 12, color: T.textTertiary, marginTop: 18 }}>
-        Hearth · version 1.0.0
+        Aura · version 1.0.0
       </div>
 
       {dialog === 'signout' && (
