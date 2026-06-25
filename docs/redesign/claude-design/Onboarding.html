@@ -27,6 +27,7 @@
   .aura-press { transition: transform .12s cubic-bezier(.2,.7,.2,1); }
   .aura-press:active { transform: scale(.975); }
   @keyframes aura-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes aura-sink { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
   @keyframes aura-ripple { 0% { transform: scale(.34); opacity: 0; } 18% { opacity: .8; } 100% { transform: scale(1.18); opacity: 0; } }
   @keyframes aura-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
   .aura-float { animation: aura-float 7s ease-in-out infinite; }

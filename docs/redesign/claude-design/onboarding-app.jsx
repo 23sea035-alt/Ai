@@ -511,44 +511,51 @@ const { useState: useStateC, useRef: useRefC, useCallback: useCallbackC } = Reac
 const REDUCED = typeof window !== 'undefined' && window.matchMedia
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// three distinct warm marks (simple primitives, no orbs/stock)
-/* Slide 1 hero — "the kept thread". One soft, thick, tactile ribbon (gouache
-   weight, flat tonal fill, no outline) that meanders gently and stays level,
-   entering from the left and continuing off the right edge: the continuous
-   thread of your story. ONE small carried "kept" form rests in a dip. On land,
-   the ribbon draws on L→R while the kept form rides along it, decelerating to
-   rest. Reduce-motion → whole, no travel. No Library Wine here. */
+/* Slide 1 hero — "every conversation connected, nothing lost". A single continuous,
+   thick, warm RIBBON/thread (gouache weight, flat tonal fill, no outline) enters softly
+   from the left, meanders GENTLY and roughly level, and fades off the right (ongoing —
+   picks up where you left off). A FEW small conversation bubbles ride ON the thread at
+   organic, uneven spots + varied heights — each a little conversation, linked. On land the
+   ribbon draws L→R (slow, decelerating) and each bubble settles onto it in sequence as the
+   draw-tip passes. Reduce-motion → whole, already linked. No Library Wine here.
+   [Mini bubbles share slides 2 & 3's bubble register; the shared component lands at the RN port.] */
 // wider, level meander with a clear central low point; ends run off both edges
 const THREAD_D = 'M -22 96 C 48 72, 94 72, 142 104 C 176 126, 200 126, 236 100 C 282 70, 318 84, 346 94';
-const THREAD_REST = '56%';
-// total motion ~2.2s: a held breath, then unhurried draw + a long decelerating travel
-const DRAW = 'ribbon-draw 1.25s cubic-bezier(.22,1,.16,1) .5s both';
-const RIDE = 'seed-ride 1.7s cubic-bezier(.14,.82,.18,1) .55s both';
+// the ribbon draws on L→R: a held breath, then a slow, decelerating trace (long faded tail)
+const DRAW = 'ribbon-draw 1.8s cubic-bezier(.22,1,.16,1) .5s both';
 
 function ThreadArt({ T, playKey, active }) {
   const dark = T.mode === 'dark';
-  const sand  = T.avatar;                              // warm sand / clay ribbon
-  const shade = dark ? '#5E3D30' : '#C08F6F';          // tonal shadow underneath
+  const sand  = T.avatar;                              // warm clay/sand ribbon
+  const shade = dark ? '#5E3D30' : '#C08F6F';          // tonal shadow underneath the ribbon
   const sheen = dark ? 'rgba(244,236,223,0.16)' : 'rgba(255,252,246,0.55)';
-  const seedC = dark ? '#E6B493' : '#A85A3C';          // the one kept form (terracotta)
   const animate = active && !REDUCED;
 
-  // soft completion haptic as the form settles (reduce-motion → fire promptly)
+  // small conversation bubbles riding the thread — cream/sand, same register as slides 2 & 3
+  const bubGrad   = dark ? 'linear-gradient(160deg, #3B3025, #2C2319)' : 'linear-gradient(160deg, #F8EFE0, #EBDBC2)';
+  const bubShadow = dark ? '0 4px 10px rgba(0,0,0,0.38)' : '0 4px 10px rgba(120,84,52,0.16)';
+  const lineC     = dark ? 'rgba(244,236,223,0.18)' : 'rgba(120,84,52,0.18)';
+
+  // soft completion haptic as the last conversation settles onto the thread
   React.useEffect(() => {
     if (!active) return;
     const buzz = () => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8); };
-    const t = setTimeout(buzz, REDUCED ? 80 : 2150);
+    const t = setTimeout(buzz, REDUCED ? 80 : 2500);
     return () => clearTimeout(t);
   }, [active, playKey]);
 
   const dash = animate ? { strokeDasharray: 100, strokeDashoffset: 100, animation: DRAW } : {};
-  const seedStyle = {
-    position: 'absolute', top: 0, left: 0, width: 22, height: 22, borderRadius: '50%',
-    background: seedC, boxShadow: dark ? '0 1px 4px rgba(0,0,0,0.45)' : '0 1px 4px rgba(90,40,25,0.28)',
-    offsetPath: `path('${THREAD_D}')`, offsetAnchor: '50% 50%', offsetRotate: '0deg',
-    offsetDistance: animate ? '0%' : THREAD_REST,
-    ...(animate ? { animation: RIDE } : {}),
-  };
+  // each conversation eases onto the thread as the draw-tip passes its spot (staggered settle)
+  const settle = (delay) => (animate ? { animation: `bubble-settle .7s cubic-bezier(.16,1,.3,1) ${delay} both` } : {});
+  const Mini = ({ left, top, tailLeft, delay }) => (
+    <div style={{ position: 'absolute', left, top, ...settle(delay) }}>
+      <div style={{ position: 'relative', width: 46, height: 28, borderRadius: 9, background: bubGrad, boxShadow: bubShadow }}>
+        <div style={{ position: 'absolute', left: 11, top: 12, width: 22, height: 4, borderRadius: 2, background: lineC }} />
+        <div style={{ position: 'absolute', bottom: -3, [tailLeft ? 'left' : 'right']: 9, width: 9, height: 9,
+          background: bubGrad, borderRadius: '0 0 2px 0', transform: 'rotate(45deg)' }} />
+      </div>
+    </div>
+  );
 
   return (
     <div key={playKey} style={{ position: 'relative', width: 320, height: 200 }}>
@@ -563,7 +570,11 @@ function ThreadArt({ T, playKey, active }) {
         <path d={THREAD_D} transform="translate(0,-5)" stroke={sheen} strokeWidth="6"
           strokeLinecap="round" fill="none" pathLength="100" style={dash} />
       </svg>
-      <div style={seedStyle} />
+      {/* a few conversations linked along the thread — uneven spacing + varied heights (ride the hills/dips),
+          NOT evenly spaced and NOT growing small→large (would read as a graph) */}
+      <Mini left={64}  top={42} tailLeft={true}  delay=".9s" />
+      <Mini left={140} top={86} tailLeft={false} delay="1.3s" />
+      <Mini left={224} top={62} tailLeft={true}  delay="1.7s" />
     </div>
   );
 }
@@ -621,14 +632,12 @@ function ChatArt({ T, playKey, active }) {
   const themStops = dark ? ['#3B3025', '#2C2319'] : ['#F8EFE0', '#EBDBC2'];
   const youStops  = dark ? ['#80584A', '#69463A'] : ['#DAAB8C', '#C79172'];
   const floodC    = dark ? '#000000' : '#785434';
-  const trimThemC = dark ? 'rgba(244,236,223,0.10)' : 'rgba(255,252,246,0.72)';
-  const trimYouC  = dark ? 'rgba(244,236,223,0.16)' : 'rgba(255,252,246,0.46)';
 
   // Each bubble is ONE continuous SVG silhouette: the rounded body's outline pulls
   // out into a small, soft, tapering tail at one corner — same fill gradient, same
   // unified drop-shadow, same top trim highlight flowing onto the tail. Not a
   // separate nub. Companion tail ↙ (bottom-left), your tail ↘ (bottom-right).
-  const Bubble = ({ id, w, h, left, top, rotate, stops, trimC, bodyPath, trimPath, vbW, vbH, delay, children }) => (
+  const Bubble = ({ id, w, h, left, top, rotate, stops, bodyPath, vbW, vbH, delay, children }) => (
     <div style={{ position: 'absolute', left, top, width: w, height: h, ...settle(delay) }}>
       <div style={{ width: '100%', height: '100%', position: 'relative', transform: `rotate(${rotate}deg)` }}>
         <svg width={vbW} height={vbH} viewBox={`0 0 ${vbW} ${vbH}`} fill="none" aria-hidden="true"
@@ -644,7 +653,6 @@ function ChatArt({ T, playKey, active }) {
             </filter>
           </defs>
           <path d={bodyPath} fill={`url(#bg-${id})`} filter={`url(#sh-${id})`} />
-          <path d={trimPath} fill="none" stroke={trimC} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
         </svg>
         <div style={{ position: 'relative', height: '100%', padding: '0 24px',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
@@ -658,17 +666,17 @@ function ChatArt({ T, playKey, active }) {
     <div key={playKey} style={{ position: 'relative', width: 320, height: 200 }}>
       {/* companion — upper-left, warm sand paper; tail dips ↙ from the bottom-left */}
       <Bubble id={`them-${playKey}`} w={152} h={80} left={28} top={38} rotate={-1.4}
-        stops={themStops} trimC={trimThemC} vbW={176} vbH={132}
+        stops={themStops} vbW={176} vbH={132}
         bodyPath={'M 42,12 L 134,12 Q 164,12 164,42 L 164,62 Q 164,92 134,92 L 80,92 C 66,92 54,106 44,118 C 40,106 40,98 46,92 L 42,92 Q 12,92 12,62 L 12,42 Q 12,12 42,12 Z'}
-        trimPath={'M 30,28 Q 34,15 48,14.5 L 130,14.5 Q 152,15 158,30'} delay=".15s">
+        delay=".15s">
         {softLine(80, themLine)}
         {softLine(52, themLine)}
       </Bubble>
       {/* your reply — lower-right, soft clay; tail dips ↘ from the bottom-right */}
       <Bubble id={`you-${playKey}`} w={120} h={64} left={162} top={100} rotate={1.6}
-        stops={youStops} trimC={trimYouC} vbW={144} vbH={120}
+        stops={youStops} vbW={144} vbH={120}
         bodyPath={'M 38,12 L 106,12 Q 132,12 132,38 L 132,50 Q 132,76 106,76 C 116,86 120,94 122,104 C 110,96 100,84 90,76 L 38,76 Q 12,76 12,50 L 12,38 Q 12,12 38,12 Z'}
-        trimPath={'M 24,26 Q 28,15 42,14.5 L 102,14.5 Q 120,15 126,28'} delay=".55s">
+        delay=".55s">
         {softLine(58, youLine)}
       </Bubble>
     </div>
@@ -690,7 +698,6 @@ function PresenceArt({ T, playKey, active }) {
   const animate = active && !REDUCED;
   // bubble — companion / warm-sand tone, identical to slide 2's "them"
   const stops  = dark ? ['#3B3025', '#2C2319'] : ['#F8EFE0', '#EBDBC2'];
-  const trimC  = dark ? 'rgba(244,236,223,0.10)' : 'rgba(255,252,246,0.72)';
   const lineC  = dark ? 'rgba(244,236,223,0.15)' : 'rgba(120,84,52,0.15)';
   const floodC = dark ? '#000000' : '#785434';
   // sun (muted gold/amber disc) + moon (warm taupe crescent) — warm in BOTH themes
@@ -711,8 +718,8 @@ function PresenceArt({ T, playKey, active }) {
 
   const softLine = (w) => <div style={{ height: 7, width: w, borderRadius: 4, background: lineC }} />;
   const bubbleSettle = animate ? { animation: 'bubble-settle .8s cubic-bezier(.16,1,.3,1) .15s both' } : {};
-  const sunAnim  = animate ? { animation: 'aura-fadein .6s ease .6s both' } : {};
-  const moonAnim = animate ? { animation: 'aura-fadein .6s ease .72s both' } : {};
+  const sunAnim  = animate ? { animation: 'aura-fadein .6s ease .6s both, aura-sink 9s ease-in-out 1.3s infinite' } : {};
+  const moonAnim = animate ? { animation: 'aura-fadein .6s ease .72s both, aura-float 9s ease-in-out 1.3s infinite' } : {};
 
   return (
     <div key={playKey} style={{ position: 'relative', width: 320, height: 200 }}>
@@ -756,7 +763,6 @@ function PresenceArt({ T, playKey, active }) {
             </defs>
             <path d={'M 42,12 L 134,12 Q 164,12 164,42 L 164,62 Q 164,92 134,92 L 80,92 C 66,92 54,106 44,118 C 40,106 40,98 46,92 L 42,92 Q 12,92 12,62 L 12,42 Q 12,12 42,12 Z'}
               fill={`url(#pb-${playKey})`} filter={`url(#pbsh-${playKey})`} />
-            <path d={'M 30,28 Q 34,15 48,14.5 L 130,14.5 Q 152,15 158,30'} fill="none" stroke={trimC} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
           </svg>
           <div style={{ position: 'relative', height: '100%', padding: '0 24px',
             display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
