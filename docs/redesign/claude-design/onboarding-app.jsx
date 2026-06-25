@@ -100,12 +100,14 @@ const MARK_HONEY_D = "M0 0 C1.64548828 0.433125 1.64548828 0.433125 3.32421875 0
 // Aura logo mark. Colors and shapes are fixed (brand). Animation lives in CSS
 // on #wine / #honey (see Onboarding.html): honey settles first, wine sweeps over
 // to shelter it. The cream gap between shapes is the warm screen bg showing through.
-function AuraAnchor({ T }) {
+function AuraAnchor({ size = 196, animate = true }) {
+  // animate=true gives the groups the #wine/#honey ids the CSS keyframes target (the hero
+  // entrance on Welcome); animate=false renders a static mark (e.g. the small auth header logo).
   return (
-    <svg width="196" height="196" viewBox="0 0 1254 1254" fill="none" aria-hidden="true"
+    <svg width={size} height={size} viewBox="0 0 1254 1254" fill="none" aria-hidden="true"
       style={{ display: 'block', overflow: 'visible' }}>
-      <g id="wine"><path d={MARK_WINE_D} fill="#8F4150" transform="translate(810,214)" /></g>
-      <g id="honey"><path d={MARK_HONEY_D} fill="#BD6B45" transform="translate(765,490)" /></g>
+      <g id={animate ? 'wine' : undefined}><path d={MARK_WINE_D} fill="#8F4150" transform="translate(810,214)" /></g>
+      <g id={animate ? 'honey' : undefined}><path d={MARK_HONEY_D} fill="#BD6B45" transform="translate(765,490)" /></g>
     </svg>
   );
 }
@@ -126,7 +128,7 @@ function Welcome({ onGetStarted, onSignIn }) {
       {/* illustration anchor — focal middle */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
         <div className="aura-enter" style={{ ...fade(0.18), animationDuration: '.7s' }}>
-          <AuraAnchor T={T} />
+          <AuraAnchor />
         </div>
       </div>
 
@@ -420,14 +422,10 @@ function Auth({ mode, setMode, onDone, onWelcome }) {
           the field visible without an animated lift. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* logo slot — fixed height; placeholder mark on signin/signup only */}
+        {/* logo slot — fixed height (keeps the title from jumping across modes); the real
+            brand mark on signin/signup only, static (no hero animation on a utility screen). */}
         <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {showLogo && (
-            <div aria-label="Brand mark placeholder" style={{ width: 44, height: 44, borderRadius: 12,
-              background: T.raised, border: `1px solid ${T.border}`, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontSize: 9.5, letterSpacing: '0.06em', color: T.textTertiary, textTransform: 'lowercase' }}>logo</div>
-          )}
+          {showLogo && <AuraAnchor size={44} animate={false} />}
         </div>
 
         {/* title + quiet subline */}
