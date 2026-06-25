@@ -199,7 +199,7 @@ function OverflowMenu({ T, onClose, onReport }) {
   );
 }
 
-/* ── one-time AI disclosure banner (pinned above thread) ───────────────────── */
+/* ── AI disclosure · anchored at the conversation start, shown in full on open ─ */
 function DisclosureBanner({ T, onDismiss }) {
   return (
     <div role="note" aria-label="Aurora is an AI companion. She's here for support, not a substitute for professional care."
@@ -470,9 +470,13 @@ function ChatScreen({ onFocusChange }) {
   // reset transient typing reveal whenever we (re)enter the typing state
   useEffect(() => { setTypingDone(false); }, [st]);
 
-  // keep newest message in view
+  // Option A: the AI disclosure is anchored at the conversation's start and shown in full when it
+  // opens; states that append a bottom element (typing/crisis/limit/break) scroll to the newest.
+  // (Real app: a FRESH conversation opens at the top like this; an ongoing one opens at the newest,
+  // so the disclosure simply scrolls into history. The header's "AI companion" label is always on.)
   useEffect(() => {
-    const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight;
+    const el = threadRef.current; if (!el) return;
+    el.scrollTop = st === 'default' ? 0 : el.scrollHeight;
   }, [st, typingDone]);
 
   const submitReport = () => { setReportOpen(false); setToast(true); setTimeout(() => setToast(false), 2600); };
