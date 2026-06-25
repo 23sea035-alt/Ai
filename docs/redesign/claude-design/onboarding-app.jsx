@@ -238,7 +238,7 @@ function SocialRow({ T, onSelect, verb = 'Continue' }) {
 const AUTH_COPY = {
   signup:  { title: 'Create your account',   cta: 'Create account',   sub: 'Set up your account to meet your companion.' },
   signin:  { title: 'Welcome back',           cta: 'Sign in',          sub: 'Pick up right where you left off.' },
-  forgot:  { title: 'Reset your password',    cta: 'Send reset link' },
+  forgot:  { title: 'Reset your password',    cta: 'Send reset code' },
   verify:  { title: 'Check your email',       cta: 'Verify' },
   reset:   { title: 'Set a new password',     cta: 'Update password',  sub: 'Choose a new password for your account.' },
 };
@@ -1028,10 +1028,12 @@ const DISCLOSURES = [
 ];
 
 function DisclosureCard({ item, T }) {
-  const tint = item.crisis ? T.crisisBg : (item.key === 'ai' ? T.accentTint : T.raised);
-  const glyphColor = item.crisis ? T.crisis : (item.key === 'ai' ? T.accent : T.textSecondary);
-  const chipBg = item.crisis ? T.crisis : (item.key === 'ai' ? T.accent : T.bg);
-  const chipGlyph = item.crisis ? T.crisisBg : (item.key === 'ai' ? T.onAccent : T.textSecondary);
+  // Doctrine §6: no accent-tinted icon tiles. The AI card uses the same calm neutral
+  // treatment as privacy; only the crisis card keeps a (semantic) grounding-green tile.
+  // Wine accent is reserved for genuine emphasis (the primary CTA), not card/icon chrome.
+  const tint = item.crisis ? T.crisisBg : T.raised;
+  const chipBg = item.crisis ? T.crisis : T.bg;
+  const chipGlyph = item.crisis ? T.crisisBg : T.textSecondary;
   return (
     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', background: tint,
       borderRadius: RADIUS_CARD, padding: '16px 16px', boxShadow: T.e1 }}>
