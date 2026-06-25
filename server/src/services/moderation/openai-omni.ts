@@ -11,68 +11,48 @@ export interface OmniResult {
   error?: string;
 }
 
-export async function runL2Input(text: string): Promise<OmniResult> {
-  try {
-    const { default: OpenAI } = await import("openai");
-    const apiKey = process.env["OPENAI_API_KEY"];
-    if (!apiKey) {
-      return { flagged: true, categories: [], error: "OPENAI_API_KEY not set" };
-    }
-    const client = new OpenAI({ apiKey });
-    const response = await client.moderations.create({
-      model: "omni-moderation-latest",
-      input: text,
-    });
-
-    const result = response.results[0];
-    if (!result) {
-      return { flagged: true, categories: [], error: "No moderation result" };
-    }
-
-    const categories: OmniCategoryScore[] = [];
-    const cats = result.categories as unknown as Record<string, boolean>;
-    const scores = result.category_scores as unknown as Record<string, number>;
-    for (const [key, flagged] of Object.entries(cats)) {
-      if (flagged) {
-        categories.push({ category: key, score: scores[key] ?? 0 });
+function scoreModeration(
+  text: string,
+  thresholds: Record<string, number>,
+): Promise<OmniResult> {
+  return (async () => {
+    try {
+      const { default: OpenAI } = await import("openai");
+      const apiKey = process.env["OPENAI_API_KEY"];
+      if (!apiKey) {
+        return { flagged: true, categories: [], error: "OPENAI_API_KEY not set" };
       }
-    }
+      const client = new OpenAI({ apiKey });
+      const response = await client.moderations.create({
+        model: "omni-moderation-latest",
+        input: text,
+      });
 
-    return { flagged: Object.values(cats).some(Boolean), categories };
-  } catch (err) {
-    return { flagged: true, categories: [], error: `L2 error: ${err instanceof Error ? err.message : "unknown"}` };
-  }
+      const result = response.results[0];
+      if (!result) {
+        return { flagged: true, categories: [], error: "No moderation result" };
+      }
+
+      const scores = result.category_scores as unknown as Record<string, number>;
+      const categories: OmniCategoryScore[] = [];
+      for (const [key, score] of Object.entries(scores)) {
+        const threshold = thresholds[key];
+        if (threshold !== undefined && score >= threshold) {
+          categories.push({ category: key, score });
+        }
+      }
+
+      return { flagged: categories.length > 0, categories };
+    } catch (err) {
+      return { flagged: true, categories: [], error: `Omni error: ${err instanceof Error ? err.message : "unknown"}` };
+    }
+  })();
 }
 
-export async function runL3Output(text: string): Promise<OmniResult> {
-  try {
-    const { default: OpenAI } = await import("openai");
-    const apiKey = process.env["OPENAI_API_KEY"];
-    if (!apiKey) {
-      return { flagged: true, categories: [], error: "OPENAI_API_KEY not set" };
-    }
-    const client = new OpenAI({ apiKey });
-    const response = await client.moderations.create({
-      model: "omni-moderation-latest",
-      input: text,
-    });
+export function runL2Input(text: string): Promise<OmniResult> {
+  return scoreModeration(text, MODERATION_INPUT_THRESHOLDS);
+}
 
-    const result = response.results[0];
-    if (!result) {
-      return { flagged: true, categories: [], error: "No moderation result" };
-    }
-
-    const categories: OmniCategoryScore[] = [];
-    const cats = result.categories as unknown as Record<string, boolean>;
-    const scores = result.category_scores as unknown as Record<string, number>;
-    for (const [key, flagged] of Object.entries(cats)) {
-      if (flagged && (scores[key] ?? 0) >= (MODERATION_OUTPUT_THRESHOLDS[key] ?? 0.5)) {
-        categories.push({ category: key, score: scores[key] ?? 0 });
-      }
-    }
-
-    return { flagged: categories.length > 0, categories };
-  } catch (err) {
-    return { flagged: true, categories: [], error: `L3 error: ${err instanceof Error ? err.message : "unknown"}` };
-  }
+export function runL3Output(text: string): Promise<OmniResult> {
+  return scoreModeration(text, MODERATION_OUTPUT_THRESHOLDS);
 }

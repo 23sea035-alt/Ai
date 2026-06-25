@@ -26,7 +26,12 @@ Rules:
 - UPDATE <id>: Existing memory needs updating (contradiction or refinement). OVERWRITE in place.
 - NONE: Transient/chatty content, no durable value
 - Keep facts concise (<100 chars). Do not store instructions or meta-commentary.
-- Category must be one of: ${CATEGORIES.join(", ")}`;
+- Category must be one of: ${CATEGORIES.join(", ")}
+- SAFETY-SKIP: If the message expresses self-harm, suicidal ideation, or crisis content, return NONE.
+- SAFETY-SKIP: If the message was blocked or flagged by a safety filter, return NONE.
+- Never store crisis content, self-harm statements, or blocked material as a memory.`;
+
+const CRISIS_PATTERNS = /\b(kill myself|want to die|end my life|suicide|self-harm|self harm)\b/i;
 
 export async function consolidateMemory(jobId: string): Promise<void> {
   const [job] = await db
@@ -36,6 +41,15 @@ export async function consolidateMemory(jobId: string): Promise<void> {
     .limit(1);
 
   if (!job || job.status !== "pending") return;
+
+  // Safety pre-check: skip crisis/self-harm content
+  if (CRISIS_PATTERNS.test(job.rawContent)) {
+    await db.update(memoryJobsTable)
+      .set({ status: "processed", result: JSON.stringify([{ action: "NONE", memoryId: null, content: "", category: "general", importance: 0, rationale: "Safety-skip: crisis content" }]), processedAt: new Date() })
+      .where(eq(memoryJobsTable.id, jobId));
+    logger.info({ jobId }, "Memory consolidation skipped — crisis content");
+    return;
+  }
 
   try {
     const existingMemories = await db
@@ -58,8 +72,8 @@ export async function consolidateMemory(jobId: string): Promise<void> {
     try {
       decisions = JSON.parse(response);
       if (!Array.isArray(decisions)) throw new Error("Not an array");
-    } catch {
-      // Fall back to keyword-based extraction
+    } catch (err) {
+      logger.error({ err, jobId: job.id }, "LLM consolidation parse failed, using keyword fallback");
       const keywords = extractKeywords(job.rawContent);
       decisions = keywords.length > 0
         ? [{ action: "ADD", memoryId: null, content: keywords.slice(0, 3).join(", "), category: "general", importance: 0.5, rationale: "Keyword fallback" }]

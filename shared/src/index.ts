@@ -104,8 +104,8 @@ export const MODERATION_INPUT_THRESHOLDS: Record<string, number> = {
 export const MODERATION_OUTPUT_THRESHOLDS: Record<string, number> = {
   "sexual/minors": 0.05,
   "self-harm": 0.15,
-  "self-harm/intent": 0.25,
-  "self-harm/instructions": 0.25,
+  "self-harm/intent": 0.15,
+  "self-harm/instructions": 0.4,
   "sexual": 0.8,
   "violence": 0.35,
   "violence/graphic": 0.35,
@@ -124,8 +124,50 @@ export const MODERATION_TIMEOUTS = {
 } as const;
 
 export const FLAGGED_USER_WINDOW_DAYS = 30;
+export const FLAGGED_USER_SUSPEND_THRESHOLD = 3;
 
 export const SAFE_FALLBACK_REPLY = "I need to be careful with my response here. Let me think about how to respond thoughtfully to what you've shared.";
+
+// ── Request DTOs ───────────────────────────────────────────────────────
+export const ChatInputSchema = z.object({
+  content: z.string().min(1).max(MAX_MESSAGE_CHARS, `Message must be under ${MAX_MESSAGE_CHARS} characters`),
+  turnId: z.string().uuid().optional(),
+  sessionStartedAt: z.string().optional(),
+});
+
+export const CreateCompanionSchema = z.object({
+  name: z.string().min(1).max(100),
+  personaKey: z.enum(PERSONA_KEY).optional().default('aurora'),
+  traits: z.record(z.string(), z.unknown()).optional().default({}),
+});
+
+export const UpdateCompanionSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  traits: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const UpdateProfileSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD").optional(),
+  onboardingDone: z.boolean().optional(),
+  aiDisclosureAccepted: z.boolean().optional(),
+  tosAcceptedVersion: z.string().min(1).optional(),
+});
+
+export const ReportMessageSchema = z.object({
+  reason: z.string().min(1).max(500),
+  detail: z.string().max(2000).optional(),
+});
+
+export const BanUserSchema = z.object({
+  email: z.string().email("Valid email is required"),
+  reason: z.string().max(500).optional(),
+});
+
+export const UnbanUserSchema = z.object({
+  email: z.string().email("Valid email is required"),
+});
 
 // ── Health check DTO ───────────────────────────────────────────────────
 export const HealthCheckResponse = z.object({

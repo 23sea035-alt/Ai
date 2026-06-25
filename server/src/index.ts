@@ -1,12 +1,28 @@
 import { validateEnv, getEnv } from "./config/env.js";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import app, { server } from "./app.js";
 import { logger } from "./lib/logger.js";
 import { stopJobWorker } from "./services/jobs/worker.js";
 import { db } from "./db/src/index.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 validateEnv();
-
 const env = getEnv();
+
+// ── Run pending migrations before accepting connections ────────────
+try {
+  const migrationsDir = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../db/migrations",
+  );
+  await migrate(db, { migrationsFolder: migrationsDir });
+  logger.info("Database migrations up to date");
+} catch (err) {
+  logger.fatal({ err }, "Migration failed — cannot start");
+  process.exit(1);
+}
+
 server.listen(env.PORT, () => {
   logger.info({ port: env.PORT }, "Server listening");
 });

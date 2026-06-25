@@ -36,7 +36,8 @@ function verifyWebhookSignature(body: string, signature: string): boolean {
     const sigBuf = Buffer.from(signature);
     if (expectedBuf.length !== sigBuf.length) return false;
     return timingSafeEqual(expectedBuf, sigBuf);
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, "RevenueCat webhook signature verification failed");
     return false;
   }
 }
@@ -59,8 +60,7 @@ export async function handleRevenueCatWebhook(
   }
 
   if (environment.toUpperCase() !== "PRODUCTION") {
-    logger.info({ environment, event }, "RevenueCat webhook skipped — non-production event");
-    return { received: true };
+    logger.info({ environment, event }, "RevenueCat webhook — processing non-production event");
   }
 
   const userId = app_user_id;

@@ -2,6 +2,7 @@ import { db, memoriesTable, memoryJobsTable } from "../db/src/index.js";
 import { and, eq, desc } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { extractKeywords, jaccardSimilarity } from "./memory/keywords.js";
+import { MEMORY_RECENCY_HALFLIFE_DAYS, MEMORY_RELEVANCE_FLOOR, MEMORY_SCORE_WEIGHTS } from "@aura/shared";
 
 const FACT_PATTERNS = [
   { regex: /I (?:am|feel|like|love|hate|enjoy|prefer|want|need|have|don't like|can't stand)\s+(.+?)(?:\.|,|!|\?|$)/i, category: "preference" },
@@ -59,9 +60,11 @@ export async function enqueueMemoryJob(
   userId: string,
   companionId: string,
   rawContent: string,
+  tx?: typeof db,
 ): Promise<string | null> {
+  const client = tx ?? db;
   try {
-    const [job] = await db.insert(memoryJobsTable).values({ userId, companionId, rawContent }).returning();
+    const [job] = await client.insert(memoryJobsTable).values({ userId, companionId, rawContent }).returning();
     logger.info({ jobId: job.id }, "Memory consolidation job enqueued");
     return job.id;
   } catch (err) {
@@ -91,6 +94,7 @@ export async function retrieveMemories(
       .orderBy(desc(memoriesTable.importance))
       .limit(50);
 
+    const now = Date.now();
     interface ScoredMemory { content: string; importance: number; category: string; score: number }
     const scored: ScoredMemory[] = allMemories.map((m) => {
       let similarity = 0;
@@ -98,16 +102,20 @@ export async function retrieveMemories(
         const memTokens = new Set(m.keywords);
         similarity = jaccardSimilarity(queryTokens, memTokens);
       }
+      const referenceTime = m.lastRecalledAt ?? m.createdAt;
+      const daysSinceReference = referenceTime ? (now - referenceTime.getTime()) / 86_400_000 : 0;
+      const recency = Math.pow(2, -daysSinceReference / MEMORY_RECENCY_HALFLIFE_DAYS);
       return {
         content: m.content,
         importance: m.importance,
         category: m.category,
-        score: similarity * 0.7 + m.importance * 0.3,
+        score: similarity * MEMORY_SCORE_WEIGHTS.jaccard + m.importance * MEMORY_SCORE_WEIGHTS.importance + recency * MEMORY_SCORE_WEIGHTS.recency,
       };
     });
 
     scored.sort((a: ScoredMemory, b: ScoredMemory) => b.score - a.score);
-    const top = scored.slice(0, limit);
+    const aboveFloor = scored.filter((s) => s.score >= MEMORY_RELEVANCE_FLOOR);
+    const top = aboveFloor.slice(0, limit);
 
     if (top.length > 0) {
       const topContent: string[] = top.map((t: ScoredMemory) => t.content);

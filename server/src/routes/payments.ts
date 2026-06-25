@@ -18,7 +18,7 @@ router.post("/payments/webhook", async (req, res) => {
       return;
     }
 
-    const rawBody = (req as any).rawBody;
+    const rawBody = req.rawBody;
     if (!rawBody) {
       res.status(400).json({ error: "Missing raw body" });
       return;

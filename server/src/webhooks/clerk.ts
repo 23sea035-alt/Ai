@@ -14,6 +14,9 @@ interface ClerkWebhookPayload {
     first_name?: string | null;
     last_name?: string | null;
     username?: string | null;
+    public_metadata?: {
+      role?: string;
+    };
     created_at?: number;
     updated_at?: number;
     deleted?: boolean;
@@ -73,6 +76,7 @@ router.post("/clerk", async (req, res) => {
           email,
           firstName: data.first_name,
           lastName: data.last_name,
+          role: data.public_metadata?.role,
         });
         logger.info({ clerkUserId: data.id, type }, "User mirrored from Clerk");
         break;
@@ -84,6 +88,7 @@ router.post("/clerk", async (req, res) => {
           email: updEmail,
           firstName: data.first_name,
           lastName: data.last_name,
+          role: data.public_metadata?.role,
         });
         logger.info({ clerkUserId: data.id, type }, "User mirrored from Clerk");
         break;

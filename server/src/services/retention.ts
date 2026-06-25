@@ -2,61 +2,101 @@ import { eq, lte, and, isNotNull } from "drizzle-orm";
 import { db, usersTable, messagesTable, companionsTable, memoriesTable, subscriptionsTable, memoryJobsTable, safetyEventsTable, bannedIdentitiesTable } from "../db/src/index.js";
 import { logger } from "../lib/logger.js";
 
-const RETENTION_DAYS_MESSAGES = 90;
-const RETENTION_DAYS_INACTIVE_ACCOUNTS = 365;
-const RETENTION_DAYS_SAFETY_EVENTS = 365;
-const RETENTION_DAYS_BANNED_IDENTITIES = 730;
-const GRACE_DAYS_SOFT_DELETE = 30;
+// ALL hardcoded retention numbers are defaults — LEGAL-REVIEW before launch
+const RETENTION_DAYS_MESSAGES = 90; // LEGAL-REVIEW
+const RETENTION_DAYS_INACTIVE_ACCOUNTS = 365; // LEGAL-REVIEW
+const RETENTION_DAYS_SAFETY_EVENTS = 365; // LEGAL-REVIEW
+const RETENTION_DAYS_BANNED_IDENTITIES = 730; // LEGAL-REVIEW
+const GRACE_DAYS_SOFT_DELETE = 30; // LEGAL-REVIEW
 const MS_PER_DAY = 86_400_000;
 
-export async function enforceRetention(): Promise<void> {
+function validateCutoff(cutoff: Date, context: string): void {
+  if (Number.isNaN(cutoff.getTime())) {
+    throw new Error(`Retention [${context}]: invalid cutoff date`);
+  }
+  // Cutoff must be at least 1 day in the past to prevent accidental mass-deletion
+  const yesterday = new Date(Date.now() - MS_PER_DAY);
+  if (cutoff >= yesterday) {
+    throw new Error(`Retention [${context}]: cutoff ${cutoff.toISOString()} is too recent — refusing`);
+  }
+}
+
+async function deleteWhere(
+  table: any,
+  where: any,
+  context: string,
+  dryRun = false,
+): Promise<number> {
+  if (!table) {
+    throw new Error(`Retention [${context}]: table is null/undefined — refusing`);
+  }
+  if (!where) {
+    throw new Error(`Retention [${context}]: WHERE clause is empty — refusing (would delete all rows)`);
+  }
+  if (dryRun) {
+    const rows = await db.select({ id: (table as any).id }).from(table).where(where).limit(100);
+    logger.warn({ context, count: rows.length, sample: rows.map((r: any) => r.id) }, "DRY RUN — would delete rows");
+    return rows.length;
+  }
+  const result = await db.delete(table).where(where);
+  const count = (result as { rowCount: number | null }).rowCount ?? 0;
+  logger.info({ context, count }, "Retention purge complete");
+  return count;
+}
+
+export async function enforceRetention(options?: { dryRun?: boolean }): Promise<number> {
   const cutoff = new Date(Date.now() - RETENTION_DAYS_MESSAGES * MS_PER_DAY);
-  logger.info({ cutoff }, "Running message retention enforcement");
+  validateCutoff(cutoff, "enforceRetention");
+  const dryRun = options?.dryRun ?? false;
+  logger.info({ cutoff, dryRun }, "Running message retention enforcement");
 
-  const deletedMessages = await db
-    .delete(messagesTable)
-    .where(lte(messagesTable.createdAt, cutoff));
-
-  logger.info({ count: (deletedMessages as any).rowCount ?? 0 }, "Old messages purged");
+  return deleteWhere(messagesTable, lte(messagesTable.createdAt, cutoff), "messages", dryRun);
 }
 
-export async function enforceSafetyEventRetention(): Promise<void> {
+export async function enforceSafetyEventRetention(options?: { dryRun?: boolean }): Promise<number> {
   const cutoff = new Date(Date.now() - RETENTION_DAYS_SAFETY_EVENTS * MS_PER_DAY);
-  logger.info({ cutoff }, "Running safety event retention enforcement");
+  validateCutoff(cutoff, "enforceSafetyEventRetention");
+  const dryRun = options?.dryRun ?? false;
+  logger.info({ cutoff, dryRun }, "Running safety event retention enforcement");
 
-  const deletedEvents = await db
-    .delete(safetyEventsTable)
-    .where(lte(safetyEventsTable.createdAt, cutoff));
-
-  logger.info({ count: (deletedEvents as any).rowCount ?? 0 }, "Old safety events purged");
+  return deleteWhere(safetyEventsTable, lte(safetyEventsTable.createdAt, cutoff), "safety_events", dryRun);
 }
 
-export async function enforceBannedIdentitiesRetention(): Promise<void> {
+export async function enforceBannedIdentitiesRetention(options?: { dryRun?: boolean }): Promise<number> {
   const cutoff = new Date(Date.now() - RETENTION_DAYS_BANNED_IDENTITIES * MS_PER_DAY);
-  logger.info({ cutoff }, "Running banned identities retention enforcement");
+  validateCutoff(cutoff, "enforceBannedIdentitiesRetention");
+  const dryRun = options?.dryRun ?? false;
+  logger.info({ cutoff, dryRun }, "Running banned identities retention enforcement");
 
-  const deleted = await db
-    .delete(bannedIdentitiesTable)
-    .where(and(
-      lte(bannedIdentitiesTable.createdAt, cutoff),
-      isNotNull(bannedIdentitiesTable.expiresAt),
-    ));
-
-  logger.info({ count: (deleted as any).rowCount ?? 0 }, "Expired banned identities purged");
+  return deleteWhere(
+    bannedIdentitiesTable,
+    and(lte(bannedIdentitiesTable.createdAt, cutoff), isNotNull(bannedIdentitiesTable.expiresAt)),
+    "banned_identities",
+    dryRun,
+  );
 }
 
-export async function enforceGraceExpiry(): Promise<void> {
+export async function enforceGraceExpiry(options?: { dryRun?: boolean }): Promise<number> {
   const cutoff = new Date(Date.now() - GRACE_DAYS_SOFT_DELETE * MS_PER_DAY);
-  logger.info({ cutoff }, "Running grace-expiry hard purge");
+  validateCutoff(cutoff, "enforceGraceExpiry");
+  const dryRun = options?.dryRun ?? false;
+  logger.info({ cutoff, dryRun }, "Running grace-expiry hard purge");
 
   const expiredUsers = await db
     .select({ id: usersTable.id })
     .from(usersTable)
-    .where(and(
-      eq(usersTable.status, "deleted") as any,
-      lte(usersTable.deletedAt!, cutoff),
-      isNotNull(usersTable.deletedAt),
-    ));
+    .where(
+      and(
+        eq(usersTable.status, "deleted"),
+        lte(usersTable.deletedAt, cutoff),
+        isNotNull(usersTable.deletedAt),
+      ),
+    );
+
+  if (dryRun) {
+    logger.warn({ count: expiredUsers.length, ids: expiredUsers.map(u => u.id) }, "DRY RUN — would hard-purge users");
+    return expiredUsers.length;
+  }
 
   for (const user of expiredUsers) {
     await db.transaction(async (tx) => {
@@ -73,36 +113,54 @@ export async function enforceGraceExpiry(): Promise<void> {
   if (expiredUsers.length > 0) {
     logger.info({ count: expiredUsers.length }, "Grace-expiry hard purge complete");
   }
+  return expiredUsers.length;
 }
 
-export async function markInactiveUsers(): Promise<void> {
+export async function markInactiveUsers(options?: { dryRun?: boolean }): Promise<number> {
   const cutoff = new Date(Date.now() - RETENTION_DAYS_INACTIVE_ACCOUNTS * MS_PER_DAY);
-  logger.info({ cutoff }, "Marking inactive users");
+  validateCutoff(cutoff, "markInactiveUsers");
+  const dryRun = options?.dryRun ?? false;
+  logger.info({ cutoff, dryRun }, "Marking inactive users");
+
+  if (dryRun) {
+    const candidates = await db
+      .select({ id: usersTable.id, email: usersTable.email })
+      .from(usersTable)
+      .where(
+        and(lte(usersTable.updatedAt, cutoff), eq(usersTable.status, "active"), isNotNull(usersTable.updatedAt)),
+      ).limit(100);
+    logger.warn({ count: candidates.length, sample: candidates.map(c => c.id) }, "DRY RUN — would mark inactive");
+    return candidates.length;
+  }
 
   const result = await db
     .update(usersTable)
     .set({ status: "inactive", deletedAt: new Date() })
-    .where(and(
-      lte(usersTable.updatedAt, cutoff),
-      eq(usersTable.status, "active") as any,
-      isNotNull(usersTable.updatedAt),
-    ));
+    .where(
+      and(lte(usersTable.updatedAt, cutoff), eq(usersTable.status, "active"), isNotNull(usersTable.updatedAt)),
+    );
 
-  logger.info({ count: (result as any).rowCount ?? 0 }, "Users marked inactive");
+  const count = (result as { rowCount: number | null }).rowCount ?? 0;
+  logger.info({ count }, "Users marked inactive");
+  return count;
 }
 
-export async function reconcilePremiumStaleness(): Promise<void> {
+export async function reconcilePremiumStaleness(options?: { dryRun?: boolean }): Promise<number> {
   const now = new Date();
-  logger.info("Running premium staleness reconciliation");
+  const dryRun = options?.dryRun ?? false;
+  logger.info({ dryRun }, "Running premium staleness reconciliation");
 
   const expiredSubs = await db
     .select({ id: subscriptionsTable.id, userId: subscriptionsTable.userId })
     .from(subscriptionsTable)
-    .where(and(
-      lte(subscriptionsTable.expiresAt!, now),
-      eq(subscriptionsTable.willRenew, false),
-      isNotNull(subscriptionsTable.userId),
-    ));
+    .where(
+      and(lte(subscriptionsTable.expiresAt, now), eq(subscriptionsTable.willRenew, false), isNotNull(subscriptionsTable.userId)),
+    );
+
+  if (dryRun) {
+    logger.warn({ count: expiredSubs.length }, "DRY RUN — would expire subscriptions");
+    return expiredSubs.length;
+  }
 
   for (const sub of expiredSubs) {
     await db.update(subscriptionsTable)
@@ -116,4 +174,5 @@ export async function reconcilePremiumStaleness(): Promise<void> {
   if (expiredSubs.length > 0) {
     logger.info({ count: expiredSubs.length }, "Stale premium subscriptions expired");
   }
+  return expiredSubs.length;
 }

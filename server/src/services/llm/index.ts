@@ -7,7 +7,7 @@ export interface LLMProvider {
 
 let _provider: LLMProvider | null = null;
 
-export function setLLMProvider(provider: LLMProvider) {
+export function setLLMProvider(provider: LLMProvider): void {
   _provider = provider;
 }
 
