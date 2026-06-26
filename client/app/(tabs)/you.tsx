@@ -68,7 +68,7 @@ export default function YouScreen() {
           <ListRow
             label="Subscription"
             detail={isPremium ? 'Manage in App Store' : 'Upgrade to Premium'}
-            onPress={() => router.push('/premium')}
+            onPress={() => router.push(isPremium ? '/subscription' : '/premium')}
           />
         </ListGroup>
 
