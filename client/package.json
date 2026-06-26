@@ -18,6 +18,7 @@
     "@expo-google-fonts/newsreader": "^0.4.1",
     "@expo/metro-runtime": "~6.1.2",
     "expo": "~54.0.35",
+    "expo-audio": "~1.1.1",
     "expo-av": "~16.0.8",
     "expo-router": "~6.0.17",
     "expo-speech-recognition": "^3.1.3",

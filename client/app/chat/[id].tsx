@@ -181,7 +181,9 @@ export default function ChatScreen() {
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={scrollToEnd}
           ListHeaderComponent={safetyState.showDisclosure ? <DisclosureBanner text={CHAT.disclosureBanner.replace('{Companion}', companion?.name ?? 'Aurora')} /> : null}
-          renderItem={({ item }) => <MessageBubble role={item.role === 'user' ? 'user' : 'assistant'} text={item.content} />}
+          renderItem={({ item }) => (
+            <MessageBubble role={item.role === 'user' ? 'user' : 'assistant'} text={item.content} audioUri={item.audioUri} />
+          )}
           ListFooterComponent={isTyping ? <TypingDots /> : null}
         />
 
