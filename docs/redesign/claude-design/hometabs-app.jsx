@@ -92,7 +92,7 @@ function NavPill() {
 const TODAY_LABEL = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 // greeting relative to the user's local time (morning / afternoon / evening)
 const GREETING = (() => { const h = new Date().getHours(); return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })();
-function openChat() { window.location.href = 'OneOff.html'; }
+function openChat() { goHtml('OneOff.html'); }
 
 /* Aurora's large, hand-crafted warm avatar — the focal presence */
 function AuroraPresence({ T, size = 132 }) {
@@ -410,7 +410,7 @@ function Companions() {
   const isEmpty = state === 'empty';
 
   // both tiers open the creator; free sees it dimmed + scrollable with an "Unlock with Premium" CTA (not a cold paywall)
-  const openCreate = () => { window.location.href = 'OneOff.html?screen=create'; };
+  const openCreate = () => { goHtml('OneOff.html?screen=create'); };
   return (
     <div style={{ minHeight: '100%', background: T.bg, padding: `${SAFE_TOP}px 28px ${NAV_CLEARANCE}px` }}>
       {/* title + always-accessible create action (top-right, never scroll-buried by a long roster) */}
@@ -446,7 +446,7 @@ function Companions() {
    Delete account confirm first; red is reserved for the confirm button.
    ════════════════════════════════════════════════════════════════════════════ */
 
-function goScreen(id) { window.location.href = `OneOff.html?screen=${id}`; }
+function goScreen(id) { goHtml(`OneOff.html?screen=${id}`); }
 
 function Row({ T, label, detail, detailAccent, onClick, toggle, last }) {
   const interactive = !!onClick;

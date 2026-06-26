@@ -38,6 +38,32 @@ const PRESENT_ON = (() => {
   catch (e) { return false; }
 })();
 
+// Cross-file navigation between Onboarding/HomeTabs/OneOff must carry the view params (present/dev),
+// or a demo in present mode would drop back to the dev-rail build on every back button / deep link.
+function withViewParams(href) {
+  try {
+    const cur = new URLSearchParams(window.location.search);
+    const u = new URL(href, window.location.href);
+    ['present', 'dev'].forEach((k) => { if (cur.has(k) && !u.searchParams.has(k)) u.searchParams.set(k, cur.get(k)); });
+    return u.pathname.split('/').pop() + u.search + u.hash;
+  } catch (e) { return href; }
+}
+function goHtml(href) { window.location.href = withViewParams(href); }  // for JS navigations
+Object.assign(window, { withViewParams, goHtml });
+
+// Catch every <a href="*.html"> click (back buttons, closes, legal links) and preserve the params.
+if (typeof document !== 'undefined' && !window.__auraNavPatched) {
+  window.__auraNavPatched = true;
+  document.addEventListener('click', (e) => {
+    const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    const href = a.getAttribute('href') || '';
+    if (!/\.html(\?|#|$)/.test(href)) return;             // only local html navigations
+    const fixed = withViewParams(href);
+    if (fixed !== href) { e.preventDefault(); window.location.href = fixed; }
+  }, true);
+}
+
 function DevProvider({ screens = [], children, initial = {} }) {
   const { useState, useMemo, useCallback } = React;
   const firstState = (id) => (screens.find((s) => s.id === id)?.states || [])[0] || null;
