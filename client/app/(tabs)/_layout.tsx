@@ -72,7 +72,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="memory" options={{ href: null }} />
       <Tabs.Screen name="premium" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null }} />

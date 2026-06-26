@@ -205,7 +205,11 @@ export default function ChatScreen() {
       <BottomSheet visible={overflowOpen} onClose={() => setOverflowOpen(false)}>
         <View style={styles.overflow}>
           {[
-            { label: CHAT.overflow.settings, go: () => router.push('/settings'), danger: false },
+            {
+              label: CHAT.overflow.settings,
+              go: () => router.push({ pathname: '/companion/create', params: { mode: 'edit' } }),
+              danger: false,
+            },
             { label: CHAT.overflow.viewMemory, go: () => router.push('/long-term-memory'), danger: false },
             { label: CHAT.overflow.report, go: () => {}, danger: true },
           ].map((row) => (

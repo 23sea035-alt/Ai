@@ -6,24 +6,11 @@ import {
   useFonts as useHankenFonts,
 } from '@expo-google-fonts/hanken-grotesk';
 import {
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-  useFonts as useManropeFonts,
-} from '@expo-google-fonts/manrope';
-import {
   Newsreader_400Regular,
   Newsreader_500Medium,
   Newsreader_600SemiBold,
   useFonts as useNewsreaderFonts,
 } from '@expo-google-fonts/newsreader';
-import {
-  Sora_400Regular,
-  Sora_500Medium,
-  Sora_600SemiBold,
-  Sora_700Bold,
-  useFonts as useSoraFonts,
-} from '@expo-google-fonts/sora';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -71,18 +58,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [soraLoaded, soraError] = useSoraFonts({
-    Sora_400Regular,
-    Sora_500Medium,
-    Sora_600SemiBold,
-    Sora_700Bold,
-  });
-  const [manropeLoaded, manropeError] = useManropeFonts({
-    Manrope_400Regular,
-    Manrope_500Medium,
-    Manrope_600SemiBold,
-  });
-  // Warm Sanctuary families (design.ts FONTS) — display + body.
+  // Warm Sanctuary families (design.ts FONTS) — display (Newsreader) + body (Hanken Grotesk).
   const [newsreaderLoaded, newsreaderError] = useNewsreaderFonts({
     Newsreader_400Regular,
     Newsreader_500Medium,
@@ -95,11 +71,8 @@ export default function RootLayout() {
     HankenGrotesk_700Bold,
   });
 
-  // Sora/Manrope are cosmic-era and still loaded until the legacy screens migrate (Phase 2).
-  const fontsLoaded =
-    soraLoaded && manropeLoaded && newsreaderLoaded && hankenLoaded;
-  const fontError =
-    soraError || manropeError || newsreaderError || hankenError;
+  const fontsLoaded = newsreaderLoaded && hankenLoaded;
+  const fontError = newsreaderError || hankenError;
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -116,7 +89,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <AppProvider>
-                <StatusBar style="light" />
+                <StatusBar style="auto" />
                 <RootLayoutNav />
               </AppProvider>
             </KeyboardProvider>
