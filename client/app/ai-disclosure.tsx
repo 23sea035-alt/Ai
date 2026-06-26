@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BackChevron } from '@/components/BackChevron';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Checkbox } from '@/components/Checkbox';
@@ -37,12 +38,13 @@ export default function AIDisclosureScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.lg }]}>
+    <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.md }]}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACE.xl }]}
         showsVerticalScrollIndicator={false}
       >
+        <BackChevron />
         <Animated.Text entering={enterUp(0)} style={[styles.title, { color: colors.textPrimary }]}>
           {copy.title}
         </Animated.Text>

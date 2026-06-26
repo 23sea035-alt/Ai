@@ -7,6 +7,7 @@ import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } fr
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BackChevron } from '@/components/BackChevron';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { enterUp } from '@/components/motion';
@@ -36,13 +37,14 @@ export default function ProfileScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.xl }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.md }]}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACE.lg }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <BackChevron />
           <Animated.Text entering={enterUp(0)} style={[styles.title, { color: colors.textPrimary }]}>
             {copy.title}
           </Animated.Text>

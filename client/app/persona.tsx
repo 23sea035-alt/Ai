@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BackChevron } from '@/components/BackChevron';
 import { Button } from '@/components/Button';
 import { PressableScale, enterUp } from '@/components/motion';
 import { ONBOARDING, PERSONAS } from '@/constants/content';
@@ -34,12 +35,13 @@ export default function PersonaScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.xl }]}>
+    <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.md }]}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
+        <BackChevron />
         <Animated.Text entering={enterUp(0)} style={[styles.title, { color: colors.textPrimary }]}>
           {copy.title}
         </Animated.Text>

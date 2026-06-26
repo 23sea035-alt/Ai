@@ -1,5 +1,5 @@
-// Reset password — email + "we'll send a code" helper, then a calm confirmation. UI shell over
-// local-auth (Clerk deferred); no real email is sent yet.
+// Reset password — email + "we'll send a code" helper, then a calm confirmation. Back chevron to
+// the previous screen. UI shell over local-auth (Clerk deferred); no real email is sent yet.
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
@@ -7,6 +7,7 @@ import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } fr
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BackChevron } from '@/components/BackChevron';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { PressableScale, enterUp } from '@/components/motion';
@@ -23,13 +24,14 @@ export default function ForgotPasswordScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.xxl }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.md }]}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACE.xl }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <BackChevron />
           <Animated.Text entering={enterUp(0)} style={[styles.title, { color: colors.textPrimary }]}>
             {sent ? a.titles.verify : a.titles.forgot}
           </Animated.Text>

@@ -1,6 +1,5 @@
-// Create account — email + password + an honest (unchecked) terms box that gates the CTA.
-// Restyled to the Warm Sanctuary form kit; UI shell over local-auth (Clerk deferred). Name and
-// birth year are collected later (Profile / Age gate), so signup only needs email + password.
+// Create account — email + password (reveal-eye) + SSO + an honest terms box that gates every
+// signup method. Back chevron returns to Welcome. Restyled UI shell over local-auth (Clerk deferred).
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
@@ -8,9 +7,11 @@ import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } fr
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BackChevron } from '@/components/BackChevron';
 import { Button } from '@/components/Button';
 import { Checkbox } from '@/components/Checkbox';
 import { Field } from '@/components/Field';
+import { SsoButtons } from '@/components/SsoButtons';
 import { PressableScale, enterUp } from '@/components/motion';
 import { ONBOARDING } from '@/constants/content';
 import { FONTS, SPACE, TYPE } from '@/constants/design';
@@ -50,15 +51,25 @@ export default function RegisterScreen() {
     }
   };
 
+  // The terms box gates SSO too (per the content note). Real OAuth is Clerk-wired later.
+  const handleSso = () => {
+    if (!agreed) {
+      setError(a.termsNudge);
+      return;
+    }
+    router.replace('/onboarding');
+  };
+
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.xxl }]}>
+      <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top + SPACE.md }]}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACE.xl }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <BackChevron />
           <Animated.Text entering={enterUp(0)} style={[styles.title, { color: colors.textPrimary }]}>
             {a.titles.signup}
           </Animated.Text>
@@ -82,21 +93,26 @@ export default function RegisterScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder={a.fields.passwordPlaceholderSignup}
-              secureTextEntry
+              secureToggle
               returnKeyType="done"
               onSubmitEditing={handleRegister}
             />
-            <View style={styles.termsRow}>
-              <Checkbox checked={agreed} onToggle={() => setAgreed((v) => !v)} />
-              <Text style={[styles.terms, { color: colors.textSecondary }]} onPress={() => setAgreed((v) => !v)}>
-                {a.terms}
-              </Text>
-            </View>
+          </Animated.View>
+
+          <Animated.View entering={enterUp(3)}>
+            <SsoButtons onApple={handleSso} onGoogle={handleSso} />
+          </Animated.View>
+
+          <Animated.View entering={enterUp(4)} style={styles.termsRow}>
+            <Checkbox checked={agreed} onToggle={() => setAgreed((v) => !v)} />
+            <Text style={[styles.terms, { color: colors.textSecondary }]} onPress={() => setAgreed((v) => !v)}>
+              {a.terms}
+            </Text>
           </Animated.View>
 
           {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
 
-          <Animated.View entering={enterUp(3)} style={styles.action}>
+          <Animated.View entering={enterUp(5)} style={styles.action}>
             <Button label={a.ctas.signup} onPress={handleRegister} loading={submitting} disabled={!agreed} />
             <PressableScale onPress={() => router.replace('/(auth)/login')} haptic="light" style={styles.footerLink}>
               <Text style={[styles.footerText, { color: colors.textSecondary }]}>{a.footers.toSignin}</Text>
@@ -118,7 +134,7 @@ const styles = StyleSheet.create({
   termsRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   terms: { flex: 1, fontFamily: FONTS.body.regular, fontSize: 14, lineHeight: 19 },
   error: { fontFamily: FONTS.body.regular, fontSize: 14, textAlign: 'center' },
-  action: { marginTop: 'auto', paddingTop: SPACE.xl, gap: SPACE.sm },
+  action: { marginTop: 'auto', paddingTop: SPACE.lg, gap: SPACE.sm },
   footerLink: { alignItems: 'center', paddingVertical: SPACE.sm },
   footerText: { fontFamily: FONTS.body.medium, fontSize: 14 },
 });
