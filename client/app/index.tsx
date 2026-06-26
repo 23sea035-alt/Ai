@@ -4,8 +4,9 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
+import { fadeIn } from '@/components/motion';
 import { FONTS, SPACE } from '@/constants/design';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/hooks/useTheme';
@@ -24,7 +25,7 @@ export default function SplashScreen() {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <Animated.Text
-        entering={FadeIn.duration(600)}
+        entering={fadeIn(0)}
         style={[styles.wordmark, { color: colors.textPrimary }]}
       >
         Aura
