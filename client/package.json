@@ -18,7 +18,7 @@
     "@expo-google-fonts/newsreader": "^0.4.1",
     "@expo/metro-runtime": "~6.1.2",
     "expo": "~54.0.35",
-    "expo-av": "~15.0.2",
+    "expo-av": "~16.0.8",
     "expo-router": "~6.0.17",
     "react": "catalog:",
     "react-native": "0.81.5"
