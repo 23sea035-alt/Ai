@@ -43,9 +43,11 @@ kidney, verified).
 ## Not done yet
 
 - **Wordmark lockup** — blocked on the app name.
-- **Live Expo wiring** — `app.json` still points `icon` / `splash` / `web.favicon`
-  at `assets/images/icon.png` (the old placeholder), and the splash `backgroundColor`
-  is still the old cosmic `#0B1020`. Swapping those to this mark + a cream splash is a
-  separate, build-affecting step (do it deliberately, with the right per-platform sizes).
+- **Live Expo wiring — DONE (2026-06-25).** `app.json` now uses `app-icon-1024.png` for
+  `icon` / Android `adaptiveIcon.foregroundImage` / `web.favicon`, and the splash is wired
+  via the `expo-splash-screen` config plugin: wine mono mark on cream `#F4ECE0` (light) +
+  cream mono mark on warm-dark `#1B1712` (dark), `resizeMode: contain`, `imageWidth: 200`.
+  `userInterfaceStyle` is now `automatic` so both themes — and both splash variants — show.
+  The old placeholder `assets/images/icon.png` was deleted.
 - **Paper grain** — the mark is flat matte; an optional gouache-grain overlay can be
   added to the hi-res raster later (small sizes + the SVGs stay flat).
