@@ -77,11 +77,18 @@ All 8 screens ported to the kit + `constants/content/*`:
 - Core navigation loop now complete: onboarding -> tabs -> Chat.
 
 ### Known issues
-- **Web preview blocked.** `expo start --web` fails to bundle: pnpm strict-linking can't resolve
-  `expo-modules-core` from `expo` for Metro web (`@expo/metro-runtime` was added and got past the
-  first resolution error, but this one remains). Fix needs an `.npmrc` hoist
-  (`node-linker=hoisted` or `public-hoist-pattern=*expo*`) or a metro resolver alias. Until then,
-  verify UI on a device / `expo run:android` dev build, not web.
+- **Bundling FIXED.** `client/metro.config.js` had `disableHierarchicalLookup=true` (a flat/hoisted
+  node_modules assumption) which broke Metro resolution under pnpm -- the real cause of BOTH web and
+  native failing on `expo-modules-core`. Switched to `unstable_enableSymlinks=true` + hierarchical
+  lookup; native and web both bundle now.
+- **Keyboard-controller / Expo Go.** `react-native-keyboard-controller` is not bundled in Expo Go, so
+  a temporary passthrough stub in `app/_layout.tsx` is needed for the Expo Go preview ONLY -- revert
+  for dev/native builds. A real `expo run:android` dev build needs the NDK (Gradle auto-downloads) +
+  JDK 17 (installed at C:\Program Files\Java\jdk-17).
+- **Android verified (2026-06-25):** ran on a headless android-34 emulator (hand-authored AVD, WHPX
+  accel) via Expo Go -- the redesigned Welcome + Auth screens render correctly in warm-dark (Newsreader
+  serif, Hanken body, theme-aware brand mark + Library Wine accent, Field/Checkbox/Button kit with the
+  disabled-until-agreed gating). Light theme: toggle the device theme (Expo Go caches the scheme live).
 
 ## Pending
 
