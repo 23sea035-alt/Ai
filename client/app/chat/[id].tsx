@@ -51,6 +51,8 @@ export default function ChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [streaming, setStreaming] = useState<string | null>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
+  // Set when the next send originated from hold-to-talk dictation; consumed (and cleared) on send.
+  const [voiceDraft, setVoiceDraft] = useState<{ audioUri?: string } | null>(null);
 
   const greeting: Message = {
     id: 'initial',
@@ -86,11 +88,17 @@ export default function ChatScreen() {
     setInput('');
     clearApiError();
 
+    const inputModality: 'text' | 'voice' = voiceDraft ? 'voice' : 'text';
+    const audioUri = voiceDraft?.audioUri;
+    setVoiceDraft(null);
+
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
       content,
       createdAt: new Date().toISOString(),
+      inputModality,
+      audioUri,
     };
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
@@ -132,7 +140,7 @@ export default function ChatScreen() {
         setIsTyping(false);
         return;
       }
-      addMessage(cid, { role: 'user', content, createdAt: new Date().toISOString() });
+      addMessage(cid, { role: 'user', content, createdAt: new Date().toISOString(), inputModality, audioUri });
       setTimeout(() => {
         const reply: Message = { id: `${Date.now() + 1}`, role: 'assistant', content: FALLBACK_REPLY, createdAt: new Date().toISOString() };
         setMessages((prev) => [...prev, reply]);
@@ -195,8 +203,12 @@ export default function ChatScreen() {
         <View style={[styles.composerWrap, { paddingBottom: insets.bottom + SPACE.sm }]}>
           <ChatComposer
             value={input}
-            onChangeText={setInput}
+            onChangeText={(t) => {
+              setInput(t);
+              if (!t) setVoiceDraft(null);
+            }}
             onSend={() => sendMessage()}
+            onVoiceResult={(info) => setVoiceDraft(info)}
             placeholder={CHAT.inputPlaceholder.replace('{Companion}', companion?.name ?? 'Aurora')}
           />
         </View>

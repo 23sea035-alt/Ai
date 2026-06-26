@@ -60,6 +60,7 @@ Work top to bottom; the phases are dependency-ordered (fixes and the test harnes
 | Live backend work (P0→P4) | `planning/backend-fixlist-v1.md` |
 | Original phase plan (history) | `planning/v1-tasklist.md` |
 | Client/Expo build (frontend owner only) | `planning/frontend-todo.md` |
+| Post-v1.0 deferred features (roadmap) | `planning/post-v1.0-roadmap.md` |
 
 ### Compliance — legal drafts (do NOT publish without sign-off)
 

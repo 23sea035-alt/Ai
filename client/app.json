@@ -34,6 +34,14 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Aura to use the microphone for voice messages.",
+          "speechRecognitionPermission": "Allow Aura to transcribe your voice messages to text.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/logo/logo-mono-wine-1024.png",
