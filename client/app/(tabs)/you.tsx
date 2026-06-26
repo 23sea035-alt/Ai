@@ -10,12 +10,15 @@ import { Avatar } from '@/components/Avatar';
 import ConfirmSheet from '@/components/ConfirmSheet';
 import { ListGroup, ListRow } from '@/components/ListGroup';
 import { PressableScale } from '@/components/motion';
+import { Segmented } from '@/components/Segmented';
 import { FONTS, RADIUS, SPACE, TYPE } from '@/constants/design';
 import { useApp } from '@/context/AppContext';
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme, type ThemePreference } from '@/hooks/useTheme';
+
+const APPEARANCE_OPTIONS = ['system', 'light', 'dark'] as const;
 
 export default function YouScreen() {
-  const { colors, shadows, mode } = useTheme();
+  const { colors, shadows, mode, preference, setPreference } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, logout } = useApp();
   const [notif, setNotif] = useState(true);
@@ -61,6 +64,15 @@ export default function YouScreen() {
               {isPremium ? 'Premium' : 'Free'}
             </Text>
           </View>
+        </View>
+
+        <View style={styles.appearance}>
+          <Text style={[styles.groupLabel, { color: colors.textSecondary }]}>Appearance</Text>
+          <Segmented
+            options={APPEARANCE_OPTIONS}
+            value={preference}
+            onChange={(v) => setPreference(v as ThemePreference)}
+          />
         </View>
 
         <ListGroup label="Account">
@@ -120,6 +132,8 @@ const styles = StyleSheet.create({
     padding: SPACE.lg,
   },
   headerText: { flex: 1 },
+  appearance: { gap: SPACE.sm },
+  groupLabel: { fontFamily: FONTS.body.semibold, fontSize: 13, marginLeft: SPACE.xs },
   name: { ...TYPE.title },
   handle: { fontFamily: FONTS.body.regular, fontSize: 14 },
   tier: { paddingHorizontal: SPACE.md, paddingVertical: SPACE.xs, borderRadius: RADIUS.pill },
