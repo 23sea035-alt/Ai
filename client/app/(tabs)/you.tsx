@@ -70,6 +70,7 @@ export default function YouScreen() {
             detail={isPremium ? 'Manage in App Store' : 'Upgrade to Premium'}
             onPress={() => router.push(isPremium ? '/subscription' : '/premium')}
           />
+          <ListRow label="Sign-in & security" onPress={() => router.push('/sign-in-security')} />
         </ListGroup>
 
         <ListGroup label="Notifications">
@@ -79,8 +80,8 @@ export default function YouScreen() {
         <ListGroup label="Privacy & Safety">
           <ListRow first label="Safety center" onPress={() => router.push('/safety')} />
           <ListRow label="Privacy policy" onPress={() => router.push('/privacy')} />
-          <ListRow label="Data export" onPress={() => router.push('/settings')} />
-          <ListRow label="Delete account" onPress={() => router.push('/settings')} />
+          <ListRow label="Data export" onPress={() => router.push('/account')} />
+          <ListRow label="Delete account" onPress={() => router.push('/account')} />
         </ListGroup>
 
         <ListGroup label="Support">
