@@ -10,20 +10,27 @@ import { buildCrisisResponse } from "./crisis.js";
 import type { LLMProvider } from "../llm/index.js";
 import { getLLMProvider } from "../llm/index.js";
 import { createTaskSpecificProvider } from "../llm/model-selector.js";
-import { getEnv } from "../../config/env.js";
 
 const POLICY_VERSION = "2026-06-23-001";
 
 export class ModerationEngine implements Moderator {
-  private inputGuardProvider: LLMProvider | null = null;
-  private outputGuardProvider: LLMProvider | null = null;
+  private inputGuardProvider?: LLMProvider;
+  private outputGuardProvider?: LLMProvider;
+
+  /** Get the Groq API key from the environment (bypassing full env validation). */
+  private getGroqApiKey(): string | undefined {
+    return process.env.GROQ_API_KEY;
+  }
 
   private getInputGuardProvider(): LLMProvider | undefined {
     if (!this.inputGuardProvider) {
-      try {
-        this.inputGuardProvider = createTaskSpecificProvider("moderate-input", getEnv().GROQ_API_KEY);
-      } catch {
-        try { this.inputGuardProvider = getLLMProvider(); } catch { return undefined; }
+      const key = this.getGroqApiKey();
+      if (key) {
+        try {
+          this.inputGuardProvider = createTaskSpecificProvider("moderate-input", key);
+        } catch {
+          // fall through to undefined
+        }
       }
     }
     return this.inputGuardProvider;
@@ -31,10 +38,13 @@ export class ModerationEngine implements Moderator {
 
   private getOutputGuardProvider(): LLMProvider | undefined {
     if (!this.outputGuardProvider) {
-      try {
-        this.outputGuardProvider = createTaskSpecificProvider("moderate-output", getEnv().GROQ_API_KEY);
-      } catch {
-        try { this.outputGuardProvider = getLLMProvider(); } catch { return undefined; }
+      const key = this.getGroqApiKey();
+      if (key) {
+        try {
+          this.outputGuardProvider = createTaskSpecificProvider("moderate-output", key);
+        } catch {
+          // fall through to undefined
+        }
       }
     }
     return this.outputGuardProvider;
@@ -80,6 +90,13 @@ export class ModerationEngine implements Moderator {
             action: "block", categories: [],
             escalated: false, layer: "safeguard", policyVersion: POLICY_VERSION,
             reason: `L2 degraded (${l2Result.error}) — safeguard fallback: ${fallback?.reason ?? "unavailable"}`,
+          };
+        }
+        if (fallback.action === "crisis") {
+          return {
+            action: "crisis", categories: [],
+            escalated: false, layer: "safeguard", policyVersion: POLICY_VERSION,
+            crisisResources: ["988 Suicide & Crisis Lifeline: Call or text 988 (US)"],
           };
         }
         return {

@@ -102,6 +102,16 @@ Return JSON: { "flagged": bool, "category": "<rule-id or null>", "confidence": "
     if (parsed.flagged) {
       return { action: "block", reason: `Safeguard: ${parsed.category ?? "flagged"}`, confidence: parsed.confidence as "high" | "med" | "low" };
     }
+    // If the model returned flagged=false but the category/rationale indicate
+    // self-harm distress (SH-1), route to crisis (not a block).
+    // Avoid false positives on hyperbolic/idiomatic use (e.g. "that killed me lol").
+    const cat = (parsed.category ?? "").toLowerCase();
+    const rationaleText = (parsed.rationale ?? []).join(" ").toLowerCase();
+    const isHyperbolic = /\b(hyperbole|hyperbolic|idiom|idiomatic|figurative|figuratively|exaggeration|laugh|😂|😭|joking|joke)\b/.test(rationaleText);
+    const mentionsDistress = /\b(crisis.route|distress|ideation|genuine.*concern|real.*distress)\b/.test(rationaleText);
+    if (!isHyperbolic && (cat.includes("sh-1") || cat.includes("self-harm") || cat.includes("crisis") || mentionsDistress)) {
+      return { action: "crisis", reason: "Safeguard: self-harm distress detected — routing to crisis", confidence: parsed.confidence as "high" | "med" | "low" };
+    }
     return { action: "allow", reason: "Safeguard cleared", confidence: "high" };
   } catch (err) {
     return { action: "block", reason: `Safeguard error: ${err instanceof Error ? err.message : "unknown"}`, confidence: "high" };

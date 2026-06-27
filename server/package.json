@@ -8,8 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "eval": "tsx src/eval/runner.ts",
-    "eval:gen": "tsx src/eval/runner-generation.ts",
+    "eval": "node --env-file=../.env --import ./node_modules/tsx/dist/esm/index.mjs src/eval/runner.ts",
+    "eval:gen": "node --env-file=../.env --import ./node_modules/tsx/dist/esm/index.mjs src/eval/runner-generation.ts",
     "build:eval": "esbuild src/eval/runner.ts --bundle --platform=node --format=esm --external:'../services/moderation/*' --external:'../db/src/*' --outfile=eval/runner.bundle.mjs"
   },
   "dependencies": {

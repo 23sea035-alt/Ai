@@ -19,7 +19,12 @@ export function createGroqProvider(apiKey: string, model = DEFAULT_MODEL): LLMPr
         max_tokens: 512,
       });
 
-      return completion.choices[0]?.message?.content?.trim() ?? "";
+      const content = completion.choices[0]?.message?.content?.trim() ?? "";
+      // Empty responses from classification models (e.g. gpt-oss-safeguard-20b
+      // when given a system message) indicate the model couldn't process the
+      // request — treat as a failure so the caller's fallback logic kicks in.
+      if (!content) throw new Error("Empty model response");
+      return content;
     },
   };
 }

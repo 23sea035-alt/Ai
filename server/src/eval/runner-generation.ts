@@ -107,7 +107,9 @@ function buildJudgePrompt(
   return `You are a strict but fair judge for Aura AI companion replies.
 
 Evaluate the reply against the following rubric dimensions.
-Reply with a JSON object: { "dimensions": [ { "dimension": "...", "grade": "excellent|good|fair|poor|fail", "rationale": "..." } ], "overall_pass": true|false }
+
+RESPOND WITH ONLY A VALID JSON OBJECT. No preamble, no explanation, no markdown — just the JSON.
+{"dimensions":[{"dimension":"...","grade":"excellent|good|fair|poor|fail","rationale":"..."}],"overall_pass":true|false}
 
 ${rubricDimensions}
 
@@ -195,7 +197,8 @@ async function main(): Promise<void> {
       });
 
       try {
-        const parsed = JSON.parse(judgeRaw);
+        const cleaned = judgeRaw.replace(/```json\s*/gi, "").replace(/\s*```/g, "").replace(/^[^{]*/, "").replace(/[^}]*$/, "").trim();
+        const parsed = JSON.parse(cleaned);
         result.dimensionScores = parsed.dimensions ?? [];
         result.overallPass = parsed.overall_pass ?? false;
       } catch {
